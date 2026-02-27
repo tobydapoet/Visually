@@ -17,10 +17,6 @@ services:
 
   sql:
     image: mysql:8
-    deploy:
-      resources:
-        limits:
-          memory: 300M
     restart: unless-stopped
     container_name: sql
     environment:
