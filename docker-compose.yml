@@ -1,0 +1,337 @@
+version: "3.9"
+
+services:
+  discover-server:
+    image: eureka-server:latest
+    build: ./discover-server
+    container_name: discover-server
+    ports:
+      - "8761:8761"
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  sql:
+    image: mysql:8
+    container_name: sql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${PASSWORD}
+      MYSQL_USER: ${USERNAME}
+      MYSQL_PASSWORD: ${SQL_PASSWORD}
+    ports:
+      - "3308:3306"
+    volumes:
+      - visually_data:/var/lib/mysql
+      - ./initdb:/docker-entrypoint-initdb.d
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  broker:
+    image: apache/kafka:latest
+    hostname: broker
+    container_name: broker
+    ports:
+      - 9092:9092
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_NODE_ID: 1
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@broker:29093
+      KAFKA_LISTENERS: PLAINTEXT://broker:29092,CONTROLLER://broker:29093,PLAINTEXT_HOST://0.0.0.0:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    networks:
+      - app-network
+
+
+  user-service:
+    build: ./user-service
+    container_name: visually-user-service
+    environment:
+      SERVER_PORT: 8081
+      DATABASE_URL: jdbc:mysql://${DB_HOST}:${DB_PORT}/${DB_USER_SERVICE}
+      USERNAME: ${USERNAME}
+      PASSWORD: ${SQL_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      CLOUDINARY_NAME: ${CLOUDINARY_NAME}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_SECRET: ${CLOUDINARY_SECRET}
+      EUREKA_URL: ${EUREKA_URL}
+      GOOGLE_CLIENT: ${GOOGLE_CLIENT}
+      GOOGLE_SECRET: ${GOOGLE_SECRET}
+      REDIRECT_URI: ${REDIRECT_URI}
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: false
+      EUREKA_INSTANCE_HOSTNAME: user-service
+      KAFKA_URL: ${KAFKA_URL}
+    depends_on:
+      discover-server:
+        condition: service_healthy
+      sql:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  media-service:
+    build: ./media-service
+    container_name: visually-media-service
+    environment:
+      SERVER_PORT: 8082
+      DATABASE_URL: jdbc:mysql://${DB_HOST}:${DB_PORT}/${DB_MEDIA_SERVICE}
+      USERNAME: ${USERNAME}
+      PASSWORD: ${SQL_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      CLOUDINARY_NAME: ${CLOUDINARY_NAME}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_SECRET: ${CLOUDINARY_SECRET}
+      EUREKA_URL: ${EUREKA_URL}
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: false
+      EUREKA_INSTANCE_HOSTNAME: media-service
+      KAFKA_URL: ${KAFKA_URL}
+    depends_on:
+      discover-server:
+        condition: service_healthy
+      sql:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  follow-service:
+    build: ./follow-service
+    container_name: visually-follow-service
+    environment:
+      SERVER_PORT: 8083
+      DATABASE_URL: jdbc:mysql://${DB_HOST}:${DB_PORT}/${DB_FOLLOW_SERVICE}
+      USERNAME: ${USERNAME}
+      PASSWORD: ${SQL_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_URL}
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: false
+      EUREKA_INSTANCE_HOSTNAME: follow-service
+      KAFKA_URL: ${KAFKA_URL}
+    depends_on:
+      discover-server:
+        condition: service_healthy
+      sql:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  content-service:
+    build: ./content-service
+    container_name: visually-content-service
+    environment:
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      SERVER_PORT: 8084
+      USERNAME: ${USERNAME}
+      PASSWORD: ${SQL_PASSWORD}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_DATABASE: ${DB_CONTENT_SERVICE}
+      JWT_SECRET: ${JWT_SECRET}
+      EUREKA_URL: ${EUREKA_UR}
+      EUREKA_HOST: ${EUREKA_HOST}
+      EUREKA_PORT: ${EUREKA_PORT}
+      SERVICE_NAME: ${CONTENT_SERVICE_NAME}
+      KAFKA_URL: ${KAFKA_URL}
+      MEDIA_SERVICE_URL: ${MEDIA_SERVICE_URL}
+      USER_SERVICE_URL: ${USER_SERVICE_URL}
+    depends_on:
+      discover-server:
+        condition: service_healthy
+      sql:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  interaction-service:
+    build: ./interaction-service
+    container_name: visually-interaction-service
+    environment:
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      SERVER_PORT: 8085
+      USERNAME: ${USERNAME}
+      PASSWORD: ${SQL_PASSWORD}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_DATABASE: ${DB_INTERACTION_SERVICE}
+      JWT_SECRET: ${JWT_SECRET}
+      EUREKA_URL: ${EUREKA_UR}
+      EUREKA_HOST: ${EUREKA_HOST}
+      EUREKA_PORT: ${EUREKA_PORT}
+      SERVICE_NAME: ${INTERACTION_SERVICE_NAME}
+      KAFKA_URL: ${KAFKA_URL}
+    depends_on:
+      discover-server:
+        condition: service_healthy
+      sql:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  message-service:
+    build: ./message-service
+    container_name: visually-message-service
+    environment:
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      SERVER_PORT: 8086
+      USERNAME: ${USERNAME}
+      PASSWORD: ${SQL_PASSWORD}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_DATABASE: ${DB_MESSAGE_SERVICE}
+      JWT_SECRET: ${JWT_SECRET}
+      EUREKA_URL: ${EUREKA_UR}
+      EUREKA_HOST: ${EUREKA_HOST}
+      EUREKA_PORT: ${EUREKA_PORT}
+      SERVICE_NAME: ${MESSAGE_SERVICE_NAME}
+      KAFKA_URL: ${KAFKA_URL}
+    depends_on:
+      discover-server:
+        condition: service_healthy
+      sql:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  notification-service:
+    build: ./notification-service
+    container_name: visually-notification-service
+    environment:
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      SERVER_PORT: 8087
+      USERNAME: ${USERNAME}
+      PASSWORD: ${SQL_PASSWORD}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_DATABASE: ${DB_NOTIFICATION_SERVICE}
+      JWT_SECRET: ${JWT_SECRET}
+      EUREKA_URL: ${EUREKA_UR}
+      EUREKA_HOST: ${EUREKA_HOST}
+      EUREKA_PORT: ${EUREKA_PORT}
+      SERVICE_NAME: ${NOTIFICATION_SERVICE_NAME}
+      REDIS_DB_NOTIFICATION: ${REDIS_DB_NOTIFICATION}
+      NOTIFICATION_SERVICE_NAME: ${NOTIFICATION_SERVICE_NAME}
+      KAFKA_URL: ${KAFKA_URL}
+      FOLLOW_SERVICE_URL: ${FOLLOW_SERVICE_URL}
+    depends_on:
+      discover-server:
+        condition: service_healthy
+      sql:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  feed-service:
+    build: ./feed-service
+    container_name: visually-feed-service
+    environment:
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      SERVER_PORT: 8089
+      USERNAME: ${USERNAME}
+      PASSWORD: ${SQL_PASSWORD}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_DATABASE: ${DB_FEED_SERVICE}
+      JWT_SECRET: ${JWT_SECRET}
+      EUREKA_URL: ${EUREKA_UR}
+      EUREKA_HOST: ${EUREKA_HOST}
+      EUREKA_PORT: ${EUREKA_PORT}
+      SERVICE_NAME: ${FEED_SERVICE_NAME}
+      KAFKA_URL: ${KAFKA_URL}
+      ADS_SERVICE_URL: ${ADS_SERVICE_URL}
+    depends_on:
+      discover-server:
+        condition: service_healthy
+      sql:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  ads-service:
+    build: ./ads-service
+    container_name: visually-ads-service
+    environment:
+      SERVER_PORT: 8088
+      DATABASE_URL: jdbc:mysql://${DB_HOST}:${DB_PORT}/${DB_AD_SERVICE}
+      USERNAME: ${USERNAME}
+      PASSWORD: ${SQL_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_URL}
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: false
+      EUREKA_INSTANCE_HOSTNAME: ads-service
+      KAFKA_URL: ${KAFKA_URL}
+    depends_on:
+      discover-server:
+        condition: service_healthy
+      sql:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  gateway:
+    build: ./gateway
+    container_name: visually_gateway
+    ports:
+      - "9000:9000"
+    environment:
+      SERVER_PORT: 9000
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: 86400000
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_URL}
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: false
+      EUREKA_INSTANCE_HOSTNAME: gateway
+      GOOGLE_CLIENT: ${GOOGLE_CLIENT}
+      GOOGLE_SECRET: ${GOOGLE_SECRET}
+      SPRING_CLOUD_GATEWAY_MVC_ROUTES_0_ID: user-service
+      SPRING_CLOUD_GATEWAY_MVC_ROUTES_0_URI: lb://USER-SERVICE
+      SPRING_CLOUD_GATEWAY_MVC_ROUTES_0_PREDICATES_0: Path=/api/users/**
+    depends_on:
+      discover-server:
+        condition: service_healthy
+    networks:
+      - app-network
+    restart: unless-stopped
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  visually_data:
+  redis_data:
