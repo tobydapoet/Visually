@@ -14,6 +14,10 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 384M
 
   sql:
     image: mysql:8.0
@@ -90,7 +94,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 300M
+          memory: 384M
     depends_on:
       discover-server:
         condition: service_healthy
@@ -143,11 +147,11 @@ services:
       EUREKA_INSTANCE_PREFER_IP_ADDRESS: "false"
       EUREKA_INSTANCE_HOSTNAME: follow-service
       KAFKA_URL: ${KAFKA_URL}
-      JAVA_OPTS: "-Xms128m -Xmx256m"
+      JAVA_OPTS: "-Xms128m -Xmx384m"
     deploy:
       resources:
         limits:
-          memory: 300M
+          memory: 512M
     depends_on:
       discover-server:
         condition: service_healthy
@@ -177,6 +181,10 @@ services:
       KAFKA_URL: ${KAFKA_URL}
       MEDIA_SERVICE_URL: ${MEDIA_SERVICE_URL}
       USER_SERVICE_URL: ${USER_SERVICE_URL}
+    deploy:
+      resources:
+        limits:
+          memory: 256M
     depends_on:
       discover-server:
         condition: service_healthy
@@ -206,6 +214,10 @@ services:
       KAFKA_URL: ${KAFKA_URL}
       USER_SERVICE_URL: ${FOLLOW_SERVICE_URL}
       CONTENT_SERVICE_URL: ${CONTENT_SERVICE_URL}
+    deploy:
+      resources:
+        limits:
+          memory: 256M
     depends_on:
       discover-server:
         condition: service_healthy
@@ -236,6 +248,10 @@ services:
       USER_SERVICE_URL: ${USER_SERVICE_URL}
       CONTENT_SERVICE_URL: ${CONTENT_SERVICE_URL}
       KAFKA_URL: ${KAFKA_URL}
+    deploy:
+      resources:
+        limits:
+          memory: 256M
     depends_on:
       discover-server:
         condition: service_healthy
@@ -266,6 +282,10 @@ services:
       NOTIFICATION_SERVICE_NAME: ${NOTIFICATION_SERVICE_NAME}
       KAFKA_URL: ${KAFKA_URL}
       FOLLOW_SERVICE_URL: ${FOLLOW_SERVICE_URL}
+    deploy:
+      resources:
+        limits:
+          memory: 256M
     depends_on:
       discover-server:
         condition: service_healthy
@@ -295,6 +315,10 @@ services:
       SERVICE_NAME: ${FEED_SERVICE_NAME}
       KAFKA_URL: ${KAFKA_URL}
       ADS_SERVICE_URL: ${ADS_SERVICE_URL}
+    deploy:
+      resources:
+        limits:
+          memory: 256M
     depends_on:
       discover-server:
         condition: service_healthy
@@ -321,7 +345,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 300M
+          memory: 384M
     depends_on:
       discover-server:
         condition: service_healthy
@@ -361,6 +385,10 @@ services:
       SPRING_CLOUD_GATEWAY_MVC_ROUTES_0_ID: user-service
       SPRING_CLOUD_GATEWAY_MVC_ROUTES_0_URI: lb://USER-SERVICE
       SPRING_CLOUD_GATEWAY_MVC_ROUTES_0_PREDICATES_0: Path=/api/users/**
+    deploy:
+      resources:
+        limits:
+          memory: 384M
     depends_on:
       discover-server:
         condition: service_healthy
