@@ -15,7 +15,7 @@ import {
   Delete,
 } from '@nestjs/common';
 import { PostService } from './post.service';
-import { CreatePostDto } from './dto/create-post.dto';
+import { CreatePostDto, CreatePostMultipartDto } from './dto/create-post.dto';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { ContentStatus } from 'src/enums/content_status.type';
 import { PostResponsePageDto } from './dto/response-page-post.dto';
@@ -24,11 +24,24 @@ import { UpdatePostDto } from './dto/update-post.dto';
 import { EventPattern, Payload } from '@nestjs/microservices';
 import { InteractionType } from 'src/enums/interaction.type';
 import { ContentType } from 'src/enums/content.type';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiOperation,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
 
+@ApiTags('Post')
 @Controller('post')
 export class PostController {
   constructor(private readonly postService: PostService) {}
+
   @Post()
+  @ApiBearerAuth()
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ type: CreatePostMultipartDto })
   @HttpCode(HttpStatus.CREATED)
   @UseInterceptors(FilesInterceptor('files', 10))
   async create(
@@ -68,6 +81,13 @@ export class PostController {
   }
 
   @Put(':id/status')
+  @ApiBearerAuth()
+  @ApiBody({
+    schema: {
+      type: 'enum',
+      enum: Object.values(ContentStatus),
+    },
+  })
   async changeStatus(
     @Param('id') postId: number,
     @Body() status: ContentStatus,
@@ -84,6 +104,7 @@ export class PostController {
     }
   }
 
+  @ApiBearerAuth()
   @Put(':id')
   async updateCaption(
     @Body() updatePostDto: UpdatePostDto,
@@ -102,20 +123,24 @@ export class PostController {
   }
 
   @Get('search')
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'size', required: false, example: 10 })
   async searchPost(
     @Query('caption') caption: string,
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('size', new DefaultValuePipe(10), ParseIntPipe) size: number,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
+    @Query('size', new DefaultValuePipe(10), ParseIntPipe) size?: number,
   ): Promise<PostResponsePageDto> {
     const res = await this.postService.search(caption, page, size);
     return res;
   }
 
   @Get('user')
-  async getByhUser(
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'size', required: false, example: 10 })
+  async getByUser(
     @Query('userId') userId: string,
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('size', new DefaultValuePipe(10), ParseIntPipe) size: number,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
+    @Query('size', new DefaultValuePipe(10), ParseIntPipe) size?: number,
   ): Promise<PostResponsePageDto> {
     const res = await this.postService.findByUser(userId, page, size);
     return res;
@@ -128,6 +153,7 @@ export class PostController {
     return this.postService.findOneWithUrl(postId);
   }
 
+  @ApiBearerAuth()
   @Delete(':id')
   async deleteStory(@Param('id') id: number) {
     return this.postService.delete(id);

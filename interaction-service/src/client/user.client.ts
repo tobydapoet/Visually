@@ -9,7 +9,9 @@ export class UserClient {
 
   async getUser(userId: string): Promise<UserDto> {
     const res = await firstValueFrom(
-      this.http.get(`http://USER-SERVICE/account/summary/${userId}`),
+      this.http.get(
+        `${process.env.USER_SERVICE_URL}/account/summary/${userId}`,
+      ),
     );
     return res.data;
   }

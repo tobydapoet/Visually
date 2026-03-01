@@ -1,4 +1,3 @@
-// story.controller.ts
 import {
   Controller,
   Get,
@@ -17,16 +16,24 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { StoryService } from './story.service';
-import { CreateStoryDto } from './dto/create-story.dto';
+import {
+  CreateStoryDto,
+  CreateStoryMultipartDto,
+} from './dto/create-story.dto';
 import { StoryResponseDto } from './dto/response-story.dto';
 import { EventPattern, Payload } from '@nestjs/microservices';
 import { StoryInteractionType } from 'src/enums/interaction.type';
+import { ApiBearerAuth, ApiBody, ApiConsumes, ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Story')
 @Controller('story')
 export class StoryController {
   constructor(private readonly storyService: StoryService) {}
 
   @Post()
+  @ApiBearerAuth()
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ type: CreateStoryMultipartDto })
   @HttpCode(HttpStatus.CREATED)
   @UseInterceptors(FileInterceptor('file'))
   async create(
@@ -53,6 +60,7 @@ export class StoryController {
   }
 
   @Get('user/:userId')
+  @ApiBearerAuth()
   async findByUser(
     @Param('userId') userId: string,
     @Query('page', new ParseIntPipe({ optional: true })) page = 1,
@@ -73,6 +81,7 @@ export class StoryController {
   }
 
   @Get('me')
+  @ApiBearerAuth()
   async getMyStories(
     @Query('page', new ParseIntPipe({ optional: true })) page = 1,
     @Query('size', new ParseIntPipe({ optional: true })) size = 10,
@@ -81,6 +90,7 @@ export class StoryController {
   }
 
   @Delete(':id')
+  @ApiBearerAuth()
   async deleteStory(@Param('id') id: number) {
     return this.storyService.delete(id);
   }

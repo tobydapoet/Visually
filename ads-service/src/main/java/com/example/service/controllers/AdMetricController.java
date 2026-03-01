@@ -2,10 +2,12 @@ package com.example.service.controllers;
 
 import com.example.service.responses.ApiResponse;
 import com.example.service.services.AdMetricService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+@SecurityRequirement(name = "bearerAuth")
 @RestController
 @RequestMapping("/ad-metrics")
 public class AdMetricController {

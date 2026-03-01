@@ -6,6 +6,7 @@ import com.example.user_service.requests.LoginRequest;
 import com.example.user_service.requests.RegisterRequest;
 import com.example.user_service.entities.User;
 import com.example.user_service.services.UserService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,6 +47,7 @@ public class AuthController {
         }
     }
 
+    @SecurityRequirement(name = "bearerAuth")
     @DeleteMapping("/logout")
     public ResponseEntity<Map<String, String>> logout(@RequestHeader("X-Session-Id") Long sesionId) {
         userService.logout(sesionId);
@@ -54,6 +56,7 @@ public class AuthController {
         ));
     }
 
+    @SecurityRequirement(name = "bearerAuth")
     @PostMapping("/refresh")
     public ResponseEntity<Map<String, String>> refresh(HttpServletRequest request) {
         String authHeader = request.getHeader("Authorization");

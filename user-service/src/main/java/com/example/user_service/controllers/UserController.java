@@ -8,6 +8,7 @@ import com.example.user_service.requests.UpdateUserRequest;
 import com.example.user_service.responses.UserResponse;
 import com.example.user_service.responses.UserSummaryResponse;
 import com.example.user_service.services.UserService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +40,7 @@ public class UserController {
         return UserResponse.fromEntity(user);
     }
 
+    @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/search")
     public Page<UserResponse> search(
             @RequestParam String keyword,
@@ -49,6 +51,7 @@ public class UserController {
         return userList.map(UserResponse::fromEntity);
     }
 
+    @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/batch")
     public List<UserSummaryResponse> getUsersByIds(
             @RequestParam String ids
@@ -89,6 +92,7 @@ public class UserController {
         return UserResponse.fromEntity(user);
     }
 
+    @SecurityRequirement(name = "bearerAuth")
     @PutMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Map<String, String>> updateUser(
             @ModelAttribute UpdateUserRequest req,
@@ -154,6 +158,7 @@ public class UserController {
                 : ResponseEntity.badRequest().body(Map.of("message", "Update failed!"));
     }
 
+    @SecurityRequirement(name = "bearerAuth")
     @PatchMapping("/{id}/status")
     public ResponseEntity<UserResponse> updateStatus(
             @PathVariable UUID id,

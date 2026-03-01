@@ -21,8 +21,8 @@ services:
     container_name: sql
     environment:
       MYSQL_ROOT_PASSWORD: ${PASSWORD}
-#      MYSQL_USER: ${USERNAME}
-#      MYSQL_PASSWORD: ${SQL_PASSWORD}
+      MYSQL_USER: ${USERNAME}
+      MYSQL_PASSWORD: ${SQL_PASSWORD}
     ports:
       - "3308:3306"
     volumes:
@@ -31,10 +31,11 @@ services:
     networks:
       - app-network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${PASSWORD}" ]  # ✅ thêm password
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 40s
 
   broker:
     image: apache/kafka:latest
@@ -202,6 +203,8 @@ services:
       EUREKA_PORT: ${EUREKA_PORT}
       SERVICE_NAME: ${INTERACTION_SERVICE_NAME}
       KAFKA_URL: ${KAFKA_URL}
+      USER_SERVICE_URL: ${FOLLOW_SERVICE_URL}
+      CONTENT_SERVICE_URL: ${CONTENT_SERVICE_URL}
     depends_on:
       discover-server:
         condition: service_healthy
@@ -228,6 +231,9 @@ services:
       EUREKA_HOST: ${EUREKA_HOST}
       EUREKA_PORT: ${EUREKA_PORT}
       SERVICE_NAME: ${MESSAGE_SERVICE_NAME}
+      MEDIA_SERVICE_URL: ${MEDIA_SERVICE_URL}
+      USER_SERVICE_URL: ${USER_SERVICE_URL}
+      CONTENT_SERVICE_URL: ${CONTENT_SERVICE_URL}
       KAFKA_URL: ${KAFKA_URL}
     depends_on:
       discover-server:

@@ -9,18 +9,17 @@ import com.example.follow_service.requests.FollowNotificationEvent;
 import com.example.follow_service.responses.FollowResponse;
 import com.example.follow_service.responses.UserResponse;
 import com.example.follow_service.services.FollowService;
-import jakarta.servlet.http.HttpServletRequest;
-import lombok.extern.slf4j.Slf4j;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.function.EntityResponse;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+@SecurityRequirement(name = "bearerAuth")
 @RestController
 @RequestMapping("follow")
 public class FollowController {

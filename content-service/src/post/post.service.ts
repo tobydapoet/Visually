@@ -3,7 +3,6 @@ import {
   Injectable,
   Logger,
   NotFoundException,
-  Query,
   UnauthorizedException,
 } from '@nestjs/common';
 import { CreatePostDto } from './dto/create-post.dto';
@@ -22,7 +21,6 @@ import { PostResponsePageDto } from './dto/response-page-post.dto';
 import { MediaClient } from 'src/client/media.client';
 import { ContextService } from 'src/context/context.service';
 import { InteractionType } from 'src/enums/interaction.type';
-import { OutboxEvent } from 'src/outbox_events/entities/outbox_event.entity';
 import { OutboxEventsService } from 'src/outbox_events/outbox_events.service';
 import { Tag } from 'src/tag/entities/tag.entity';
 

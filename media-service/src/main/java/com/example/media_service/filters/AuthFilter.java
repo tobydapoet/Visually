@@ -66,6 +66,8 @@ public class AuthFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
         return path.startsWith("/actuator")
-                || path.startsWith("/health");
+                || path.startsWith("/health")
+                || path.contains("/v3/api-docs")
+                || path.contains("swagger");
     }
 }

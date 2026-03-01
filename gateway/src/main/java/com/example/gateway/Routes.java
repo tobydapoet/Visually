@@ -107,4 +107,34 @@ public class Routes {
     public RouterFunction<ServerResponse> adServiceRoute() {
         return proxy("ad_service", "/api/ads/**", "/api/ads", "AD-SERVICE");
     }
+
+    @Bean
+    public RouterFunction<ServerResponse> adServiceDocsRoute() {
+        return proxy("ad_service_docs", "/ads-service/v3/api-docs", "/ads-service", "ADS-SERVICE");
+    }
+
+    @Bean
+    public RouterFunction<ServerResponse> contentServiceDocsRoute() {
+        return proxy("content_service_docs", "/content-service/v3/api-docs.json", "/content-service", "CONTENT-SERVICE");
+    }
+
+    @Bean
+    public RouterFunction<ServerResponse> userServiceDocsRoute() {
+        return proxy("user_service_docs", "/user-service/v3/api-docs", "/user-service", "USER-SERVICE");
+    }
+
+    @Bean
+    public RouterFunction<ServerResponse> followServiceDocsRoute() {
+        return proxy("follow_service_docs", "/follow-service/v3/api-docs", "/follow-service", "FOLLOW-SERVICE");
+    }
+
+    @Bean
+    public RouterFunction<ServerResponse> mediaServiceDocsRoute() {
+        return proxy("media_service_docs", "/media-service/v3/api-docs", "/media-service", "MEDIA-SERVICE");
+    }
+
+    @Bean
+    public RouterFunction<ServerResponse> interactionServiceDocsRoute() {
+        return proxy("interaction_service_docs", "/interaction-service/v3/api-docs.json", "/interaction-service", "INTERACTION-SERVICE");
+    }
 }

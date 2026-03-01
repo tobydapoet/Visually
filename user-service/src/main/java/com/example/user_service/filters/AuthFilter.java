@@ -53,6 +53,13 @@ public class AuthFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         System.out.println("🔍 USER-SERVICE shouldNotFilter check: " + path);
         return path.startsWith("/actuator")
-                || path.contains("/login") || path.contains("/register") || path.contains("/google") || path.contains("/summary") || path.contains("/batch");
+                || path.contains("/login")
+                || path.contains("/register")
+                || path.contains("/google")
+                || path.contains("/summary")
+                || path.contains("/batch")
+                || path.contains("/v3/api-docs")
+                || path.contains("swagger");
+
     }
 }

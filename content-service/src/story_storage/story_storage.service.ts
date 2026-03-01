@@ -3,14 +3,17 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { StoryStorage } from './entities/story_storage.entity';
 import { Repository } from 'typeorm';
 import { StoryStorageResponse } from './dto/response-story_storage.dto';
+import { ContextService } from 'src/context/context.service';
 
 @Injectable()
 export class StoryStorageService {
   constructor(
     @InjectRepository(StoryStorage)
     private storyStorageRepo: Repository<StoryStorage>,
+    private context: ContextService,
   ) {}
-  create(userId: string, name: string) {
+  create(name: string) {
+    const userId = this.context.getUserId();
     const newStorage = this.storyStorageRepo.create({
       name,
       userId,
@@ -32,8 +35,9 @@ export class StoryStorageService {
   }
 
   async remove(id: number) {
+    const userId = this.context.getUserId();
     const storage = await this.storyStorageRepo.findOne({
-      where: { id },
+      where: { id, userId },
     });
 
     if (!storage) {

@@ -232,8 +232,8 @@ export class CommentService {
   async findByTarget(
     targetId: number,
     type: CommentTargetType,
-    page: number,
-    size: number,
+    page = 10,
+    size = 10,
   ) {
     const [comments, total] = await this.commentRepo.findAndCount({
       where: {

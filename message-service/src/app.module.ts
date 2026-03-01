@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConversationModule } from './conversation/conversation.module';
 import { ConversationMemberModule } from './conversation_member/conversation_member.module';
@@ -37,7 +36,6 @@ import { KafkaModule } from './kafka/kafka.module';
     MessageMediaModule,
     KafkaModule,
   ],
-  controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule {}

@@ -3,6 +3,7 @@ package com.example.media_service.controllers;
 import com.example.media_service.entities.MediaFile;
 import com.example.media_service.enums.FileType;
 import com.example.media_service.services.MediaFileService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -13,6 +14,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/media_file")
+@SecurityRequirement(name = "bearerAuth")
 public class MediaFileController {
     @Autowired
     private MediaFileService mediaFileService;

@@ -51,5 +51,15 @@ public class AuthFilter extends OncePerRequestFilter {
             AuthContext.clear();
         }
     }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        System.out.println("🔍 Follow shouldNotFilter check: " + path);
+        return path.startsWith("/actuator")
+                || path.contains("/v3/api-docs")
+                || path.contains("swagger");
+
+    }
 }
 

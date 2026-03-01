@@ -10,6 +10,7 @@ import com.example.service.requests.CurrentUser;
 import com.example.service.responses.AdFeedResponse;
 import com.example.service.responses.ApiResponse;
 import com.example.service.services.AdService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.apache.tomcat.util.descriptor.web.ContextService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.UUID;
 
+@SecurityRequirement(name = "bearerAuth")
 @RestController
 @RequestMapping("/ads")
 public class AdController {

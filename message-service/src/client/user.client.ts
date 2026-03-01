@@ -9,7 +9,9 @@ export class UserClient {
 
   async getUsers(userIds: string[]): Promise<UserDto[]> {
     const res = await firstValueFrom(
-      this.http.get(`http://USER-SERVICE/account/batch/${userIds.join(',')}`),
+      this.http.get(
+        `${process.env.USER_SERVICE_URL}/account/batch/${userIds.join(',')}`,
+      ),
     );
     return res.data;
   }

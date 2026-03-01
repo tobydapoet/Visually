@@ -4,6 +4,7 @@ import com.example.follow_service.contexts.AuthContext;
 import com.example.follow_service.entities.Block;
 import com.example.follow_service.requests.CurrentUser;
 import com.example.follow_service.services.BlockService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -12,6 +13,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+@SecurityRequirement(name = "bearerAuth")
 @RestController
 @RequestMapping("block")
 public class BlockController {

@@ -2,7 +2,7 @@ import { Eureka } from 'eureka-js-client';
 import { networkInterfaces } from 'os';
 import 'dotenv/config';
 
-const serviceName = process.env.EUREKA_FEED_SERVICE_NAME;
+const serviceName = process.env.SERVICE_NAME;
 
 const serverPort = Number(process.env.SERVER_PORT);
 

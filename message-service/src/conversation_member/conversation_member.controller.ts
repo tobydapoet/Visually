@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { ConversationMemberService } from './conversation_member.service';
 import { EventPattern, Payload } from '@nestjs/microservices';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
 @Controller('conversation-members')
 export class ConversationMemberController {
@@ -20,6 +21,7 @@ export class ConversationMemberController {
   ) {}
 
   @Get('conversation/:conversationId')
+  @ApiBearerAuth()
   findByConversation(
     @Param('conversationId', ParseIntPipe) conversationId: number,
   ) {
@@ -27,16 +29,19 @@ export class ConversationMemberController {
   }
 
   @Get(':id')
+  @ApiBearerAuth()
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.conversationMemberService.findOne(id);
   }
 
   @Patch(':id')
+  @ApiBearerAuth()
   update(@Param('id', ParseIntPipe) id: number, @Body() nickname: string) {
     return this.conversationMemberService.update(id, nickname);
   }
 
   @Delete(':id')
+  @ApiBearerAuth()
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.conversationMemberService.remove(id);

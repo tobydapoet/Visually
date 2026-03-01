@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PostModule } from './post/post.module';
 import { ShortModule } from './short/short.module';
@@ -42,7 +41,6 @@ import { ScheduleModule } from '@nestjs/schedule';
     StoryStorageModule,
     KafkaModule,
   ],
-  controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule {}

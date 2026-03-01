@@ -14,7 +14,7 @@ export class MediaClient {
     sessionId: number,
   ): Promise<MediaResponse[]> {
     const res = await firstValueFrom(
-      this.http.post('http://MEDIA-SERVICE/media_file', files, {
+      this.http.post(`${process.env.MEDIA_SERVICE_URL}/media_file`, files, {
         headers: {
           'X-User-Id': userId,
           'X-Session-Id': sessionId,
@@ -32,7 +32,7 @@ export class MediaClient {
     urlIds: number[],
   ): Promise<void> {
     await firstValueFrom(
-      this.http.delete(`http://MEDIA-SERVICE/media_file`, {
+      this.http.delete(`${process.env.MEDIA_SERVICE_URL}/media_file`, {
         data: {
           urlIds,
         },

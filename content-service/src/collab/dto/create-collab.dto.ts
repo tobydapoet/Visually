@@ -1,3 +1,4 @@
+import { ApiProperty } from '@nestjs/swagger';
 import {
   ArrayNotEmpty,
   IsArray,
@@ -13,6 +14,10 @@ export class CreateCollabDto {
   @IsNotEmpty()
   targetId!: number;
 
+  @ApiProperty({
+    enum: ContentType,
+    enumName: 'ContentType',
+  })
   @IsNotEmpty()
   @IsEnum(ContentType)
   type!: ContentType;

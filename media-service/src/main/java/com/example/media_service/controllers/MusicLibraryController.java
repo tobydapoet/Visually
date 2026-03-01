@@ -4,6 +4,7 @@ import com.example.media_service.entities.MusicLibrary;
 import com.example.media_service.requests.MusicCreateRequest;
 import com.example.media_service.requests.MusicUpdateRequest;
 import com.example.media_service.services.MusicLibraryService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.MediaType;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
+@SecurityRequirement(name = "bearerAuth")
 @RestController
 @RequestMapping("/music_library")
 public class MusicLibraryController {

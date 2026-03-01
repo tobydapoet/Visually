@@ -45,10 +45,11 @@ export class ShareService {
     return savedShare;
   }
 
-  async findByUser(userId: string, page = 1, size = 10) {
+  async findByUser(userId: string, page = 1, size = 10, isPublic: boolean) {
     const [shares, total] = await this.shareRepo.findAndCount({
       where: {
         userId,
+        isPublic,
       },
       order: { createdAt: 'DESC' },
       skip: (page - 1) * size,

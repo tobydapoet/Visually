@@ -15,7 +15,10 @@ import {
   Delete,
 } from '@nestjs/common';
 import { ShortService } from './short.service';
-import { CreateShortDto } from './dto/create-short.dto';
+import {
+  CreateShortDto,
+  CreateShortMultipartDto,
+} from './dto/create-short.dto';
 import { UpdateShortDto } from './dto/update-short.dto';
 import { ContentStatus } from 'src/enums/content_status.type';
 import {
@@ -27,12 +30,23 @@ import { ShortResponseDto } from './dto/response-short.dto';
 import { EventPattern, Payload } from '@nestjs/microservices';
 import { ContentType } from 'src/enums/content.type';
 import { InteractionType } from 'src/enums/interaction.type';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 
+@ApiTags('Short')
 @Controller('short')
 export class ShortController {
   constructor(private readonly shortService: ShortService) {}
 
   @Post()
+  @ApiBearerAuth()
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ type: CreateShortMultipartDto })
   @HttpCode(HttpStatus.CREATED)
   @UseInterceptors(
     FileFieldsInterceptor([
@@ -51,9 +65,6 @@ export class ShortController {
     const fileVideo = files.fileVideo?.[0];
     const fileThumbnail = files.fileThumbnail?.[0];
 
-    console.log('fileVideo:', fileVideo?.originalname);
-    console.log('fileThumbnail:', fileThumbnail?.originalname);
-
     const savedShort = await this.shortService.create(
       createShortDto,
       fileVideo!,
@@ -65,7 +76,18 @@ export class ShortController {
       : { message: 'Create short failed!' };
   }
 
+  @ApiBearerAuth()
+  @ApiOperation({
+    description:
+      'với status banned sẽ chỉ áp dụng nếu là admin hoặc moderator, chủ sở hữu có thể xóa',
+  })
   @Put(':id/status')
+  @ApiBody({
+    schema: {
+      type: 'enum',
+      enum: Object.values(ContentStatus),
+    },
+  })
   async changeStatus(
     @Param('id') shortId: number,
     @Body() status: ContentStatus,
@@ -82,6 +104,7 @@ export class ShortController {
     }
   }
 
+  @ApiBearerAuth()
   @Put(':id')
   async update(@Body() updateShortDto: UpdateShortDto, @Param() id: number) {
     const savedShort = await this.shortService.update(id, updateShortDto);

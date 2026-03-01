@@ -15,7 +15,7 @@ export class ContentClient {
     switch (targetType) {
       case AttachmentType.POST: {
         const { data } = await firstValueFrom(
-          this.http.get(`http://CONTENT_SERVICE/post/${targetId}`),
+          this.http.get(`${process.env.CONTENT_SERVICE_URL}/post/${targetId}`),
         );
         return {
           id: data.id,
@@ -27,7 +27,7 @@ export class ContentClient {
       }
       case AttachmentType.SHORT: {
         const { data } = await firstValueFrom(
-          this.http.get(`http://CONTENT_SERVICE/short/${targetId}`),
+          this.http.get(`${process.env.CONTENT_SERVICE_URL}/short/${targetId}`),
         );
         return {
           id: data.id,
@@ -39,7 +39,7 @@ export class ContentClient {
       }
       case AttachmentType.STORY: {
         const { data } = await firstValueFrom(
-          this.http.get(`http://CONTENT_SERVICE/story/${targetId}`),
+          this.http.get(`${process.env.CONTENT_SERVICE_URL}/story/${targetId}`),
         );
         return {
           id: data.id,

@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -18,19 +19,38 @@ public class AuthFilter extends OncePerRequestFilter {
     @Autowired
     private JwtUtils jwtUtils;
 
-    private static final List<String> EXCLUDE_URLS = List.of(
-            "/api/users/auth/login",
-            "/api/users/auth/register",
-            "/api/users/auth/login",
-            "/api/users/auth/register",
-            "/api/users/google/login",
-            "/api/users/oauth2/authorization/google",
-            "/api/users/login/oauth2/code/google",
-            "/api/public",
-            "/actuator/health",
-            "/api/users/auth/google/login",
-            "/oauth2/authorization/google",
-            "/login/oauth2/code/google"
+
+    private static final AntPathMatcher pathMatcher = new AntPathMatcher();
+
+    private record ExcludeRule(String method, String pattern) {
+        boolean matches(String reqMethod, String reqPath) {
+            return (method.equals("*") || method.equalsIgnoreCase(reqMethod))
+                    && pathMatcher.match(pattern, reqPath);
+        }
+    }
+
+    private static final List<ExcludeRule> EXCLUDE_RULES = List.of(
+            new ExcludeRule("*",   "/api/users/auth/**"),
+            new ExcludeRule("*",   "/api/users/google/**"),
+            new ExcludeRule("*",   "/oauth2/**"),
+            new ExcludeRule("*",   "/login/oauth2/**"),
+            new ExcludeRule("*",   "/actuator/health"),
+            new ExcludeRule("*",   "/swagger-ui/index.html"),
+
+            // Post
+            new ExcludeRule("GET", "/api/contents/post/**"),
+
+            // Short
+            new ExcludeRule("GET", "/api/contents/short/**"),
+
+            // Story
+            new ExcludeRule("GET",  "/api/contents/story/me"),
+            new ExcludeRule("GET", "/api/contents/story/*"),
+            new ExcludeRule("GET", "/api/contents/story/user/*"),
+            new ExcludeRule("GET", "/api/contents/story/storage/*"),
+
+            //Story storage
+            new ExcludeRule("GET",  "/api/contents/story_storage/me")
     );
 
     @Override
@@ -38,15 +58,17 @@ public class AuthFilter extends OncePerRequestFilter {
                                     HttpServletResponse response,
                                     FilterChain chain) throws ServletException, IOException {
         String path = request.getRequestURI();
+        String method = request.getMethod();
 
         System.out.println("╔════════════════════════════════════════════════════════════╗");
         System.out.println("║ JWT FILTER DEBUG INFO                                      ║");
         System.out.println("╠════════════════════════════════════════════════════════════╣");
         System.out.println("  Request URI    : " + path);
         System.out.println("  Request Method : " + request.getMethod());
-        System.out.println("  EXCLUDE_URLS   : " + EXCLUDE_URLS);
+        System.out.println("  EXCLUDE_URLS   : " + EXCLUDE_RULES);
 
-        boolean shouldSkip = EXCLUDE_URLS.stream().anyMatch(path::startsWith);
+        boolean shouldSkip = EXCLUDE_RULES.stream()
+                .anyMatch(rule -> rule.matches(method, path));
         System.out.println("  Should Skip    : " + shouldSkip);
 
         String authHeader = request.getHeader("Authorization");
