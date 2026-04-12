@@ -15,8 +15,19 @@ export class ContentEdgeService {
   ) {}
 
   async create(dto: CreateContentEdgeDto) {
-    const newContent = this.contentRepo.create(dto);
-    return this.contentRepo.save(newContent);
+    await this.contentRepo
+      .createQueryBuilder()
+      .insert()
+      .values(dto)
+      .orUpdate(['updatedAt'], ['contentType', 'contentId'])
+      .execute();
+
+    return this.contentRepo.findOne({
+      where: {
+        contentId: dto.contentId,
+        contentType: dto.contentType,
+      },
+    });
   }
 
   async getTrending(limit = 20) {

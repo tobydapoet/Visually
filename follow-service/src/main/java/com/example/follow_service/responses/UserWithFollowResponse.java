@@ -1,11 +1,13 @@
 package com.example.follow_service.responses;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.beans.BeanUtils;
 
 @Data
 @NoArgsConstructor
+@AllArgsConstructor
 public class UserWithFollowResponse extends UserResponse {
     private Boolean isFollowed;
 

@@ -30,15 +30,27 @@ public class AuthFilter extends OncePerRequestFilter {
     }
 
     private static final List<ExcludeRule> EXCLUDE_RULES = List.of(
-            new ExcludeRule("*",   "/api/users/auth/**"),
+            new ExcludeRule("*",   "/api/users/auth/login"),
+            new ExcludeRule("*",   "/api/users/auth/refresh"),
+            new ExcludeRule("*",   "/api/users/auth/register"),
             new ExcludeRule("*",   "/api/users/google/**"),
             new ExcludeRule("*",   "/oauth2/**"),
             new ExcludeRule("*",   "/login/oauth2/**"),
             new ExcludeRule("*",   "/actuator/health"),
             new ExcludeRule("*",   "/swagger-ui/index.html"),
 
+            //User
+            new ExcludeRule("GET", "/api/users/account/username/**"),
+
+            //Follow
+            new ExcludeRule("GET", "/api/follows/relationship/*")
+
+    );
+
+    private static final List<ExcludeRule> OPTIONAL_AUTH_RULES = List.of(
             // Post
             new ExcludeRule("GET", "/api/contents/post/**"),
+            new ExcludeRule("GET", "/api/contents/content/*"),
 
             // Short
             new ExcludeRule("GET", "/api/contents/short/**"),
@@ -50,7 +62,8 @@ public class AuthFilter extends OncePerRequestFilter {
             new ExcludeRule("GET", "/api/contents/story/storage/*"),
 
             //Story storage
-            new ExcludeRule("GET",  "/api/contents/story_storage/me")
+            new ExcludeRule("GET",  "/api/contents/story-storage/user/*"),
+            new ExcludeRule("GET",  "/api/contents/story/story-storage/*")
     );
 
     @Override
@@ -69,6 +82,11 @@ public class AuthFilter extends OncePerRequestFilter {
 
         boolean shouldSkip = EXCLUDE_RULES.stream()
                 .anyMatch(rule -> rule.matches(method, path));
+
+        boolean isOptionalAuth = OPTIONAL_AUTH_RULES.stream()
+                .anyMatch(rule -> rule.matches(method, path));
+
+
         System.out.println("  Should Skip    : " + shouldSkip);
 
         String authHeader = request.getHeader("Authorization");
@@ -80,6 +98,13 @@ public class AuthFilter extends OncePerRequestFilter {
             chain.doFilter(request, response);
             return;
         }
+
+        if (isOptionalAuth && (authHeader == null || !authHeader.startsWith("Bearer "))) {
+            System.out.println("✓ OPTIONAL AUTH - No token provided");
+            chain.doFilter(request, response);
+            return;
+        }
+
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             System.out.println("✗ REJECTED - Missing Authorization header");
@@ -96,6 +121,10 @@ public class AuthFilter extends OncePerRequestFilter {
         try {
             if (!jwtUtils.validateToken(token)) {
                 System.out.println("✗ REJECTED - Invalid token");
+                if (isOptionalAuth) {
+                    chain.doFilter(request, response);
+                    return;
+                }
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 response.setContentType("application/json");
                 response.setCharacterEncoding("UTF-8");
@@ -123,6 +152,10 @@ public class AuthFilter extends OncePerRequestFilter {
             chain.doFilter(wrappedRequest, response);
 
         } catch (Exception e) {
+            if (isOptionalAuth) {
+                chain.doFilter(request, response);
+                return;
+            }
             System.out.println("✗ ERROR - " + e.getMessage());
             e.printStackTrace();
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);

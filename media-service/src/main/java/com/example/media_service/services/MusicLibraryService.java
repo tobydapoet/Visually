@@ -1,10 +1,11 @@
 package com.example.media_service.services;
 
+import com.example.media_service.contexts.AuthContext;
 import com.example.media_service.entities.MusicLibrary;
-import com.example.media_service.enums.FileType;
 import com.example.media_service.enums.MusicStatus;
 import com.example.media_service.exceptions.ConflictException;
 import com.example.media_service.repositories.MusicLibraryRepository;
+import com.example.media_service.requests.CurrentUser;
 import com.example.media_service.requests.MusicCreateRequest;
 import com.example.media_service.requests.MusicUpdateRequest;
 import com.example.media_service.responses.UploadResult;
@@ -14,8 +15,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import java.util.Map;
-
 @Service
 public class MusicLibraryService {
     @Autowired
@@ -23,6 +22,7 @@ public class MusicLibraryService {
 
     @Autowired
     UploadService uploadService;
+
 
     public MusicLibrary create(MusicCreateRequest req) {
         MusicLibrary musicLibrary = new MusicLibrary();
@@ -34,6 +34,14 @@ public class MusicLibraryService {
         musicLibrary.setUrl((String) audioRes.getUrl());
         musicLibrary.setImg((String) imageRes.getUrl());
         musicLibrary.setDuration((Double) audioRes.getDuration());
+        return musicLibraryRepository.save(musicLibrary);
+    }
+
+    public MusicLibrary updateStatus(Long id, MusicStatus status) {
+        MusicLibrary musicLibrary = musicLibraryRepository.findById(id)
+                .orElseThrow(() ->
+                        new ConflictException("can't find this music in system"));
+        musicLibrary.setStatus(status);
         return musicLibraryRepository.save(musicLibrary);
     }
 
@@ -75,14 +83,36 @@ public class MusicLibraryService {
         return true;
     }
 
-    public Page<MusicLibrary> search(String keyword, int page, int size) {
+    public Page<MusicLibrary> search(String keyword, MusicStatus status, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        return musicLibraryRepository.search(keyword, pageable);
+        String kw = (keyword == null || keyword.isBlank()) ? null : keyword.trim();
+        CurrentUser currentUser = AuthContext.get();
+
+        boolean isClient = currentUser.getRoles().stream()
+                .anyMatch(role -> role.equals("CLIENT"));
+
+        if (isClient && status != null && status != MusicStatus.ACTIVE) {
+            throw new ConflictException("CLIENT only can view ACTIVE music");
+        }
+
+        MusicStatus finalStatus = isClient ? MusicStatus.ACTIVE : status;
+
+        return musicLibraryRepository.search(kw, finalStatus, pageable);
     }
 
     public MusicLibrary findById(Long id) {
-        return musicLibraryRepository.findById(id)
-                .orElseThrow(() ->
-                        new ConflictException("can't find this music in system"));
+        MusicLibrary music = musicLibraryRepository.findById(id)
+                .orElseThrow(() -> new ConflictException("can't find this music in system"));
+
+        CurrentUser currentUser = AuthContext.get();
+
+        boolean isClient = currentUser.getRoles().stream()
+                .anyMatch(role -> role.equals("CLIENT"));
+
+        if (isClient && music.getStatus() != MusicStatus.ACTIVE) {
+            throw new ConflictException("can't find this music in system");
+        }
+
+        return music;
     }
 }

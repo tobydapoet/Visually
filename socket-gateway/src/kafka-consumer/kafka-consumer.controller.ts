@@ -14,6 +14,16 @@ export class KafkaConsumerController {
     this.socketGateway.sendMessage(event);
   }
 
+  @EventPattern('message.updated')
+  handleMessageUpdated(@Payload() event: any) {
+    this.socketGateway.updateMessage(event);
+  }
+
+  @EventPattern('message.deleted')
+  handleMessageDeleted(@Payload() event: any) {
+    this.socketGateway.deleteMessage(event);
+  }
+
   @EventPattern('notification.created')
   handleNotificationCreated(@Payload() event: any) {
     this.logger.log(`🔔 notification.created: ${JSON.stringify(event)}`);

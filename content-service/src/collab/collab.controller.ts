@@ -15,15 +15,6 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 export class CollabController {
   constructor(private readonly collabService: CollabService) {}
 
-  @Patch('accept')
-  @ApiBearerAuth()
-  acceptCollab(
-    @Query('targetId', ParseIntPipe) targetId: number,
-    @Query('type', new ParseEnumPipe(ContentType)) type: ContentType,
-  ) {
-    return this.collabService.acceptCollab(targetId, type);
-  }
-
   @Delete()
   @ApiBearerAuth()
   removeCollab(

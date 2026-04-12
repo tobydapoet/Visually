@@ -1,5 +1,5 @@
 export class StoryStorageResponse {
-  id: number;
-  url?: string;
-  name: string;
+  id!: number;
+  url!: string;
+  name!: string;
 }

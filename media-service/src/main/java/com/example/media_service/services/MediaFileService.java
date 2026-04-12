@@ -71,12 +71,7 @@ public class MediaFileService {
 
             System.out.println("Rolling back uploads: " + uploadedUrls.size() + " files");
             uploadedUrls.forEach(url -> {
-                try {
-                    uploadService.delete(url);
-                    System.out.println("Deleted: " + url);
-                } catch (Exception ex) {
-                    System.err.println("Failed to delete: " + url);
-                }
+                    uploadService.deleteMany(uploadedUrls);
             });
 
             throw new SystemException("Failed to create media files: " + e.getMessage(), e);
@@ -95,6 +90,7 @@ public class MediaFileService {
                 .map(MediaFile::getUrl)
                 .toList();
 
+        uploadService.deleteMany(urls);
         mediaFileRepository.deleteAll(files);
 
         return urls;

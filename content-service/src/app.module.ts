@@ -13,6 +13,8 @@ import { ClientModule } from './client/client.module';
 import { StoryStorageModule } from './story_storage/story_storage.module';
 import { KafkaModule } from './kafka/kafka.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ContentModule } from './content/content.module';
+import { MentionModule } from './mention/mention.module';
 
 @Module({
   imports: [
@@ -40,6 +42,8 @@ import { ScheduleModule } from '@nestjs/schedule';
     ClientModule,
     StoryStorageModule,
     KafkaModule,
+    ContentModule,
+    MentionModule,
   ],
   providers: [AppService],
 })

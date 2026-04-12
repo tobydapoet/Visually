@@ -12,7 +12,6 @@ import {
   HttpStatus,
   Put,
   Post,
-  Delete,
 } from '@nestjs/common';
 import { ShortService } from './short.service';
 import {
@@ -21,10 +20,7 @@ import {
 } from './dto/create-short.dto';
 import { UpdateShortDto } from './dto/update-short.dto';
 import { ContentStatus } from 'src/enums/content_status.type';
-import {
-  FileFieldsInterceptor,
-  FilesInterceptor,
-} from '@nestjs/platform-express';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { ShortResponsePageDto } from './dto/response-page-short';
 import { ShortResponseDto } from './dto/response-short.dto';
 import { EventPattern, Payload } from '@nestjs/microservices';
@@ -144,120 +140,6 @@ export class ShortController {
     @Param('id', ParseIntPipe) shortId: number,
   ): Promise<ShortResponseDto> {
     return this.shortService.findOneWithUrl(shortId);
-  }
-
-  @EventPattern('content.liked')
-  async handleContentLiked(
-    @Payload()
-    data: {
-      contentId: number;
-      userId: string;
-      contentType: ContentType;
-    },
-  ) {
-    console.log('📨 Content liked:', data);
-
-    if (data.contentType !== ContentType.POST) return;
-
-    await this.shortService.updateInteraction(
-      data.contentId,
-      InteractionType.LIKE,
-    );
-  }
-
-  @EventPattern('content.unliked')
-  async handleContentUnliked(
-    @Payload()
-    data: {
-      contentId: number;
-      userId: string;
-      contentType: ContentType;
-    },
-  ) {
-    console.log('📨 Content unliked:', data);
-
-    if (data.contentType !== ContentType.POST) return;
-
-    await this.shortService.updateInteraction(
-      data.contentId,
-      InteractionType.UNLIKE,
-    );
-  }
-
-  @EventPattern('content.commented')
-  async handleContentCommented(
-    @Payload()
-    data: {
-      contentId: number;
-      commentId: number;
-      contentType: ContentType;
-    },
-  ) {
-    console.log('📨 Content commented:', data);
-
-    if (data.contentType !== ContentType.POST) return;
-
-    await this.shortService.updateInteraction(
-      data.contentId,
-      InteractionType.COMMENT,
-    );
-  }
-
-  @EventPattern('content.comment_deleted')
-  async handleContentCommentDeleted(
-    @Payload()
-    data: {
-      contentId: number;
-      num: number;
-      contentType: ContentType;
-    },
-  ) {
-    console.log('📨 Content comment deleted:', data);
-
-    if (data.contentType !== ContentType.POST) return;
-
-    await this.shortService.decreaseCommentInteraction(
-      data.contentId,
-      data.num,
-    );
-  }
-
-  @EventPattern('content.shared')
-  async handleContentShared(
-    @Payload()
-    data: {
-      contentId: number;
-      userId: string;
-      contentType: ContentType;
-    },
-  ) {
-    console.log('📨 Content shared:', data);
-
-    if (data.contentType !== ContentType.POST) return;
-
-    await this.shortService.updateInteraction(
-      data.contentId,
-      InteractionType.SHARE,
-    );
-  }
-
-  @EventPattern('content.unshared')
-  async handleContentUnshared(
-    @Payload()
-    data: {
-      contentId: number;
-      shareId: number;
-      contentType: ContentType;
-    },
-  ) {
-    console.log('📨 Content unshared:', data);
-
-    if (data.contentType !== ContentType.POST) return;
-
-    await this.shortService.updateInteraction(
-      data.contentId,
-      InteractionType.UNSHARE,
-    );
   }
 
   @EventPattern('user.updated.avatar')

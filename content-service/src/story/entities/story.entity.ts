@@ -34,6 +34,9 @@ export class Story {
   @Column({ type: 'text', nullable: true })
   musicUrl?: string;
 
+  @Column({ type: 'int', nullable: true })
+  startMusicTime?: number;
+
   @Column({ type: 'int', default: 0 })
   likeCount!: number;
 

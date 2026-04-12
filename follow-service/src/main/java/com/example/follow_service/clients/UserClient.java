@@ -16,9 +16,7 @@ public interface UserClient {
     @GetMapping("/account/batch")
     List<UserResponse> getUsers(
             @RequestParam("ids") String ids,
-            @RequestHeader("X-User-Id") UUID userId,
-            @RequestHeader("X-User-Roles") String roles,
-            @RequestHeader("X-Session-Id") Long sessionId
+            @RequestHeader("X-User-Id") UUID userId
     );
 
 }

@@ -49,8 +49,8 @@ public class AuthController {
 
     @SecurityRequirement(name = "bearerAuth")
     @DeleteMapping("/logout")
-    public ResponseEntity<Map<String, String>> logout(@RequestHeader("X-Session-Id") Long sesionId) {
-        userService.logout(sesionId);
+    public ResponseEntity<Map<String, String>> logout(@RequestHeader("X-Session-Id") Long sessionId) {
+        userService.logout(sessionId);
         return ResponseEntity.ok(Map.of(
                 "message", "Logout success"
         ));

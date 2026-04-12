@@ -1,8 +1,12 @@
 import { CommentTargetType } from 'src/enums/ContentType';
+import { Mention } from 'src/mention/entities/mention.entity';
 import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
+  ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
@@ -17,7 +21,7 @@ export class Comment {
   @Column({ type: 'text', nullable: false })
   username!: string;
 
-  @Column({ type: 'text' })
+  @Column({ type: 'text', nullable: true })
   avatarUrl?: string;
 
   @Column({ type: 'integer', nullable: false })
@@ -26,11 +30,26 @@ export class Comment {
   @Column({ type: 'enum', enum: CommentTargetType, nullable: false })
   targetType!: CommentTargetType;
 
+  @ManyToOne(() => Comment, (comment) => comment.replies, {
+    nullable: true,
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'replyToId' })
+  replyTo?: Comment;
+
+  @OneToMany(() => Comment, (comment) => comment.replyTo)
+  replies?: Comment[];
+
   @Column({ type: 'int', default: 0 })
   likeCount!: number;
 
   @Column({ type: 'int', default: 0 })
-  commentCount!: number;
+  replyCount!: number;
+
+  @OneToMany(() => Mention, (mention) => mention.comment, {
+    cascade: true,
+  })
+  mentions?: Mention[];
 
   @Column({ type: 'text' })
   content!: string;

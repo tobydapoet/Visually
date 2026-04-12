@@ -7,6 +7,9 @@ import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ContextModule } from './context/context.module';
 import { ClientModule } from './client/client.module';
+import { ReportModule } from './report/report.module';
+import { InteractionModule } from './interaction/interaction.module';
+import { MentionModule } from './mention/mention.module';
 
 @Module({
   imports: [
@@ -29,6 +32,9 @@ import { ClientModule } from './client/client.module';
     ShareModule,
     ContextModule,
     ClientModule,
+    ReportModule,
+    InteractionModule,
+    MentionModule,
   ],
   providers: [AppService],
 })

@@ -30,7 +30,7 @@ export class LikeController {
     return this.likeService.create(createLikeDto);
   }
 
-  @Get('target/:targetId')
+  @Get('target')
   @ApiQuery({ name: 'page', required: false, example: 1 })
   @ApiQuery({ name: 'size', required: false, example: 10 })
   @ApiQuery({
@@ -40,23 +40,39 @@ export class LikeController {
     required: true,
   })
   findByTarget(
-    @Param('targetId', ParseIntPipe) targetId: number,
-    @Query('type', new ParseEnumPipe(LikeTargetType)) type: LikeTargetType,
+    @Query('targetId', ParseIntPipe) targetId: number,
+    @Query('targetType', new ParseEnumPipe(LikeTargetType))
+    type: LikeTargetType,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
     @Query('size', new DefaultValuePipe(10), ParseIntPipe) size?: number,
   ) {
     return this.likeService.findByTarget(targetId, type, page, size);
   }
 
-  @Delete(':id')
+  @Delete()
   @ApiBearerAuth()
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.likeService.remove(id);
+  remove(
+    @Query('targetId', ParseIntPipe) targetId: number,
+    @Query('targetType', new ParseEnumPipe(LikeTargetType))
+    targetType: LikeTargetType,
+  ) {
+    return this.likeService.remove(targetId, targetType);
   }
 
   @EventPattern('user.updated.avatar')
   updateAvarUrl(@Payload() data: { id: string; avatarUrl: string }) {
     return this.likeService.updateAvatarUrl(data.id, data.avatarUrl);
+  }
+
+  @EventPattern('comment.likes.remove')
+  async handleRemoveCommentLikes(
+    @Payload()
+    data: {
+      targetIds: number[];
+      targetType: LikeTargetType;
+    },
+  ) {
+    await this.likeService.removeByTargetIds(data.targetIds, data.targetType);
   }
 }

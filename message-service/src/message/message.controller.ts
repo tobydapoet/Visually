@@ -3,7 +3,6 @@ import {
   Get,
   Post,
   Body,
-  Patch,
   Param,
   Delete,
   Query,
@@ -13,13 +12,15 @@ import {
   HttpCode,
   HttpStatus,
   DefaultValuePipe,
+  Put,
 } from '@nestjs/common';
 import { MessageService } from './message.service';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiBody, ApiQuery } from '@nestjs/swagger';
+import { UpdateMessageDto } from './dto/update-message.dto';
 
-@Controller('messages')
+@Controller('message')
 export class MessageController {
   constructor(private readonly messageService: MessageService) {}
 
@@ -53,23 +54,13 @@ export class MessageController {
     );
   }
 
-  @ApiBearerAuth()
-  @Patch(':id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() content: string) {
-    return this.messageService.update(id, content);
+  @Put(':id')
+  updateMessage(@Param('id') id: number, @Body() dto: UpdateMessageDto) {
+    return this.messageService.updateMessage(id, dto);
   }
 
-  @ApiBearerAuth()
-  @Delete(':id/private')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  removePrivate(@Param('id', ParseIntPipe) id: number) {
-    return this.messageService.removePrivate(id);
-  }
-
-  @ApiBearerAuth()
-  @Delete(':id/all')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  removeWithAll(@Param('id', ParseIntPipe) id: number) {
-    return this.messageService.removeWithAll(id);
+  @Delete(':id')
+  deleteMessage(@Param('id') id: number) {
+    return this.messageService.deleteMessage(id);
   }
 }

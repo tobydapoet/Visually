@@ -14,11 +14,14 @@ export class Conversation {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column({ type: 'text' })
-  name!: string;
+  @Column({ type: 'text', nullable: true })
+  name?: string;
 
-  @Column({ type: 'text' })
-  avatarUrl!: string;
+  @Column({ type: 'text', nullable: true })
+  mediaId?: number;
+
+  @Column({ type: 'text', nullable: true })
+  mediaUrl?: string;
 
   @Column({
     type: 'enum',
@@ -31,7 +34,7 @@ export class Conversation {
   createdAt!: Date;
 
   @OneToMany(() => ConversationMember, (member) => member.conversation)
-  members?: ConversationMember[];
+  members!: ConversationMember[];
 
   @OneToMany(() => Message, (message) => message.conversation)
   messages?: Message[];

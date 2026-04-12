@@ -1,4 +1,5 @@
 import { ContentStatus } from 'src/enums/content_status.type';
+import { MentionResponse } from 'src/mention/dto/response-mentions.dto';
 import { Tag } from 'src/tag/entities/tag.entity';
 
 export class ShortResponseDto {
@@ -22,11 +23,18 @@ export class ShortResponseDto {
 
   commentCount!: number;
 
-  sharedCount!: number;
+  shareCount!: number;
 
   status!: ContentStatus;
 
   createdAt!: Date;
 
   tags?: Tag[];
+
+  mentions?: MentionResponse[];
+
+  isLiked!: boolean;
+  isCommented!: boolean;
+  isShared!: boolean;
+  isSaved!: boolean;
 }

@@ -1,5 +1,4 @@
 import { ContentType } from 'src/enums/content.type';
-import { CollabStatus } from 'src/enums/collab_status.type';
 import {
   Column,
   CreateDateColumn,
@@ -24,11 +23,8 @@ export class Collab {
   @Column({ type: 'text', nullable: false })
   username!: string;
 
-  @Column({ type: 'text' })
+  @Column({ type: 'text', nullable: true })
   avatarUrl?: string;
-
-  @Column({ type: 'enum', enum: CollabStatus, default: CollabStatus.PENDING })
-  status!: CollabStatus;
 
   @CreateDateColumn()
   createdAt!: Date;

@@ -5,16 +5,20 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { CreateStoryDto } from './dto/create-story.dto';
-import { DataSource, In, Repository } from 'typeorm';
+import { DataSource, In, IsNull, Not, Repository } from 'typeorm';
 import { MediaClient } from 'src/client/media.client';
 import { Story } from './entities/story.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { StoryResponseDto } from './dto/response-story.dto';
 import { ContextService } from 'src/context/context.service';
 import { MusicResponse } from 'src/client/dto/MusicResponse.dto';
-import { StoryStorageService } from 'src/story_storage/story_storage.service';
 import { StoryInteractionType } from 'src/enums/interaction.type';
 import { OutboxEventsService } from 'src/outbox_events/outbox_events.service';
+import { StoryResponsePageDto } from './dto/response-story-page.dto';
+import { StoryStorageService } from 'src/story_storage/story_storage.service';
+import { plainToInstance } from 'class-transformer';
+import { InteractionClient } from 'src/client/interaction.client';
+import { ContentServiceType } from 'src/enums/content.type';
 
 @Injectable()
 export class StoryService {
@@ -23,9 +27,10 @@ export class StoryService {
     private readonly storyRepo: Repository<Story>,
     private readonly mediaClient: MediaClient,
     private readonly context: ContextService,
-    private storageService: StoryStorageService,
     private dataSource: DataSource,
     private outboxEventService: OutboxEventsService,
+    private storageService: StoryStorageService,
+    private interactionClient: InteractionClient,
   ) {}
 
   private readonly logger = new Logger(StoryService.name);
@@ -46,11 +51,13 @@ export class StoryService {
     );
 
     let musicResponse: MusicResponse | null = null;
+    let startMusicTime: number | null = null;
     if (createStoryDto.musicId) {
       musicResponse = await this.mediaClient.getMusic(
         userId,
         createStoryDto.musicId,
       );
+      startMusicTime = createStoryDto.startMusicTime ?? null;
     }
 
     const queryRunner = this.dataSource.createQueryRunner();
@@ -59,7 +66,6 @@ export class StoryService {
 
     try {
       const now = new Date();
-      const expiredAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
       const story = this.storyRepo.create({
         userId,
@@ -69,11 +75,13 @@ export class StoryService {
         mediaId: mediaResponses[0].id,
         mediaUrl: mediaResponses[0].url,
 
+        startMusicTime: startMusicTime || undefined,
+
         musicId: createStoryDto.musicId,
         musicUrl: musicResponse?.url,
 
         createdAt: now,
-        expiredAt,
+        expiredAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
       });
 
       const savedStory = await queryRunner.manager.save(Story, story);
@@ -140,10 +148,23 @@ export class StoryService {
   }
 
   async findOneWithUrl(storyId: number): Promise<StoryResponseDto> {
-    const story = await this.storyRepo.findOne({ where: { id: storyId } });
+    const userId = this.context.getUserId();
+
+    const story = await this.storyRepo.findOne({
+      where: { id: storyId },
+      relations: {
+        storage: true,
+      },
+    });
     if (!story) {
       throw new NotFoundException(`Story not found!`);
     }
+
+    const interaction = await this.interactionClient.getCurrentInteraction(
+      userId,
+      [storyId],
+      ContentServiceType.POST,
+    );
 
     return {
       id: storyId,
@@ -154,6 +175,13 @@ export class StoryService {
       mediaUrl: story.mediaUrl,
       expiredAt: story.expiredAt,
       createdAt: story.createdAt,
+      startMusicTime: story.startMusicTime,
+      storageId: story.storage?.id ?? null,
+      likeCount: story.likeCount,
+      isLiked: interaction[0]?.isLiked ?? false,
+      isCommented: interaction[0]?.isCommented ?? false,
+      isShared: interaction[0]?.isShared ?? false,
+      isSaved: interaction[0]?.isSaved ?? false,
     };
   }
 
@@ -179,34 +207,65 @@ export class StoryService {
     await this.storyRepo.save(story);
   }
 
+  async getManyStories(storyIds: number[]) {
+    const stories = await this.storyRepo.findBy({
+      id: In(storyIds),
+    });
+    return stories;
+  }
+
   async findByUser(
     userId: string,
     page = 1,
     size = 10,
-  ): Promise<{
-    content: StoryResponseDto[];
-    page: number;
-    size: number;
-    total: number;
-  }> {
+    filterStorage: boolean,
+  ): Promise<StoryResponsePageDto> {
+    const currentUserId = this.context.getUserId();
+
+    const whereCondition = filterStorage
+      ? {
+          userId,
+          storage: IsNull(),
+        }
+      : {
+          userId,
+        };
+
     const [stories, total] = await this.storyRepo.findAndCount({
-      where: { userId },
+      where: whereCondition,
       order: { createdAt: 'DESC' },
       skip: (page - 1) * size,
       take: size,
     });
 
+    const interactions = await this.interactionClient.getCurrentInteraction(
+      currentUserId,
+      stories.map((story) => story.id),
+      ContentServiceType.STORY,
+    );
+
+    const interactionMap = new Map(interactions.map((i) => [i.targetId, i]));
+
     return {
-      content: stories.map((story) => ({
-        id: story.id,
-        userId: story.userId,
-        avatarUrl: story.avatarUrl,
-        username: story.username,
-        mediaUrl: story.mediaUrl,
-        musicUrl: story?.mediaUrl,
-        expiredAt: story.expiredAt,
-        createdAt: story.createdAt,
-      })),
+      content: stories.map((story) => {
+        const interaction = interactionMap.get(story.id);
+
+        return {
+          id: story.id,
+          userId: story.userId,
+          avatarUrl: story.avatarUrl,
+          username: story.username,
+          mediaUrl: story.mediaUrl,
+          musicUrl: story?.mediaUrl,
+          expiredAt: story.expiredAt,
+          createdAt: story.createdAt,
+          likeCount: story.likeCount,
+          isLiked: interaction?.isLiked ?? false,
+          isCommented: interaction?.isCommented ?? false,
+          isShared: interaction?.isShared ?? false,
+          isSaved: interaction?.isSaved ?? false,
+        };
+      }),
       page,
       size,
       total,
@@ -223,46 +282,63 @@ export class StoryService {
     total: number;
   }> {
     const userId = this.context.getUserId();
-    return await this.findByUser(userId, page, size);
+    return await this.findByUser(userId, page, size, false);
   }
 
-  async saveToStorage(storyId: number, storageId: number) {
-    const storage = await this.storageService.findOne(storageId);
-    if (!storage) {
-      throw new NotFoundException("Can't find this storage!");
-    }
+  async getStoryInStorage(
+    storageId: number,
+    page = 1,
+  ): Promise<{
+    content: StoryResponseDto[];
+    page: number;
+    total: number;
+  }> {
+    const userId = this.context.getUserId();
+    const [stories, total] = await this.storyRepo.findAndCount({
+      where: {
+        storage: { id: storageId },
+        isDeleted: false,
+      },
 
-    const story = await this.storyRepo.findOne({ where: { id: storyId } });
-    if (!story) {
-      throw new NotFoundException("Can't find this story!");
-    }
-
-    story.storage = storage;
-
-    await this.storyRepo.save(story);
-
-    return story;
-  }
-
-  async findByStorage(storageId: number): Promise<StoryResponseDto[]> {
-    const stories = await this.storyRepo.find({
-      where: { storage: { id: storageId } },
-      order: { createdAt: 'DESC' },
+      skip: page - 1,
+      take: 1,
+      order: {
+        createdAt: 'DESC',
+      },
     });
 
-    const content: StoryResponseDto[] = stories.map((story) => ({
-      id: story.id,
-      userId: story.userId,
-      avatarUrl: story.avatarUrl,
-      username: story.username,
-      musicUrl: story.mediaUrl,
-      mediaUrl: story.mediaUrl,
-      musicId: story.musicId,
-      expiredAt: story.expiredAt,
-      createdAt: story.createdAt,
-    }));
+    const interactions = await this.interactionClient.getCurrentInteraction(
+      userId,
+      stories.map((story) => story.id),
+      ContentServiceType.STORY,
+    );
 
-    return content;
+    const interactionMap = new Map(interactions.map((i) => [i.targetId, i]));
+
+    return {
+      content: stories.map((story): StoryResponseDto => {
+        const interaction = interactionMap.get(story.id);
+
+        return {
+          id: story.id,
+          userId: story.userId,
+          username: story.username,
+          avatarUrl: story.avatarUrl,
+          mediaUrl: story.mediaUrl,
+          musicUrl: story.musicUrl,
+          expiredAt: story.expiredAt,
+          createdAt: story.createdAt,
+          likeCount: story.likeCount,
+          startMusicTime: story.startMusicTime,
+          isLiked: interaction?.isLiked ?? false,
+          isCommented: interaction?.isCommented ?? false,
+          isShared: interaction?.isShared ?? false,
+          isSaved: interaction?.isSaved ?? false,
+        };
+      }),
+      page,
+      total,
+    };
   }
 
   async delete(id: number) {
@@ -281,6 +357,28 @@ export class StoryService {
       await this.storyRepo.update({ id }, { isDeleted: true });
     } catch (err) {
       throw err;
+    }
+  }
+
+  async addStoryToStorage(storageId: number, storyId: number) {
+    await this.storyRepo.update(
+      { id: storyId },
+      { storage: { id: storageId } },
+    );
+  }
+
+  async removeStoryFromStorage(storageId: number, storyId: number) {
+    await this.storyRepo.update(
+      { id: storyId },
+      { storage: { id: null } as any },
+    );
+
+    const remaining = await this.storyRepo.count({
+      where: { storage: { id: storageId } },
+    });
+
+    if (remaining === 0) {
+      await this.storageService.remove(storageId);
     }
   }
 }

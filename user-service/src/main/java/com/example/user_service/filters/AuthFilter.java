@@ -23,7 +23,7 @@ public class AuthFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain
     ) throws ServletException, IOException {
-
+        System.out.println("AUTH FILTER RUNNING");
         String userId = request.getHeader("X-User-Id");
         String sessionId = request.getHeader("X-Session-Id");
         String roles = request.getHeader("X-User-Roles");
@@ -59,7 +59,9 @@ public class AuthFilter extends OncePerRequestFilter {
                 || path.contains("/summary")
                 || path.contains("/batch")
                 || path.contains("/v3/api-docs")
-                || path.contains("swagger");
+                || path.contains("swagger")
+                || path.contains("refresh")
+                || path.contains("username");
 
     }
 }

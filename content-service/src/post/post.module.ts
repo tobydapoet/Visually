@@ -10,6 +10,7 @@ import { TagModule } from 'src/tag/tag.module';
 import { CollabModule } from 'src/collab/collab.module';
 import { OutboxEventsModule } from 'src/outbox_events/outbox_events.module';
 import { ShortModule } from 'src/short/short.module';
+import { MentionModule } from 'src/mention/mention.module';
 
 @Module({
   imports: [
@@ -21,8 +22,10 @@ import { ShortModule } from 'src/short/short.module';
     CollabModule,
     OutboxEventsModule,
     ShortModule,
+    MentionModule,
   ],
   controllers: [PostController],
   providers: [PostService],
+  exports: [PostService],
 })
 export class PostModule {}

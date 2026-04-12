@@ -9,23 +9,46 @@ import {
   ParseIntPipe,
   HttpCode,
   HttpStatus,
+  Put,
+  Query,
 } from '@nestjs/common';
 import { ConversationMemberService } from './conversation_member.service';
 import { EventPattern, Payload } from '@nestjs/microservices';
 import { ApiBearerAuth } from '@nestjs/swagger';
+import { CreateConversationMemberDto } from './dto/create-conversation_member.dto';
 
-@Controller('conversation-members')
+@Controller('conversation-member')
 export class ConversationMemberController {
   constructor(
     private readonly conversationMemberService: ConversationMemberService,
   ) {}
+
+  @Post()
+  @ApiBearerAuth()
+  invite(@Body() createConversationMemberDto: CreateConversationMemberDto) {
+    this.conversationMemberService.invite(createConversationMemberDto);
+  }
+
+  @Get('conversation/:conversationId/search')
+  @ApiBearerAuth()
+  searchMemberByConversation(
+    @Param('conversationId', ParseIntPipe) conversationId: number,
+    @Query('keyword') keyword: string,
+  ) {
+    return this.conversationMemberService.searchMemberByConversation(
+      conversationId,
+      keyword,
+    );
+  }
 
   @Get('conversation/:conversationId')
   @ApiBearerAuth()
   findByConversation(
     @Param('conversationId', ParseIntPipe) conversationId: number,
   ) {
-    return this.conversationMemberService.findByConversation(conversationId);
+    return this.conversationMemberService.getMemberByConversation(
+      conversationId,
+    );
   }
 
   @Get(':id')
@@ -34,17 +57,21 @@ export class ConversationMemberController {
     return this.conversationMemberService.findOne(id);
   }
 
-  @Patch(':id')
+  @Put('conversation/:conversationId/seen')
   @ApiBearerAuth()
-  update(@Param('id', ParseIntPipe) id: number, @Body() nickname: string) {
-    return this.conversationMemberService.update(id, nickname);
+  updateLastSeen(
+    @Param('conversationId', ParseIntPipe) conversationId: number,
+  ) {
+    return this.conversationMemberService.updateLastSeen(conversationId);
   }
 
-  @Delete(':id')
+  @Put('remove/:id')
   @ApiBearerAuth()
-  @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.conversationMemberService.remove(id);
+  async remove(@Param('id', ParseIntPipe) id: number) {
+    const res = await this.conversationMemberService.removeMember(id);
+    if (res) {
+      return { message: 'Remove user success!' };
+    }
   }
 
   @EventPattern('user.updated.avatar')

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
@@ -22,6 +23,9 @@ public class OauthHandler implements AuthenticationSuccessHandler {
 
     @Autowired
     private RestTemplate restTemplate;
+
+    @Value("${REDIRECT_FE}")
+    private String frontendUrl;
 
     @Override
     public void onAuthenticationSuccess(
@@ -45,14 +49,14 @@ public class OauthHandler implements AuthenticationSuccessHandler {
                     Map.class
             );
 
-            res.setContentType("application/json");
-            res.getWriter().write(
-                    objectMapper.writeValueAsString(response.getBody())
-            );
+            String accessToken = (String) response.getBody().get("accessToken");
+            String refreshToken = (String) response.getBody().get("refreshToken");
+
+            res.sendRedirect(frontendUrl + "oauth_success?accessToken=" + accessToken + "&refreshToken=" + refreshToken);
+
         } catch (Exception e) {
             e.printStackTrace();
-            res.setStatus(500);
-            res.getWriter().write("ERROR IN OAUTH HANDLER");
+            res.sendRedirect(frontendUrl + "login?error=true");
         }
     }
 

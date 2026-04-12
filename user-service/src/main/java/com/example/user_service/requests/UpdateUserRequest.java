@@ -13,11 +13,7 @@ public class UpdateUserRequest {
 
     private String fullName;
 
-    @Pattern(
-            regexp = "^(0|\\+84|84)(3|5|7|8|9)[0-9]{8}$",
-            message = "Invalid Phone number"
-    )
-    private String phone;
+    private String username;
 
     private String bio;
 

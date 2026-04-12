@@ -8,6 +8,7 @@ import { ContextModule } from 'src/context/context.module';
 import { TagModule } from 'src/tag/tag.module';
 import { CollabModule } from 'src/collab/collab.module';
 import { OutboxEventsModule } from 'src/outbox_events/outbox_events.module';
+import { MentionModule } from 'src/mention/mention.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { OutboxEventsModule } from 'src/outbox_events/outbox_events.module';
     TagModule,
     CollabModule,
     OutboxEventsModule,
+    MentionModule,
   ],
   controllers: [ShortController],
   providers: [ShortService],

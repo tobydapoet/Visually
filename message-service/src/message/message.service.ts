@@ -1,80 +1,144 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Message } from './entities/message.entity';
-import { DataSource, Repository } from 'typeorm';
-import { AttachmentService } from '../attachment/attachment.service';
+import { DataSource, IsNull, Repository } from 'typeorm';
 import { MediaClient } from '../client/media.client';
 import { MessageMediaService } from '../message_media/message_media.service';
 import { ContextService } from '../context/context.service';
-import { MessageStatus } from '../enums/remove.type';
 import { ClientKafka } from '@nestjs/microservices';
+import { MediaResponse } from '../client/dto/MediaResponse.dto';
+import { ConversationMember } from '../conversation_member/entities/conversation_member.entity';
+import { UpdateMessageDto } from './dto/update-message.dto';
+import { MentionService } from '../mention/mention.service';
 
 @Injectable()
 export class MessageService {
   constructor(
     @InjectRepository(Message) private messageRepo: Repository<Message>,
-    private attachmentService: AttachmentService,
     private mediaClient: MediaClient,
     private messageMediaService: MessageMediaService,
     private context: ContextService,
     private dataSource: DataSource,
+    private mentionService: MentionService,
     @Inject('KAFKA_SERVICE') private kafkaClient: ClientKafka,
   ) {}
+
   async create(
     createMessageDto: CreateMessageDto,
     files?: Express.Multer.File[],
   ) {
     const userId = this.context.getUserId();
-    const sessionId = this.context.getSessionId();
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
+
+    console.log('DTO: ', createMessageDto);
+
+    const member = await queryRunner.manager.findOne(ConversationMember, {
+      where: {
+        userId: createMessageDto.senderId,
+        conversation: { id: createMessageDto.conversationId },
+      },
+    });
+
+    if (!member) {
+      throw new Error('Sender is not a member of this conversation');
+    }
+
     try {
-      const messageEntity = queryRunner.manager.create(Message, {
-        conversationId: createMessageDto.conversationId,
-        senderId: createMessageDto.senderId,
-        content: createMessageDto.content,
-        replyToId: createMessageDto.replyToMessgageId,
-        forwardFromId: createMessageDto.forwardMesageId,
-      });
-      const message = await queryRunner.manager.save(messageEntity);
-      if (createMessageDto.targetId && createMessageDto.targetType) {
-        await this.attachmentService.create(
+      const message = await queryRunner.manager.save(
+        queryRunner.manager.create(Message, {
+          conversation: { id: createMessageDto.conversationId },
+          sender: { id: member.id },
+          content: createMessageDto.content,
+          ...(createMessageDto.replyToMessageId && {
+            replyTo: { id: createMessageDto.replyToMessageId },
+          }),
+        }),
+      );
+
+      if (message && createMessageDto.mentions) {
+        await this.mentionService.createMany(
           {
+            mentions: createMessageDto.mentions,
             messageId: message.id,
-            targetId: createMessageDto.targetId,
-            targetType: createMessageDto.targetType,
           },
           queryRunner.manager,
         );
       }
-      if (files && files.length > 0) {
-        const fileRes = await this.mediaClient.upload(files, userId, sessionId);
+      let mediaUrls: MediaResponse[] = [];
 
-        const mediaDtos = fileRes.map((item) => ({
-          messageId: message.id,
-          mediaId: item.id,
-          url: item.url,
-        }));
+      if (files?.length) {
+        const fileRes = await this.mediaClient.upload(files, userId);
 
         await this.messageMediaService.createMany(
-          mediaDtos,
+          fileRes.map((item) => ({
+            messageId: message.id,
+            mediaId: item.id,
+            url: item.url,
+          })),
           queryRunner.manager,
         );
+
+        mediaUrls = fileRes.map((item) => ({
+          id: item.id,
+          url: item.url,
+        }));
       }
+
+      let replyToData: {
+        id: number;
+        username?: string;
+        content?: string;
+        avatarUrl?: string | null;
+        isDeleted?: boolean;
+      } | null = null;
+
+      if (createMessageDto.replyToMessageId) {
+        const replyToMessage = await queryRunner.manager.findOne(Message, {
+          where: { id: createMessageDto.replyToMessageId },
+          withDeleted: true,
+          relations: ['sender'],
+        });
+
+        if (replyToMessage) {
+          if (replyToMessage.deletedAt) {
+            replyToData = {
+              id: replyToMessage.id,
+              isDeleted: true,
+              content: 'Original message was deleted',
+            };
+          } else {
+            replyToData = {
+              id: replyToMessage.id,
+              username: replyToMessage.sender?.username,
+              content: replyToMessage.content,
+              avatarUrl: replyToMessage.sender?.avatarUrl || null,
+            };
+          }
+        }
+      }
+
       this.kafkaClient.emit('message.created', {
         key: createMessageDto.conversationId,
         value: {
-          messageId: message.id,
+          id: message.id,
           conversationId: createMessageDto.conversationId,
           senderId: createMessageDto.senderId,
           content: createMessageDto.content,
-          replyToId: createMessageDto.replyToMessgageId ?? null,
-          forwardFromId: createMessageDto.forwardMesageId ?? null,
+          replyToId: replyToData ?? null,
           createdAt: message.createdAt,
+          mentions: createMessageDto.mentions?.map((mention) => ({
+            userId: mention.userId,
+            username: mention.username,
+          })),
+          senderUsername: member.username,
+          senderAvatar: member.avatarUrl,
+          mediaUrls,
         },
       });
+
       await queryRunner.commitTransaction();
       return message;
     } catch (err) {
@@ -85,23 +149,32 @@ export class MessageService {
     }
   }
 
+  async getLastMessage(conversationId: number) {
+    return await this.messageRepo.findOne({
+      where: {
+        conversation: { id: conversationId },
+      },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
   async findByConversation(
     conversationId: number,
     page = 1,
-    limit = 20,
+    size = 20,
     keyword?: string,
   ) {
-    const skip = (page - 1) * limit;
-    const userId = this.context.getUserId();
+    const skip = (page - 1) * size;
 
     const qb = this.messageRepo
       .createQueryBuilder('m')
+      .leftJoinAndSelect('m.sender', 'member')
+      .leftJoinAndSelect('m.medias', 'medias')
+      .leftJoinAndSelect('m.replyTo', 'replyTo')
+      .leftJoinAndSelect('replyTo.sender', 'replyToSender')
+      .leftJoinAndSelect('m.mentions', 'mentions')
       .where('m.conversationId = :conversationId', { conversationId })
-      .andWhere('m.status = :active', { active: 'ACTIVE' })
-      .andWhere('NOT (m.senderId = :userId AND m.status = :privateDelete)', {
-        userId,
-        privateDelete: 'DELETE_PRIVATE',
-      });
+      .andWhere('m.deletedAt IS NULL');
 
     if (keyword && keyword.trim() !== '') {
       qb.andWhere('LOWER(m.content) LIKE :keyword', {
@@ -109,38 +182,98 @@ export class MessageService {
       });
     }
 
-    qb.orderBy('m.createdAt', 'DESC').skip(skip).take(limit);
+    qb.orderBy('m.createdAt', 'DESC').skip(skip).take(size);
 
     const [messages, total] = await qb.getManyAndCount();
 
     return {
-      data: messages,
-      meta: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-        keyword: keyword || null,
-        isSearch: !!keyword,
-      },
+      content: messages.map((m) => ({
+        id: m.id,
+        content: m.content,
+        createdAt: m.createdAt,
+        updatedAt: m.updatedAt,
+        senderId: m.sender?.userId,
+        mentions: m.mentions?.map((mention) => ({
+          userId: mention.userId,
+          username: mention.username,
+        })),
+        replyTo:
+          m.replyTo && !m.replyTo.deletedAt
+            ? {
+                id: m.replyTo.id,
+                username: m.replyTo.sender?.username,
+                content: m.replyTo.content,
+                avatarUrl: m.replyTo.sender?.avatarUrl || null,
+              }
+            : m.replyTo
+              ? {
+                  id: m.replyTo.id,
+                  isDeleted: true,
+                  content: 'Original message was deleted',
+                }
+              : null,
+        senderUsername: m.sender?.username,
+        senderAvatar: m.sender?.avatarUrl,
+        mediaUrls: m.medias?.map((media) => ({ url: media.url })) ?? [],
+      })),
+      total,
+      page,
+      size,
+      totalPages: Math.ceil(total / size),
+      hasNext: page < Math.ceil(total / size),
     };
   }
 
-  update(id: number, content: string) {
-    return this.messageRepo.update({ id }, { content });
+  async updateMessage(id: number, dto: UpdateMessageDto) {
+    const userId = this.context.getUserId();
+
+    const message = await this.messageRepo.findOne({
+      where: { id, sender: { userId } },
+      relations: ['conversation'],
+    });
+
+    if (!message) throw new NotFoundException('Message not found');
+
+    await this.messageRepo.update(id, { content: dto.content });
+
+    if (dto.mentions !== undefined) {
+      await this.mentionService.updateMentions(id, dto.mentions);
+    }
+
+    const updatedMessage = { ...message, content: dto.content };
+
+    this.kafkaClient.emit('message.updated', {
+      key: message.conversation.id,
+      value: {
+        id: message.id,
+        conversationId: message.conversation.id,
+        content: dto.content,
+      },
+    });
+
+    return updatedMessage;
   }
 
-  removePrivate(id: number) {
-    return this.messageRepo.update(
-      { id },
-      { status: MessageStatus.DELETE_PRIVATE },
-    );
-  }
+  async deleteMessage(id: number) {
+    const userId = this.context.getUserId();
 
-  removeWithAll(id: number) {
-    return this.messageRepo.update(
-      { id },
-      { status: MessageStatus.DEELTE_ALL },
-    );
+    const message = await this.messageRepo.findOne({
+      where: { id, sender: { userId } },
+      relations: ['conversation'],
+    });
+
+    if (!message) throw new NotFoundException('Message not found');
+
+    await this.messageRepo.softDelete(id);
+
+    this.kafkaClient.emit('message.deleted', {
+      key: message.conversation.id,
+      value: {
+        id: message.id,
+        conversationId: message.conversation.id,
+      },
+    });
+
+    return { success: true };
   }
 }

@@ -3,6 +3,7 @@ package com.example.user_service.entities;
 import com.example.user_service.enums.Gender;
 import com.example.user_service.enums.StatusType;
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;

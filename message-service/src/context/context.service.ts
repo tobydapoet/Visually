@@ -7,23 +7,23 @@ export class ContextService {
   constructor(@Inject(REQUEST) private readonly req: Request) {}
 
   getUserId() {
-    return this.req.headers['X-User-Id'];
+    return this.req.headers['x-user-id'];
   }
 
   getSessionId() {
-    return this.req.headers['X-Session-Id'];
+    return this.req.headers['x-session-id'];
   }
 
   getAvatarUrl() {
-    return this.req.headers['X-User-Avatar'];
+    return this.req.headers['x-user-avatar'];
   }
 
   getUsername() {
-    return this.req.headers['X-User-Username'];
+    return this.req.headers['x-user-username'];
   }
 
   getRoles(): UserRole[] {
-    const rolesHeader = this.req.headers['X-User-Roles'];
+    const rolesHeader = this.req.headers['x-user-roles'];
 
     if (!rolesHeader) return [];
 

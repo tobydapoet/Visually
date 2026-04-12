@@ -1,6 +1,7 @@
 package com.example.media_service.controllers;
 
 import com.example.media_service.entities.MusicLibrary;
+import com.example.media_service.enums.MusicStatus;
 import com.example.media_service.requests.MusicCreateRequest;
 import com.example.media_service.requests.MusicUpdateRequest;
 import com.example.media_service.services.MusicLibraryService;
@@ -39,6 +40,25 @@ public class MusicLibraryController {
     }
 
     @PreAuthorize("hasRole('MODERATOR') or hasRole('ADMIN')")
+    @PutMapping(value = "/{id}/status")
+    public ResponseEntity<Map<String, String>> updateStatus(
+            @PathVariable Long id,
+            @RequestParam MusicStatus status)
+    {
+        MusicLibrary updatedMusic = musicLibraryService.updateStatus(id,status);
+        if(updatedMusic != null) {
+            return ResponseEntity.ok(Map.of(
+                    "message", "Update music success"
+            ));
+        }
+        else {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "message", "Update music failed"
+            ));
+        }
+    }
+
+    @PreAuthorize("hasRole('MODERATOR') or hasRole('ADMIN')")
     @PutMapping(value = "/{id}",consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Map<String, String>> update(
             @PathVariable Long id,
@@ -57,6 +77,7 @@ public class MusicLibraryController {
         }
     }
 
+
     @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping(value = "/{id}")
     public ResponseEntity<Map<String, String>> delete(@PathVariable Long id)
@@ -67,13 +88,14 @@ public class MusicLibraryController {
         ));
     }
 
-    @GetMapping("/search")
+    @GetMapping()
     public ResponseEntity<Page<MusicLibrary>> search(
-            @RequestParam String keyword,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false, defaultValue = "ACTIVE") MusicStatus status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        Page<MusicLibrary> result = musicLibraryService.search(keyword, page, size);
+        Page<MusicLibrary> result = musicLibraryService.search(keyword, status, page, size);
         return ResponseEntity.ok(result);
     }
 

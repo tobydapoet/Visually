@@ -6,6 +6,7 @@ import com.example.user_service.enums.StatusType;
 import com.example.user_service.requests.CurrentUser;
 import com.example.user_service.requests.UpdateUserRequest;
 import com.example.user_service.responses.UserResponse;
+import com.example.user_service.responses.UserResponseExtend;
 import com.example.user_service.responses.UserSummaryResponse;
 import com.example.user_service.services.UserService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -13,6 +14,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -20,10 +22,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.multipart.MultipartHttpServletRequest;
 
 import java.io.InputStream;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -42,13 +41,21 @@ public class UserController {
 
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/search")
-    public Page<UserResponse> search(
+    public Page<UserSummaryResponse> search(
             @RequestParam String keyword,
-            @RequestParam (defaultValue = "0") int page,
-            @RequestParam (defaultValue = "10") int size
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "false") boolean isExclude
     ){
-        Page<User> userList = userService.findUserByName(keyword, page, size);
-        return userList.map(UserResponse::fromEntity);
+        CurrentUser currentUser = AuthContext.get();
+
+        UUID userId = (isExclude && currentUser.getUserId() != null)
+                ? currentUser.getUserId()
+                : null;
+
+        Page<User> userList = userService.findUserByName(keyword, userId, page, size);
+
+        return userList.map(UserSummaryResponse::fromEntity);
     }
 
     @SecurityRequirement(name = "bearerAuth")
@@ -86,6 +93,20 @@ public class UserController {
         return UserSummaryResponse.fromEntity(user);
     }
 
+    @GetMapping("/username/{username}")
+    public ResponseEntity<UserResponseExtend> getUserByUsername(
+            @PathVariable String username
+    ) {
+        UUID currentUserId = null;
+
+        CurrentUser currentUser = AuthContext.get();
+        if (currentUser != null) {
+            currentUserId = currentUser.getUserId();
+        }
+
+        return ResponseEntity.ok(userService.getUserByUsername(currentUserId, username));
+    }
+
     @GetMapping("/{id}")
     public UserResponse getUserById(@PathVariable UUID id) {
         User user = userService.findById(id);
@@ -120,7 +141,6 @@ public class UserController {
             for (int i = 0; i < 10 && i < bytesViaGetBytes.length; i++) {
                 System.out.print(String.format("%02X ", bytesViaGetBytes[i]));
             }
-            System.out.println();
 
             try (InputStream is = file.getInputStream()) {
                 byte[] bytesViaStream = is.readAllBytes();

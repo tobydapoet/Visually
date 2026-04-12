@@ -15,6 +15,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -98,28 +99,33 @@ public class UploadService {
 
 
 
-    public void delete(String url) {
-        String[] parts = url.split("/upload/");
-        if (parts.length < 2)
-            throw new RuntimeException("Invalid Cloudinary URL");
+    public void deleteMany(List<String> urls) {
+        List<String> publicIds = urls.stream()
+                .map(url -> {
+                    String[] parts = url.split("/upload/");
+                    if (parts.length < 2)
+                        throw new RuntimeException("Invalid Cloudinary URL: " + url);
 
-        String path = parts[1];
+                    String path = parts[1];
 
-        int firstSlash = path.indexOf("/");
-        if (firstSlash != -1) {
-            path = path.substring(firstSlash + 1);
-        }
+                    int firstSlash = path.indexOf("/");
+                    if (firstSlash != -1) {
+                        path = path.substring(firstSlash + 1);
+                    }
 
-        int dotIndex = path.lastIndexOf(".");
-        if (dotIndex != -1) {
-            path = path.substring(0, dotIndex);
-        }
+                    int dotIndex = path.lastIndexOf(".");
+                    if (dotIndex != -1) {
+                        path = path.substring(0, dotIndex);
+                    }
+
+                    return path;
+                })
+                .toList();
 
         try {
-            cloudinary.uploader().destroy(path, ObjectUtils.emptyMap());
-        } catch (IOException e) {
-            throw new RuntimeException("Delete file error", e);
+            cloudinary.api().deleteResources(publicIds, ObjectUtils.emptyMap());
+        } catch (Exception e) {
+            throw new RuntimeException("Delete files error", e);
         }
     }
-
 }

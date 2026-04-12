@@ -1,5 +1,6 @@
 package com.example.user_service.services;
 
+import com.example.user_service.clients.ContentClient;
 import com.example.user_service.clients.FollowClient;
 import com.example.user_service.enums.Gender;
 import com.example.user_service.exceptions.ConflictException;
@@ -13,6 +14,8 @@ import com.example.user_service.entities.User;
 import com.example.user_service.enums.RoleType;
 import com.example.user_service.enums.StatusType;
 import com.example.user_service.repositories.UserRepository;
+import com.example.user_service.responses.ContentCountResponse;
+import com.example.user_service.responses.RelationshipResponse;
 import com.example.user_service.responses.MediaResponse;
 import com.example.user_service.responses.UserResponseExtend;
 import io.jsonwebtoken.Claims;
@@ -54,6 +57,9 @@ public class UserService {
     SessionService sessionService;
 
     @Autowired
+    ContentClient contentClient;
+
+    @Autowired
     JwtService jwtService;
 
     @Autowired
@@ -64,20 +70,27 @@ public class UserService {
     @Transactional
     public User register(RegisterRequest req) {
         User user = new User();
-        user.setUsername(req.getFullName()
-                .trim()
-                .toLowerCase()
-                .replaceAll("\\s+", "")
-                .replaceAll("[^a-z0-9]", ""));
         String password =  req.getPassword();
         if (!req.getPassword().equals(req.getConfirmPassword())) {
             throw new ValidatorException("Password do not match!");
+        }
+        if (userRepository.existsByEmail(req.getEmail())) {
+            throw new ValidatorException("Email already exists!");
+        }
+
+        if (userRepository.existsByPhone(req.getPhone())) {
+            throw new ValidatorException("Phone already exists!");
+        }
+
+        if (userRepository.existsByUsername(req.getUsername())) {
+            throw new ValidatorException("Username already exists!");
         }
         user.setPassword(passwordEncoder.encode(password));
         user.setEmail(req.getEmail());
         user.setPhone(req.getPhone());
         user.setDob(req.getDob());
         user.setFullName(req.getFullName());
+        user.setUsername(req.getUsername());
         user.setGender(req.getGender());
         User savedUser =  userRepository.save(user);
 
@@ -156,8 +169,8 @@ public class UserService {
             profileChanged = true;
         }
 
-        if (req.getPhone() != null) {
-            user.setPhone(req.getPhone());
+        if (req.getUsername() != null) {
+            user.setUsername(req.getUsername());
             profileChanged = true;
         }
 
@@ -194,10 +207,52 @@ public class UserService {
         return savedUser;
     }
 
+    public UserResponseExtend getUserByUsername(UUID currentUserId, String username) {
 
-    public Page<User> findUserByName(String keyword, int page, int size) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+
+        boolean isFollowed = false;
+        boolean isBlocked = false;
+        long followersCount = 0;
+        long followingCount = 0;
+        long postCount = 0;
+        long shortCount = 0;
+
+        try {
+            RelationshipResponse relationshipStatus =
+                    followClient.getRelationShip(user.getId(),
+                            currentUserId != null ? currentUserId.toString() : null);
+
+            ContentCountResponse contentCountResponse = contentClient.getContentCount(user.getId());
+            System.out.println("🔍🔍🔍 RELATIONSHIP STATUS: " + relationshipStatus);
+
+            isBlocked = relationshipStatus.isBlock();
+            isFollowed = relationshipStatus.isFollow();
+            followersCount = relationshipStatus.followersCount();
+            followingCount = relationshipStatus.followingCount();
+            postCount = contentCountResponse.postCount();
+            shortCount = contentCountResponse.shortCount();
+
+        } catch (Exception e) {
+            System.err.println("Error fetching follow/block status: " + e.getMessage());
+        }
+
+        return UserResponseExtend.from(
+                user,
+                isFollowed,
+                isBlocked,
+                followersCount,
+                followingCount,
+                postCount,
+                shortCount
+        );
+    }
+
+
+    public Page<User> findUserByName(String keyword, UUID userId,int page, int size) {
         Pageable pageable = PageRequest.of(page,size, Sort.by(Sort.Direction.DESC,"createdAt"));
-        return userRepository.searchUser(keyword, pageable);
+        return userRepository.searchUser(keyword, userId ,pageable);
     }
 
     @Transactional
@@ -217,32 +272,70 @@ public class UserService {
 
 
     public UserResponseExtend getUserById(UUID currentUserId, UUID userId) {
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
-        Boolean isFollowed = false;
-        Boolean isBlocked = false;
+        boolean isFollowed = false;
+        boolean isBlocked = false;
+        long followersCount = 0;
+        long followingCount = 0;
+        long postCount = 0;
+        long shotCount = 0;
 
-        if (currentUserId != null && !currentUserId.equals(userId)) {
-            try {
-                Map<String, String> followStatus = followClient.isFollowed(userId, currentUserId.toString());
-                isFollowed = "true".equals(followStatus.get("isFollow"));
+        try {
+            RelationshipResponse relationShipStatus =
+                    followClient.getRelationShip(userId,
+                            currentUserId != null ? currentUserId.toString() : null);
 
-                Map<String, String> blockStatus = followClient.isBlocked(userId, currentUserId.toString());
-                isBlocked = "true".equals(blockStatus.get("isBlock"));
-            } catch (Exception e) {
-                System.err.println("Error fetching follow/block status: " + e.getMessage());
-                e.printStackTrace();
-            }
+            ContentCountResponse contentCountResponse = contentClient.getContentCount(userId);
+
+            isBlocked = relationShipStatus.isBlock();
+            isFollowed = relationShipStatus.isFollow();
+            followersCount = relationShipStatus.followersCount();
+            followingCount = relationShipStatus.followingCount();
+            postCount =  contentCountResponse.postCount();
+            shotCount = contentCountResponse.shortCount();
+
+        } catch (Exception e) {
+            System.err.println("Error fetching follow/block status: " + e.getMessage());
         }
 
-        return UserResponseExtend.from(user, isFollowed, isBlocked);
+        return UserResponseExtend.from(
+                user,
+                isFollowed,
+                isBlocked,
+                followersCount,
+                followingCount,
+                postCount,
+                shotCount
+        );
     }
 
     public User getCurrentUser(String token) {
         Claims claims = jwtService.parseToken(token);
         String userId = claims.get("userId").toString();
         return this.findById(UUID.fromString(userId));
+    }
+
+    private String generateUniqueUsername(String fullName) {
+        String base = fullName
+                .trim()
+                .toLowerCase()
+                .replaceAll("\\s+", ".")
+                .replaceAll("[^a-z0-9.]", "");
+
+        if (!userRepository.existsByUsername(base)) {
+            return base;
+        }
+
+        String candidate;
+        do {
+            String suffix = String.valueOf((int)(Math.random() * 9000) + 1000);
+            candidate = base + suffix;
+        } while (userRepository.existsByUsername(candidate));
+
+        return candidate;
     }
 
     @Transactional
@@ -257,12 +350,7 @@ public class UserService {
             user.setProviderId(req.getProviderId());
             user.setFullName(req.getFullName());
             user.setStatus(StatusType.ACTIVE);
-            user.setUsername(req.getFullName()
-                    .trim()
-                    .toLowerCase()
-                    .replaceAll("\\s+", "")
-                    .replaceAll("[^a-z0-9]", ""));
-            user.setProviderId(req.getProviderId());
+            user.setUsername(generateUniqueUsername(req.getFullName()));
             user.setGender(Gender.OTHER);
 
             User savedUser = userRepository.save(user);
@@ -283,6 +371,7 @@ public class UserService {
         if (user.getStatus() != StatusType.ACTIVE) {
             throw new ConflictException("User not active");
         }
+
         String refreshToken = jwtService.generateRefreshToken();
 
         Session session = new Session();
@@ -293,7 +382,6 @@ public class UserService {
         );
 
         Session savedSession = sessionService.create(session);
-
         String accessToken = jwtService.generateAccessToken(savedSession);
 
         return Map.of(
@@ -301,6 +389,8 @@ public class UserService {
                 "refreshToken", refreshToken
         );
     }
+
+
 
     public void logout(Long id) {
         sessionService.delete(id);

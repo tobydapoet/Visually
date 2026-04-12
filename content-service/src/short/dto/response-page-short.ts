@@ -4,21 +4,17 @@ export class ShortResponsePageDto {
   total!: number;
   content!: {
     id: number;
-
     username: string;
-
     avatarUrl?: string;
-
     userId: string;
-
     caption?: string;
-
     thumbnailUrl: string;
-
     likeCount: number;
-
     commentCount: number;
-
     shareCount: number;
+    isLiked: boolean;
+    isCommented: boolean;
+    isShared: boolean;
+    isSaved: boolean;
   }[];
 }

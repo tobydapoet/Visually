@@ -22,13 +22,10 @@ import { PostResponsePageDto } from './dto/response-page-post.dto';
 import { PostResponseDto } from './dto/response-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { EventPattern, Payload } from '@nestjs/microservices';
-import { InteractionType } from 'src/enums/interaction.type';
-import { ContentType } from 'src/enums/content.type';
 import {
   ApiBearerAuth,
   ApiBody,
   ApiConsumes,
-  ApiOperation,
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
@@ -62,7 +59,6 @@ export class PostController {
       username: savedPost.username,
       avatarUrl: savedPost.avatarUrl,
       caption: savedPost.caption,
-      musicId: savedPost.musicId,
 
       medias: savedPost.medias?.map((m) => m.mediaUrl) || [],
 
@@ -157,117 +153,6 @@ export class PostController {
   @Delete(':id')
   async deleteStory(@Param('id') id: number) {
     return this.postService.delete(id);
-  }
-
-  @EventPattern('content.liked')
-  async handleContentLiked(
-    @Payload()
-    data: {
-      contentId: number;
-      userId: string;
-      contentType: ContentType;
-    },
-  ) {
-    console.log('📨 Content liked:', data);
-
-    if (data.contentType !== ContentType.SHORT) return;
-
-    await this.postService.updateInteraction(
-      data.contentId,
-      InteractionType.LIKE,
-    );
-  }
-
-  @EventPattern('content.unliked')
-  async handleContentUnliked(
-    @Payload()
-    data: {
-      contentId: number;
-      userId: string;
-      contentType: ContentType;
-    },
-  ) {
-    console.log('📨 Content unliked:', data);
-
-    if (data.contentType !== ContentType.SHORT) return;
-
-    await this.postService.updateInteraction(
-      data.contentId,
-      InteractionType.UNLIKE,
-    );
-  }
-
-  @EventPattern('content.commented')
-  async handleContentCommented(
-    @Payload()
-    data: {
-      contentId: number;
-      commentId: number;
-      contentType: ContentType;
-    },
-  ) {
-    console.log('📨 Content commented:', data);
-
-    if (data.contentType !== ContentType.SHORT) return;
-
-    await this.postService.updateInteraction(
-      data.contentId,
-      InteractionType.COMMENT,
-    );
-  }
-
-  @EventPattern('content.comment_deleted')
-  async handleContentCommentDeleted(
-    @Payload()
-    data: {
-      contentId: number;
-      num: number;
-      contentType: ContentType;
-    },
-  ) {
-    console.log('📨 Content comment deleted:', data);
-
-    if (data.contentType !== ContentType.SHORT) return;
-
-    await this.postService.decreaseCommentInteraction(data.contentId, data.num);
-  }
-
-  @EventPattern('content.shared')
-  async handleContentShared(
-    @Payload()
-    data: {
-      contentId: number;
-      userId: string;
-      contentType: ContentType;
-    },
-  ) {
-    console.log('📨 Content shared:', data);
-
-    if (data.contentType !== ContentType.SHORT) return;
-
-    await this.postService.updateInteraction(
-      data.contentId,
-      InteractionType.SHARE,
-    );
-  }
-
-  @EventPattern('content.unshared')
-  async handleContentUnshared(
-    @Payload()
-    data: {
-      contentId: number;
-      shareId: number;
-      contentType: ContentType;
-    },
-  ) {
-    console.log('📨 Content unshared:', data);
-
-    if (data.contentType !== ContentType.SHORT) return;
-
-    await this.postService.updateInteraction(
-      data.contentId,
-      InteractionType.UNSHARE,
-    );
   }
 
   @EventPattern('user.updated.avatar')

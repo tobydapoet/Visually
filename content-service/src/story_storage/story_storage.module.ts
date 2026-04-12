@@ -4,6 +4,7 @@ import { StoryStorageController } from './story_storage.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { StoryStorage } from './entities/story_storage.entity';
 import { ContextModule } from 'src/context/context.module';
+import { StoryModule } from 'src/story/story.module';
 
 @Module({
   imports: [TypeOrmModule.forFeature([StoryStorage]), ContextModule],

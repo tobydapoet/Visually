@@ -1,14 +1,12 @@
 package com.example.user_service.responses;
 
 import com.example.user_service.entities.User;
+import com.example.user_service.enums.Gender;
 import com.example.user_service.enums.StatusType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -36,6 +34,8 @@ public class UserResponse {
 
     private String bio;
 
+    private Gender gender;
+
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;
@@ -51,6 +51,7 @@ public class UserResponse {
                 user.getPhone(),
                 user.getStatus(),
                 user.getBio(),
+                user.getGender(),
                 user.getCreatedAt(),
                 user.getUpdatedAt()
         );

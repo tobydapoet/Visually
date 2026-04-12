@@ -16,5 +16,6 @@ import { KafkaModule } from 'src/kafka/kafka.module';
   ],
   controllers: [ShareController],
   providers: [ShareService],
+  exports: [ShareService],
 })
 export class ShareModule {}

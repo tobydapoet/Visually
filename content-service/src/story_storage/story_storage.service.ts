@@ -12,20 +12,33 @@ export class StoryStorageService {
     private storyStorageRepo: Repository<StoryStorage>,
     private context: ContextService,
   ) {}
-  create(name: string) {
+  async create(name: string, storyIds: number[]) {
     const userId = this.context.getUserId();
-    const newStorage = this.storyStorageRepo.create({
+
+    const storage = await this.storyStorageRepo.save({
       name,
       userId,
     });
-    return this.storyStorageRepo.save(newStorage);
+
+    if (storyIds.length > 0) {
+      await this.storyStorageRepo
+        .createQueryBuilder()
+        .relation('stories')
+        .of(storage.id)
+        .add(storyIds);
+    }
+
+    return storage;
   }
 
   async findByUser(userId: string): Promise<StoryStorageResponse[]> {
-    const storages = await this.storyStorageRepo.find({ where: { userId } });
+    const storages = await this.storyStorageRepo.find({
+      where: { userId },
+      relations: ['stories'],
+    });
     return storages.map((storage) => ({
       id: storage.id,
-      url: storage.stories?.[0]?.mediaUrl ?? undefined,
+      url: storage.stories[0].mediaUrl,
       name: storage.name,
     }));
   }
@@ -45,5 +58,28 @@ export class StoryStorageService {
     }
 
     return await this.storyStorageRepo.remove(storage);
+  }
+
+  async addStoryToStorage(storageId: number, storyIds: number[]) {
+    await this.storyStorageRepo
+      .createQueryBuilder()
+      .relation(StoryStorage, 'stories')
+      .of(storageId)
+      .add(storyIds);
+  }
+
+  async removeStoryToStorage(storageId: number, storyIds: number[]) {
+    const stories = await this.storyStorageRepo.find({
+      where: { id: storageId },
+    });
+    if (stories.length === 1) {
+      await this.remove(storageId);
+    } else {
+      await this.storyStorageRepo
+        .createQueryBuilder()
+        .relation(StoryStorage, 'stories')
+        .of(storageId)
+        .remove(storyIds);
+    }
   }
 }

@@ -4,93 +4,33 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  Scope,
 } from '@nestjs/common';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Comment } from './entities/comment.entity';
-import { In, Repository } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
 import { ContextService } from 'src/context/context.service';
-import {
-  CommentTargetType,
-  ContetServiceType,
-  LikeTargetType,
-} from 'src/enums/ContentType';
-import { LikeService } from 'src/like/like.service';
+import { CommentTargetType, LikeTargetType } from 'src/enums/ContentType';
 import { InteractionType } from 'src/enums/InteractionType';
 import { ClientKafka } from '@nestjs/microservices';
 import { ContentClient } from 'src/client/content.client';
 import { UserDto } from 'src/client/dto/user-response.dto';
-import { CommentSummary } from './dto/summary-comment.dto';
+import { MentionService } from 'src/mention/mention.service';
+import { UpdateCommentDto } from './dto/update-comment.dto';
+import { Like } from 'src/like/entities/like.entity';
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class CommentService {
   constructor(
     @InjectRepository(Comment) private commentRepo: Repository<Comment>,
+    @InjectRepository(Like)
+    private likeRepo: Repository<Like>,
     private context: ContextService,
-    @Inject(forwardRef(() => LikeService))
-    private likeService: LikeService,
     private contentClient: ContentClient,
+    private mentionService: MentionService,
     @Inject('KAFKA_SERVICE') private kafkaClient: ClientKafka,
   ) {}
-
-  private async traverseToRoot(commentId: number): Promise<CommentSummary> {
-    let current = await this.commentRepo.findOne({
-      where: { id: commentId },
-    });
-
-    if (!current) {
-      throw new NotFoundException(`Comment #${commentId} not found`);
-    }
-
-    const visited = new Set<number>();
-
-    while (current.targetType === CommentTargetType.COMMENT) {
-      if (visited.has(current.id)) {
-        throw new Error('Circular comment reference detected');
-      }
-
-      visited.add(current.id);
-
-      const parent = await this.commentRepo.findOne({
-        where: { id: current.targetId },
-      });
-
-      if (!parent) {
-        throw new NotFoundException('Root target not found');
-      }
-
-      current = parent;
-    }
-
-    return {
-      id: commentId,
-      userId: current.userId,
-      username: current.username,
-      avatarUrl: current.avatarUrl,
-      targetId: current.targetId,
-      targetType: current.targetType,
-    };
-  }
-
-  // private async findRootTarget(
-  //   targetId: number,
-  //   targetType: CommentTargetType,
-  // ): Promise<CommentSummary> {
-  //   // if (targetType === CommentTargetType.POST) {
-  //   //   return { id: targetId, type: 'POST' };
-  //   // }
-  //   // if (targetType === CommentTargetType.SHORT) {
-  //   //   return { id: targetId, type: 'SHORT' };
-  //   // }
-  //   if (targetType === CommentTargetType.COMMENT) {
-  //     return this.traverseToRoot(targetId);
-  //   }
-  //   else {
-  //     return this
-  //   }
-
-  //   throw new Error(`Unknown target type: ${targetType}`);
-  // }
 
   async updateAvatarUrl(userId: string, avatarUrl: string) {
     const BATCH_SIZE = 100;
@@ -118,49 +58,44 @@ export class CommentService {
   async create(createCommentDto: CreateCommentDto) {
     const userId = this.context.getUserId();
 
-    const newComment = this.commentRepo.create({
+    const comment = this.commentRepo.create({
       userId,
       username: this.context.getUsername(),
       avatarUrl: this.context.getAvatarUrl(),
       targetId: createCommentDto.targetId,
       targetType: createCommentDto.targetType,
       content: createCommentDto.content,
+      ...(createCommentDto.replyToId && {
+        replyTo: { id: createCommentDto.replyToId },
+      }),
     });
 
-    const savedComment = await this.commentRepo.save(newComment);
+    const savedComment = await this.commentRepo.save(comment);
 
-    let contentId: number;
-    let contentType: CommentTargetType;
-    let owner: UserDto | null = null;
-    let repliedUser: UserDto | null = null;
+    if (createCommentDto.replyToId) {
+      await this.updateInteraction(
+        createCommentDto.replyToId,
+        InteractionType.COMMENT,
+      );
+    }
 
-    if (
-      savedComment.targetType === CommentTargetType.POST ||
-      savedComment.targetType === CommentTargetType.SHORT
-    ) {
-      contentId = savedComment.targetId;
-      contentType = savedComment.targetType;
-
-      owner =
-        contentType === CommentTargetType.POST
-          ? await this.contentClient.getPostOwner(contentId)
-          : await this.contentClient.getShortOwner(contentId);
-    } else if (savedComment.targetType === CommentTargetType.COMMENT) {
-      const root = await this.traverseToRoot(savedComment.targetId);
-
-      contentId = root.targetId;
-      contentType = root.targetType;
-
-      if (contentType === CommentTargetType.POST) {
-        owner = await this.contentClient.getPostOwner(contentId);
-      } else if (contentType === CommentTargetType.SHORT) {
-        owner = await this.contentClient.getShortOwner(contentId);
-      }
-
-      const repliedComment = await this.commentRepo.findOne({
-        where: { id: savedComment.targetId },
+    if (comment && createCommentDto.mentions) {
+      await this.mentionService.createMany({
+        mentions: createCommentDto.mentions,
+        commentId: comment.id,
       });
+    }
 
+    const owner =
+      savedComment.targetType === CommentTargetType.POST
+        ? await this.contentClient.getPostOwner(savedComment.targetId)
+        : await this.contentClient.getShortOwner(savedComment.targetId);
+
+    let repliedUser: UserDto | null = null;
+    if (createCommentDto.replyToId) {
+      const repliedComment = await this.commentRepo.findOne({
+        where: { id: createCommentDto.replyToId },
+      });
       if (repliedComment && repliedComment.userId !== userId) {
         repliedUser = {
           userId: repliedComment.userId,
@@ -168,21 +103,17 @@ export class CommentService {
           avatarUrl: repliedComment.avatarUrl,
         };
       }
-    } else {
-      throw new Error('Unsupported CommentTargetType');
     }
 
-    if (contentType !== CommentTargetType.COMMENT) {
-      this.kafkaClient.emit('content.commented', {
-        contentId,
-        contentType,
-        commentId: savedComment.id,
-        authorId: userId,
-        timestamp: new Date().toISOString(),
-        userId: savedComment.userId,
-        avatarUrl: savedComment.avatarUrl,
-      });
-    }
+    this.kafkaClient.emit('content.commented', {
+      contentId: savedComment.targetId,
+      contentType: savedComment.targetType,
+      commentId: savedComment.id,
+      authorId: userId,
+      timestamp: new Date().toISOString(),
+      userId: savedComment.userId,
+      avatarUrl: savedComment.avatarUrl,
+    });
 
     const receiverMap = new Map<
       string,
@@ -196,65 +127,105 @@ export class CommentService {
       });
     }
 
-    if (
-      repliedUser &&
-      repliedUser.userId !== userId &&
-      !receiverMap.has(repliedUser.userId)
-    ) {
+    if (repliedUser && !receiverMap.has(repliedUser.userId)) {
       receiverMap.set(repliedUser.userId, {
         username: repliedUser.username,
         avatarUrl: repliedUser.avatarUrl || undefined,
       });
     }
 
-    const receiverIds = Array.from(receiverMap.keys());
-    const usernames = Array.from(receiverMap.values()).map((v) => v.username);
-    const snapshotAvatarUrls = Array.from(receiverMap.values()).map(
-      (v) => v.avatarUrl,
-    );
-
-    if (receiverIds.length > 0) {
+    if (receiverMap.size > 0) {
       this.kafkaClient.emit('content.notification.commented', {
-        receiverIds,
-        usernames,
-        snapshotAvatarUrls,
+        receiverIds: Array.from(receiverMap.keys()),
+        usernames: Array.from(receiverMap.values()).map((v) => v.username),
+        snapshotAvatarUrls: Array.from(receiverMap.values()).map(
+          (v) => v.avatarUrl,
+        ),
         actorName: savedComment.username,
         actorAvatarUrl: savedComment.avatarUrl,
-        contentId,
-        contentType,
+        contentId: savedComment.targetId,
+        contentType: savedComment.targetType,
         commentId: savedComment.id,
       });
     }
 
     return savedComment;
   }
-
   async findByTarget(
     targetId: number,
     type: CommentTargetType,
-    page = 10,
+    page = 1,
     size = 10,
   ) {
+    const userId = this.context.getUserId();
     const [comments, total] = await this.commentRepo.findAndCount({
       where: {
         targetId,
         targetType: type,
+        replyTo: IsNull(),
       },
-      order: {
-        createdAt: 'DESC',
-      },
+      order: { createdAt: 'DESC' },
       skip: (page - 1) * size,
       take: size,
+      relations: ['mentions'],
     });
 
+    let likedCommentIds = new Set<number>();
+    if (userId) {
+      const likes = await this.likeRepo.find({
+        where: {
+          targetId: In(comments.map((c) => c.id)),
+          targetType: LikeTargetType.COMMENT,
+          userId,
+        },
+      });
+      likedCommentIds = new Set(likes.map((l) => l.targetId));
+    }
+
     return {
-      content: comments,
-      meta: {
-        page,
-        size,
-        total,
-        totalPages: Math.ceil(total / size),
-      },
+      content: comments.map((c) => ({
+        ...c,
+        isLiked: likedCommentIds.has(c.id), // ✅
+      })),
+      page,
+      size,
+      total,
+      totalPages: Math.ceil(total / size),
+    };
+  }
+
+  async findReplies(commentId: number, page = 1, size = 10) {
+    const userId = this.context.getUserId();
+
+    const [replies, total] = await this.commentRepo.findAndCount({
+      where: { replyTo: { id: commentId } },
+      order: { createdAt: 'ASC' },
+      skip: (page - 1) * size,
+      take: size,
+      relations: ['replies', 'mentions'],
+    });
+
+    let likedCommentIds = new Set<number>();
+    if (userId) {
+      const likes = await this.likeRepo.find({
+        where: {
+          targetId: In(replies.map((r) => r.id)),
+          targetType: LikeTargetType.COMMENT,
+          userId,
+        },
+      });
+      likedCommentIds = new Set(likes.map((l) => l.targetId));
+    }
+
+    return {
+      content: replies.map((r) => ({
+        ...r,
+        isLiked: likedCommentIds.has(r.id), // ✅
+      })),
+      page,
+      size,
+      total,
+      totalPages: Math.ceil(total / size),
     };
   }
 
@@ -267,15 +238,15 @@ export class CommentService {
     }
     switch (action) {
       case InteractionType.COMMENT:
-        comment.commentCount += 1;
+        comment.replyCount += 1;
         break;
       case InteractionType.LIKE:
         comment.likeCount += 1;
         break;
 
       case InteractionType.DELETE_COMMENT:
-        if (comment.commentCount > 0) {
-          comment.commentCount -= 1;
+        if (comment.replyCount > 0) {
+          comment.replyCount -= 1;
         }
         break;
       case InteractionType.UNLIKE:
@@ -288,7 +259,8 @@ export class CommentService {
     }
     await this.commentRepo.save(comment);
   }
-  async update(id: number, content: string) {
+
+  async update(id: number, updateCommentDto: UpdateCommentDto) {
     const comment = await this.commentRepo.findOne({ where: { id } });
     if (!comment) {
       throw new NotFoundException(`Comment not found!`);
@@ -303,8 +275,14 @@ export class CommentService {
     if (diffMs > FIFTEEN_MINUTES) {
       throw new ForbiddenException('Exceeded the allowed time!');
     }
-    comment.content = content;
-    return this.commentRepo.save(comment);
+
+    await this.commentRepo.update(id, { content: updateCommentDto.content });
+
+    if (updateCommentDto.mentions !== undefined) {
+      await this.mentionService.updateMentions(id, updateCommentDto.mentions);
+    }
+
+    return this.commentRepo.findOne({ where: { id }, relations: ['mentions'] });
   }
 
   async findOne(id: number) {
@@ -316,57 +294,51 @@ export class CommentService {
       where: { id: commentId },
     });
 
-    if (!rootComment) {
-      throw new NotFoundException('Comment not found');
-    }
-
-    let contentId: number;
-    let contentType: CommentTargetType;
-
-    if (
-      rootComment.targetType === CommentTargetType.POST ||
-      rootComment.targetType === CommentTargetType.SHORT
-    ) {
-      contentId = rootComment.targetId;
-      contentType = rootComment.targetType;
-    } else {
-      const root = await this.traverseToRoot(commentId);
-      contentId = root.targetId;
-      contentType = root.targetType;
-    }
+    if (!rootComment) throw new NotFoundException('Comment not found');
 
     const allIds: number[] = [];
     const stack = [commentId];
 
     while (stack.length) {
-      const currentId = stack.pop()!;
-
+      const currentId = stack.pop()!; 
       allIds.push(currentId);
 
       const children = await this.commentRepo.find({
-        where: {
-          targetId: currentId,
-          targetType: CommentTargetType.COMMENT,
-        },
+        where: { replyTo: { id: currentId } },
         select: ['id'],
+        relations: ['replies'],
       });
 
-      for (const child of children) {
-        stack.push(child.id);
-      }
+      for (const child of children) stack.push(child.id);
     }
 
-    await this.likeService.removeByTargetIds(allIds, LikeTargetType.COMMENT);
+    await this.mentionService.updateMentions(commentId);
 
+    this.kafkaClient.emit('comment.likes.remove', {
+      targetIds: allIds,
+      targetType: LikeTargetType.COMMENT,
+    });
     await this.commentRepo.delete(allIds);
 
     this.kafkaClient.emit('content.comment_deleted', {
-      contentId,
-      contentType,
+      contentId: rootComment.targetId,
+      contentType: rootComment.targetType,
       deletedCount: allIds.length,
       timestamp: new Date().toISOString(),
     });
 
     return { deleted: allIds.length };
+  }
+
+  async getCommentedIds(
+    userId: string,
+    targetIds: number[],
+    targetType: CommentTargetType,
+  ) {
+    const comments = await this.commentRepo.find({
+      where: { userId, targetId: In(targetIds), targetType },
+      select: ['targetId'],
+    });
+    return comments.map((c) => c.targetId);
   }
 }

@@ -1,16 +1,22 @@
 package com.example.user_service.responses;
 
 import com.example.user_service.entities.User;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
 @NoArgsConstructor
+@AllArgsConstructor
 public class UserResponseExtend extends UserResponse {
     private Boolean isFollowed;
     private Boolean isBlocked;
+    private long followersCount;
+    private long followingCount;
+    private long postCount;
+    private long shortCount;
 
-    public UserResponseExtend(User user, Boolean isFollowed, Boolean isBlocked) {
+    public UserResponseExtend(User user, Boolean isFollowed, Boolean isBlocked, long followersCount, long followingCount, long postCount, long shortCount) {
         super(
                 user.getId(),
                 user.getEmail(),
@@ -21,14 +27,19 @@ public class UserResponseExtend extends UserResponse {
                 user.getPhone(),
                 user.getStatus(),
                 user.getBio(),
+                user.getGender(),
                 user.getCreatedAt(),
                 user.getUpdatedAt()
         );
         this.isFollowed = isFollowed;
         this.isBlocked = isBlocked;
+        this.followersCount = followersCount;
+        this.followingCount = followingCount;
+        this.postCount = postCount;
+        this.shortCount = shortCount;
     }
 
-    public static UserResponseExtend from(User user, Boolean isFollowed, Boolean isBlocked) {
-        return new UserResponseExtend(user, isFollowed, isBlocked);
+    public static UserResponseExtend from(User user, Boolean isFollowed, Boolean isBlocked, long followersCount, long followingCount, long postCount, long shortCount) {
+        return new UserResponseExtend(user, isFollowed, isBlocked, followersCount, followingCount, postCount, shortCount);
     }
 }

@@ -15,7 +15,7 @@ export class Notification {
   @Column({ type: 'uuid', nullable: false })
   userId!: string;
 
-  @Column({ type: 'text' })
+  @Column({ type: 'text', nullable: true })
   snapshotUrl?: string;
 
   @Column({ type: 'int', nullable: true })

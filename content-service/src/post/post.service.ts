@@ -13,7 +13,7 @@ import { PostMediaService } from 'src/post_media/post_media.service';
 import { ContentStatus } from 'src/enums/content_status.type';
 import { UserRole } from 'src/enums/user_role.type';
 import { TagService } from 'src/tag/tag.service';
-import { ContentType } from 'src/enums/content.type';
+import { ContentServiceType, ContentType } from 'src/enums/content.type';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { PostResponseDto } from './dto/response-post.dto';
 import { CollabService } from 'src/collab/collab.service';
@@ -23,6 +23,8 @@ import { ContextService } from 'src/context/context.service';
 import { InteractionType } from 'src/enums/interaction.type';
 import { OutboxEventsService } from 'src/outbox_events/outbox_events.service';
 import { Tag } from 'src/tag/entities/tag.entity';
+import { MentionsService } from 'src/mention/mention.service';
+import { InteractionClient } from 'src/client/interaction.client';
 
 @Injectable()
 export class PostService {
@@ -38,6 +40,8 @@ export class PostService {
     private collabService: CollabService,
     private dataSource: DataSource,
     private outboxEventService: OutboxEventsService,
+    private mentionService: MentionsService,
+    private interactionClient: InteractionClient,
   ) {}
 
   async create(
@@ -54,15 +58,6 @@ export class PostService {
 
     const mediaResponses = await this.mediaClient.upload(files, 'post', userId);
 
-    let musicUrl: string | null = null;
-    if (createPostDto.musicId) {
-      const musicResponse = await this.mediaClient.getMusic(
-        userId,
-        createPostDto.musicId,
-      );
-      musicUrl = musicResponse.url;
-    }
-
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -73,8 +68,6 @@ export class PostService {
         userId,
         avatarUrl,
         username,
-        musicId: createPostDto.musicId ?? null,
-        musicUrl,
       });
 
       const savedPost = await queryRunner.manager.save(post);
@@ -105,6 +98,16 @@ export class PostService {
           targetId: savedPost.id,
           type: ContentType.POST,
         });
+      }
+
+      if (createPostDto.mentions) {
+        await this.mentionService.createMany(
+          createPostDto.mentions.map((m) => ({
+            ...m,
+            targetId: savedPost.id,
+            type: ContentType.POST,
+          })),
+        );
       }
 
       await this.outboxEventService.create(queryRunner.manager, {
@@ -143,6 +146,10 @@ export class PostService {
     } finally {
       await queryRunner.release();
     }
+  }
+
+  async countUserPost(userId: string) {
+    return this.postRepo.count({ where: { userId } });
   }
 
   async updateStatus(postId: number, status: ContentStatus): Promise<Post> {
@@ -235,15 +242,15 @@ export class PostService {
     await this.postRepo.save(post);
   }
 
-  async decreaseCommentInteraction(shortId: number, num: number) {
+  async decreaseCommentInteraction(postId: number, num: number) {
     const result = await this.postRepo.decrement(
-      { id: shortId },
+      { id: postId },
       'commentCount',
       num,
     );
 
     if (result.affected === 0) {
-      throw new NotFoundException('Short not found!');
+      throw new NotFoundException('Post not found!');
     }
   }
 
@@ -252,6 +259,7 @@ export class PostService {
     page = 1,
     size = 10,
   ): Promise<PostResponsePageDto> {
+    const currentUserId = this.context.getUserId();
     const [posts, total] = await this.postRepo.findAndCount({
       where: { userId },
       relations: ['medias'],
@@ -260,18 +268,33 @@ export class PostService {
       take: size,
     });
 
+    const interactions = await this.interactionClient.getCurrentInteraction(
+      currentUserId,
+      posts.map((post) => post.id),
+      ContentServiceType.POST,
+    );
+
+    const interactionMap = new Map(interactions.map((i) => [i.targetId, i]));
+
     return {
-      content: posts.map((post) => ({
-        id: post.id,
-        caption: post.caption,
-        userId: post.userId,
-        avatarUrl: post.avatarUrl,
-        username: post.username,
-        mediaUrl: post.medias?.[0]?.mediaUrl,
-        likeCount: post.likeCount,
-        commentCount: post.commentCount,
-        shareCount: post.shareCount,
-      })),
+      content: posts.map((post) => {
+        const interaction = interactionMap.get(post.id);
+        return {
+          id: post.id,
+          caption: post.caption,
+          userId: post.userId,
+          avatarUrl: post.avatarUrl,
+          username: post.username,
+          mediaUrl: post.medias?.[0]?.mediaUrl,
+          likeCount: post.likeCount,
+          commentCount: post.commentCount,
+          shareCount: post.shareCount,
+          isLiked: interaction?.isLiked ?? false,
+          isCommented: interaction?.isCommented ?? false,
+          isShared: interaction?.isShared ?? false,
+          isSaved: interaction?.isSaved ?? false,
+        };
+      }),
       page,
       size,
       total,
@@ -302,12 +325,32 @@ export class PostService {
   }
 
   async findOneWithUrl(postId: number): Promise<PostResponseDto> {
-    const post = await this.postRepo.findOne({ where: { id: postId } });
+    const userId = this.context.getUserId();
+
+    const post = await this.postRepo.findOne({
+      where: { id: postId },
+      relations: ['medias'],
+    });
     if (!post) {
       throw new NotFoundException(`Post not found!`);
     }
 
     const tags = await this.tagService.findByTargetId(postId, ContentType.POST);
+
+    const interaction = await this.interactionClient.getCurrentInteraction(
+      userId,
+      [postId],
+      ContentServiceType.POST,
+    );
+
+    if (post.status === ContentStatus.DELETED) {
+      throw new NotFoundException('Post not available');
+    }
+
+    const mentions = await this.mentionService.findMany(
+      postId,
+      ContentType.POST,
+    );
 
     return {
       id: postId,
@@ -325,6 +368,11 @@ export class PostService {
       status: post.status,
       createdAt: post.createdAt,
       tags,
+      isLiked: interaction[0]?.isLiked ?? false,
+      isCommented: interaction[0]?.isCommented ?? false,
+      isShared: interaction[0]?.isShared ?? false,
+      isSaved: interaction[0]?.isSaved ?? false,
+      mentions,
     };
   }
 
@@ -338,7 +386,7 @@ export class PostService {
 
   async update(
     postId: number,
-    updatePostto: Partial<UpdatePostDto>,
+    updatePostDto: Partial<UpdatePostDto>,
   ): Promise<Post> {
     const queryRunner = this.dataSource.createQueryRunner();
 
@@ -346,61 +394,78 @@ export class PostService {
     await queryRunner.startTransaction();
 
     try {
-      const currentShort = await queryRunner.manager.findOne(Post, {
+      const currentPost = await queryRunner.manager.findOne(Post, {
         where: { id: postId },
       });
 
-      if (!currentShort) {
+      if (!currentPost) {
         throw new NotFoundException('Post not found');
       }
 
       const userId = this.context.getUserId();
 
-      if (currentShort.userId !== userId) {
+      if (currentPost.userId !== userId) {
         throw new ForbiddenException(
           "You don't have permission to update this post",
         );
       }
 
-      if (updatePostto.caption) {
-        currentShort.caption = updatePostto.caption;
+      if (updatePostDto.caption) {
+        currentPost.caption = updatePostDto.caption;
       }
 
-      if (updatePostto.tagsIdRemove && updatePostto.tagsIdRemove.length > 0) {
+      if (updatePostDto.tagsIdRemove && updatePostDto.tagsIdRemove.length > 0) {
         await this.tagService.removeMany(
-          updatePostto.tagsIdRemove,
+          updatePostDto.tagsIdRemove,
           queryRunner.manager,
         );
       }
 
-      if (updatePostto.tagsNameAdd && updatePostto.tagsNameAdd.length > 0) {
+      if (updatePostDto.tagsNameAdd && updatePostDto.tagsNameAdd.length > 0) {
         await this.tagService.createMany(
           {
-            names: updatePostto.tagsNameAdd,
-            targetId: currentShort.id,
+            names: updatePostDto.tagsNameAdd,
+            targetId: currentPost.id,
             type: ContentType.POST,
           },
           queryRunner.manager,
         );
       }
 
-      const savedShort = await queryRunner.manager.save(currentShort);
+      if (updatePostDto.mentionAdd && updatePostDto.mentionAdd.length > 0) {
+        await this.mentionService.createMany(
+          updatePostDto.mentionAdd.map((m) => ({
+            ...m,
+            targetId: postId,
+            type: ContentType.POST,
+          })),
+        );
+      }
 
-      if (updatePostto.caption) {
+      if (
+        updatePostDto.mentionIdRemove &&
+        updatePostDto.mentionIdRemove.length > 0
+      ) {
+        await this.mentionService.deleteMany(updatePostDto.mentionIdRemove);
+      }
+
+      const savedPost = await queryRunner.manager.save(currentPost);
+
+      if (updatePostDto.caption) {
         await this.outboxEventService.create(queryRunner.manager, {
           eventType: 'content.updated',
           payload: {
-            contentId: savedShort.id,
-            authorId: savedShort.userId,
+            contentId: savedPost.id,
+            authorId: savedPost.userId,
             type: 'POST',
-            createdAt: savedShort.createdAt,
+            createdAt: savedPost.createdAt,
           },
         });
       }
 
       await queryRunner.commitTransaction();
 
-      return savedShort;
+      return savedPost;
     } catch (error) {
       await queryRunner.rollbackTransaction();
       throw error;
@@ -414,6 +479,7 @@ export class PostService {
     page = 1,
     size = 10,
   ): Promise<PostResponsePageDto> {
+    const userId = this.context.getUserId();
     const queryBuilder = this.postRepo
       .createQueryBuilder('post')
       .leftJoin('post.tags', 'tag')
@@ -430,9 +496,7 @@ export class PostService {
         'media.id',
         'media.url',
       ])
-      .where('post.status = :status', {
-        status: ContentStatus.ACTIVE,
-      });
+      .where('post.status = :status', { status: ContentStatus.ACTIVE });
 
     if (keyword) {
       queryBuilder.andWhere(
@@ -448,20 +512,33 @@ export class PostService {
       .distinct(true)
       .getManyAndCount();
 
-    const content = posts.map((post) => ({
-      id: post.id,
-      caption: post.caption,
-      userId: post.userId,
-      username: post.username,
-      avatarUrl: post.avatarUrl,
-      likeCount: post.likeCount,
-      commentCount: post.commentCount,
-      shareCount: post.shareCount,
-      mediaUrl: post.medias?.[0]?.mediaUrl || '',
-    }));
+    const interactions = await this.interactionClient.getCurrentInteraction(
+      userId,
+      posts.map((post) => post.id),
+      ContentServiceType.POST,
+    );
+
+    const interactionMap = new Map(interactions.map((i) => [i.targetId, i]));
 
     return {
-      content,
+      content: posts.map((post) => {
+        const interaction = interactionMap.get(post.id);
+        return {
+          id: post.id,
+          caption: post.caption,
+          userId: post.userId,
+          username: post.username,
+          avatarUrl: post.avatarUrl,
+          likeCount: post.likeCount,
+          commentCount: post.commentCount,
+          shareCount: post.shareCount,
+          mediaUrl: post.medias?.[0]?.mediaUrl || '',
+          isLiked: interaction?.isLiked ?? false,
+          isCommented: interaction?.isCommented ?? false,
+          isShared: interaction?.isShared ?? false,
+          isSaved: interaction?.isSaved ?? false,
+        };
+      }),
       page,
       size,
       total,

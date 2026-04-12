@@ -19,7 +19,7 @@ export class StoryStorage {
   name!: string;
 
   @OneToMany(() => Story, (story) => story.storage)
-  stories?: Story[];
+  stories!: Story[];
 
   @CreateDateColumn()
   createdAt!: Date;

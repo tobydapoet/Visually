@@ -3,7 +3,6 @@ import {
   Get,
   Post,
   Body,
-  Patch,
   Param,
   Delete,
   Query,
@@ -12,12 +11,14 @@ import {
   HttpCode,
   HttpStatus,
   DefaultValuePipe,
+  Put,
 } from '@nestjs/common';
 import { CommentService } from './comment.service';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { CommentTargetType } from 'src/enums/ContentType';
 import { EventPattern, Payload } from '@nestjs/microservices';
 import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { UpdateCommentDto } from './dto/update-comment.dto';
 
 @ApiTags('Comment')
 @Controller('comment')
@@ -31,7 +32,7 @@ export class CommentController {
     return this.commentService.create(createCommentDto);
   }
 
-  @Get('target/:targetId')
+  @Get('target')
   @ApiQuery({
     name: 'type',
     enum: CommentTargetType,
@@ -41,19 +42,39 @@ export class CommentController {
   @ApiQuery({ name: 'page', required: false, example: 1 })
   @ApiQuery({ name: 'size', required: false, example: 10 })
   findByTarget(
-    @Param('targetId', ParseIntPipe) targetId: number,
-    @Query('type', new ParseEnumPipe(CommentTargetType))
-    type: CommentTargetType,
+    @Query('targetId', ParseIntPipe) targetId: number,
+    @Query('targetType', new ParseEnumPipe(CommentTargetType))
+    targetType: CommentTargetType,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
     @Query('size', new DefaultValuePipe(10), ParseIntPipe) size?: number,
   ) {
-    return this.commentService.findByTarget(targetId, type, page, size);
+    return this.commentService.findByTarget(targetId, targetType, page, size);
+  }
+
+  @Get('reply')
+  @ApiQuery({
+    name: 'type',
+    enum: CommentTargetType,
+    enumName: 'CommentTargetType',
+    required: true,
+  })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'size', required: false, example: 10 })
+  findRepliesByCommentId(
+    @Query('commentId', ParseIntPipe) commentId: number,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
+    @Query('size', new DefaultValuePipe(10), ParseIntPipe) size?: number,
+  ) {
+    return this.commentService.findReplies(commentId, page, size);
   }
 
   @ApiBearerAuth()
-  @Patch(':id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() content: string) {
-    return this.commentService.update(id, content);
+  @Put(':id')
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateCommentDto: UpdateCommentDto,
+  ) {
+    return this.commentService.update(id, updateCommentDto);
   }
 
   @Delete(':id')

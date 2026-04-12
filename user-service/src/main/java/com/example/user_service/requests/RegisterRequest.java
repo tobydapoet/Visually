@@ -34,6 +34,9 @@ public class RegisterRequest {
     @NotBlank(message = "Full name cannot be empty")
     private String fullName;
 
+    @NotBlank(message = "username cannot be empty")
+    private String username;
+
     @Pattern(
             regexp = "^(0|\\+84|84)(3|5|7|8|9)[0-9]{8}$",
             message = "Invalid Phone number"

@@ -16,13 +16,15 @@ import { MediaClient } from 'src/client/media.client';
 import { DataSource, In, Repository } from 'typeorm';
 import { UserRole } from 'src/enums/user_role.type';
 import { ContentStatus } from 'src/enums/content_status.type';
-import { ContentType } from 'src/enums/content.type';
+import { ContentServiceType, ContentType } from 'src/enums/content.type';
 import { ShortResponseDto } from './dto/response-short.dto';
 import { ShortResponsePageDto } from './dto/response-page-short';
 import { ContextService } from 'src/context/context.service';
 import { InteractionType } from 'src/enums/interaction.type';
 import { OutboxEventsService } from 'src/outbox_events/outbox_events.service';
 import { Tag } from 'src/tag/entities/tag.entity';
+import { MentionsService } from 'src/mention/mention.service';
+import { InteractionClient } from 'src/client/interaction.client';
 
 @Injectable()
 export class ShortService {
@@ -37,6 +39,8 @@ export class ShortService {
     private collabService: CollabService,
     private dataSource: DataSource,
     private outboxEventService: OutboxEventsService,
+    private mentionService: MentionsService,
+    private interactionClient: InteractionClient,
   ) {}
 
   async create(
@@ -68,15 +72,6 @@ export class ShortService {
     await queryRunner.startTransaction();
 
     try {
-      let musicUrl: string | null = null;
-      if (createShortDto.musicId) {
-        const musicResponse = await this.mediaClient.getMusic(
-          userId,
-          createShortDto.musicId,
-        );
-        musicUrl = musicResponse.url;
-      }
-
       const shortData: Partial<Short> = {
         userId,
         username,
@@ -86,8 +81,6 @@ export class ShortService {
         mediaUrl: mediaResponses[0].url,
         thumbnailId: mediaResponses[1].id,
         thumbnailUrl: mediaResponses[1].url,
-        musicId: createShortDto.musicId,
-        musicUrl,
       };
       const short = this.shortRepo.create(shortData);
 
@@ -108,6 +101,16 @@ export class ShortService {
           targetId: savedShort.id,
           type: ContentType.SHORT,
         });
+      }
+
+      if (createShortDto.mentions) {
+        await this.mentionService.createMany(
+          createShortDto.mentions.map((m) => ({
+            ...m,
+            targetId: savedShort.id,
+            type: ContentType.SHORT,
+          })),
+        );
       }
 
       await this.outboxEventService.create(queryRunner.manager, {
@@ -148,6 +151,10 @@ export class ShortService {
     } finally {
       await queryRunner.release();
     }
+  }
+
+  async countUserShort(userId: string) {
+    return this.shortRepo.count({ where: { userId } });
   }
 
   async updateInteraction(shortId: number, action: InteractionType) {
@@ -280,6 +287,8 @@ export class ShortService {
     page = 1,
     size = 10,
   ): Promise<ShortResponsePageDto> {
+    const currentUserId = this.context.getUserId();
+
     const [shorts, total] = await this.shortRepo.findAndCount({
       where: { userId },
       select: [
@@ -298,18 +307,34 @@ export class ShortService {
       take: size,
     });
 
+    const interactions = await this.interactionClient.getCurrentInteraction(
+      currentUserId,
+      shorts.map((short) => short.id),
+      ContentServiceType.SHORT,
+    );
+
+    const interactionMap = new Map(interactions.map((i) => [i.targetId, i]));
+
     return {
-      content: shorts.map((short) => ({
-        id: short.id,
-        caption: short.caption,
-        thumbnailUrl: short.thumbnailUrl,
-        userId: short.userId,
-        avatarUrl: short.avatarUrl,
-        username: short.username,
-        likeCount: short.likeCount,
-        commentCount: short.commentCount,
-        shareCount: short.shareCount,
-      })),
+      content: shorts.map((short) => {
+        const interaction = interactionMap.get(short.id);
+
+        return {
+          id: short.id,
+          caption: short.caption,
+          thumbnailUrl: short.thumbnailUrl,
+          userId: short.userId,
+          avatarUrl: short.avatarUrl,
+          username: short.username,
+          likeCount: short.likeCount,
+          commentCount: short.commentCount,
+          shareCount: short.shareCount,
+          isLiked: interaction?.isLiked ?? false,
+          isCommented: interaction?.isCommented ?? false,
+          isShared: interaction?.isShared ?? false,
+          isSaved: interaction?.isSaved ?? false,
+        };
+      }),
       page,
       size,
       total,
@@ -317,6 +342,8 @@ export class ShortService {
   }
 
   async findOneWithUrl(shortId: number): Promise<ShortResponseDto> {
+    const userId = this.context.getUserId();
+
     const short = await this.shortRepo.findOne({ where: { id: shortId } });
     if (!short) {
       throw new NotFoundException(`Short not found!`);
@@ -327,21 +354,36 @@ export class ShortService {
       ContentType.SHORT,
     );
 
+    const interaction = await this.interactionClient.getCurrentInteraction(
+      userId,
+      [shortId],
+      ContentServiceType.SHORT,
+    );
+
+    const mentions = await this.mentionService.findMany(
+      shortId,
+      ContentType.SHORT,
+    );
+
     return {
       id: shortId,
       userId: short.userId,
       username: short.username,
       avatarUrl: short.avatarUrl,
       caption: short.caption,
-      musicUrl: short.musicUrl,
       mediaUrl: short.mediaUrl,
       commentCount: short.commentCount,
       likeCount: short.likeCount,
-      sharedCount: short.shareCount,
+      shareCount: short.shareCount,
       createdAt: short.createdAt,
       status: short.status,
       thumbnailUrl: short.thumbnailUrl,
       tags,
+      isLiked: interaction[0]?.isLiked ?? false,
+      isCommented: interaction[0]?.isCommented ?? false,
+      isShared: interaction[0]?.isShared ?? false,
+      isSaved: interaction[0]?.isSaved ?? false,
+      mentions,
     };
   }
 
@@ -404,6 +446,23 @@ export class ShortService {
         );
       }
 
+      if (updateShortDto.mentionAdd && updateShortDto.mentionAdd.length > 0) {
+        await this.mentionService.createMany(
+          updateShortDto.mentionAdd.map((m) => ({
+            ...m,
+            targetId: shortId,
+            type: ContentType.SHORT,
+          })),
+        );
+      }
+
+      if (
+        updateShortDto.mentionIdRemove &&
+        updateShortDto.mentionIdRemove.length > 0
+      ) {
+        await this.mentionService.deleteMany(updateShortDto.mentionIdRemove);
+      }
+
       const savedShort = await queryRunner.manager.save(currentShort);
 
       if (updateShortDto.caption) {
@@ -434,6 +493,7 @@ export class ShortService {
     page = 1,
     size = 10,
   ): Promise<ShortResponsePageDto> {
+    const userId = this.context.getUserId();
     const queryBuilder = this.shortRepo
       .createQueryBuilder('short')
       .leftJoin(
@@ -451,7 +511,7 @@ export class ShortService {
         'short.thumbnailUrl',
         'short.likeCount',
         'short.commentCount',
-        'short.sharedCount',
+        'short.shareCount',
       ])
       .where('short.status = :status', {
         status: ContentStatus.ACTIVE,
@@ -471,17 +531,33 @@ export class ShortService {
       .distinct(true)
       .getManyAndCount();
 
-    const content = shorts.map((short) => ({
-      id: short.id,
-      userId: short.userId,
-      username: short.username,
-      avatarUrl: short.avatarUrl,
-      caption: short.caption,
-      thumbnailUrl: short.thumbnailUrl,
-      likeCount: short.likeCount,
-      commentCount: short.commentCount,
-      shareCount: short.shareCount,
-    }));
+    const interactions = await this.interactionClient.getCurrentInteraction(
+      userId,
+      shorts.map((short) => short.id),
+      ContentServiceType.SHORT,
+    );
+
+    const interactionMap = new Map(interactions.map((i) => [i.targetId, i]));
+
+    const content = shorts.map((short) => {
+      const interaction = interactionMap.get(short.id);
+
+      return {
+        id: short.id,
+        userId: short.userId,
+        username: short.username,
+        avatarUrl: short.avatarUrl,
+        caption: short.caption,
+        thumbnailUrl: short.thumbnailUrl,
+        likeCount: short.likeCount,
+        commentCount: short.commentCount,
+        shareCount: short.shareCount,
+        isLiked: interaction?.isLiked ?? false,
+        isCommented: interaction?.isCommented ?? false,
+        isShared: interaction?.isShared ?? false,
+        isSaved: interaction?.isSaved ?? false,
+      };
+    });
 
     return {
       content,

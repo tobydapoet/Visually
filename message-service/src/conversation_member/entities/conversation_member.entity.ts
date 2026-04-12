@@ -27,17 +27,14 @@ export class ConversationMember {
   @Column({ type: 'text', nullable: false })
   username!: string;
 
-  @Column({ type: 'text', nullable: false })
-  avatarUrl?: string;
-
   @Column({ type: 'text', nullable: true })
-  nickname?: string;
+  avatarUrl?: string;
 
   @Column({ type: 'int', nullable: true })
   lastSeenMessageId?: number;
 
   @DeleteDateColumn({ type: 'datetime', nullable: true })
-  deletedAt?: Date;
+  deletedAt?: Date | null;
 
   @OneToMany(() => Message, (message) => message.sender)
   messages?: Message[];

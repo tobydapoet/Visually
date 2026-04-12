@@ -55,10 +55,12 @@ public class AuthFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
+        String method = request.getMethod();
         System.out.println("🔍 Follow shouldNotFilter check: " + path);
         return path.startsWith("/actuator")
                 || path.contains("/v3/api-docs")
-                || path.contains("swagger");
+                || path.contains("swagger")
+                || (method.equals("GET") && path.startsWith("/relationship"));
 
     }
 }

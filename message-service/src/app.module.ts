@@ -3,13 +3,13 @@ import { AppService } from './app.service';
 import { ConversationModule } from './conversation/conversation.module';
 import { ConversationMemberModule } from './conversation_member/conversation_member.module';
 import { MessageModule } from './message/message.module';
-import { AttachmentModule } from './attachment/attachment.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
 import { ContextModule } from './context/context.module';
 import { ClientModule } from './client/client.module';
 import { MessageMediaModule } from './message_media/message_media.module';
 import { KafkaModule } from './kafka/kafka.module';
+import { MentionModule } from './mention/mention.module';
 
 @Module({
   imports: [
@@ -30,11 +30,11 @@ import { KafkaModule } from './kafka/kafka.module';
     ConversationModule,
     ConversationMemberModule,
     MessageModule,
-    AttachmentModule,
     ContextModule,
     ClientModule,
     MessageMediaModule,
     KafkaModule,
+    MentionModule,
   ],
   providers: [AppService],
 })

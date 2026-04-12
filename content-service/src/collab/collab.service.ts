@@ -8,16 +8,13 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Collab } from './entities/collab.entity';
 import { In, Repository } from 'typeorm';
 import { ContentType } from 'src/enums/content.type';
-import { CollabStatus } from 'src/enums/collab_status.type';
 import { UserClient } from 'src/client/user.client';
-import { ContextService } from 'src/context/context.service';
 
 @Injectable()
 export class CollabService {
   constructor(
     @InjectRepository(Collab) private collabRepo: Repository<Collab>,
     private userClient: UserClient,
-    private context: ContextService,
   ) {}
   async createMany(createCollabDto: CreateCollabDto): Promise<Collab[]> {
     const { targetId, type, userIds } = createCollabDto;
@@ -52,22 +49,6 @@ export class CollabService {
 
   async findByTargetId(targetId: number, type: ContentType) {
     return this.collabRepo.find({ where: { targetId, type } });
-  }
-
-  async acceptCollab(targetId: number, type: ContentType) {
-    const userId = this.context.getUserId();
-    const collab = await this.collabRepo.findOne({
-      where: { targetId, type, userId },
-    });
-
-    if (!collab) {
-      throw new NotFoundException(
-        `Collab not found with targetId=${targetId} and type=${type}`,
-      );
-    }
-
-    collab.status = CollabStatus.APPROVED;
-    return this.collabRepo.save(collab);
   }
 
   async removeCollab(targetId: number, type: ContentType) {

@@ -1,6 +1,16 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty, IsNumber, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsArray,
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
 import { CommentTargetType } from 'src/enums/ContentType';
+import { MentionItem } from 'src/mention/dto/create-mention.dto';
 
 export class CreateCommentDto {
   @ApiProperty()
@@ -20,4 +30,15 @@ export class CreateCommentDto {
   @IsNotEmpty()
   @IsString()
   content!: string;
+
+  @ApiProperty()
+  @IsOptional()
+  @IsNumber()
+  replyToId?: number;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => MentionItem)
+  mentions?: MentionItem[];
 }

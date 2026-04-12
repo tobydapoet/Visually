@@ -26,12 +26,6 @@ export class Post {
   @Column({ type: 'text' })
   caption?: string;
 
-  @Column({ type: 'int', nullable: true })
-  musicId?: number | null;
-
-  @Column({ type: 'text', nullable: true })
-  musicUrl?: string | null;
-
   @OneToMany(() => PostMedia, (media) => media.post)
   medias?: PostMedia[];
 

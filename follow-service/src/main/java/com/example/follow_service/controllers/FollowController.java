@@ -6,6 +6,7 @@ import com.example.follow_service.enums.FollowType;
 import com.example.follow_service.requests.CurrentUser;
 import com.example.follow_service.requests.FollowEvent;
 import com.example.follow_service.requests.FollowNotificationEvent;
+import com.example.follow_service.responses.FollowInfoResponse;
 import com.example.follow_service.responses.FollowResponse;
 import com.example.follow_service.responses.UserResponse;
 import com.example.follow_service.services.FollowService;
@@ -37,9 +38,7 @@ public class FollowController {
                 currentUser.getUserId(),
                 page,
                 size,
-                type,
-                String.join(",", currentUser.getRoles()),
-                currentUser.getSessionId()
+                type
         );
     }
 
@@ -56,24 +55,25 @@ public class FollowController {
     public Page<FollowResponse> getFollowers(
             @RequestParam UUID followerId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search
     ) {
-        System.out.println("followerId = " + followerId);
         CurrentUser currentUser = AuthContext.get();
         return followService.findAllByFollowerId(
                 currentUser.getUserId(),
                 followerId,
                 page,
                 size,
-                String.join(",", currentUser.getRoles()),
-                currentUser.getSessionId());
+                search
+        );
     }
 
     @GetMapping("/following")
     public Page<FollowResponse> getUserIds(
             @RequestParam UUID followerId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search
     ) {
         CurrentUser currentUser = AuthContext.get();
         return followService.findAllByUserId(
@@ -81,12 +81,42 @@ public class FollowController {
                 followerId,
                 page,
                 size,
-                String.join(",", currentUser.getRoles()),
-                currentUser.getSessionId());
+                search
+        );
+    }
+
+    @GetMapping("/both")
+    public Page<FollowResponse> getBothByUserIds(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search
+    ) {
+        CurrentUser currentUser = AuthContext.get();
+        return followService.findBothByFollowerId(
+                currentUser.getUserId(),
+                page,
+                size,
+                search
+        );
+    }
+
+    @GetMapping("/mutual")
+    public Page<FollowResponse> getMutualFollowsUserIds(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search
+    ) {
+        CurrentUser currentUser = AuthContext.get();
+        return followService.findMutualFollows(
+                currentUser.getUserId(),
+                page,
+                size,
+                search
+        );
     }
 
     @GetMapping("/{id}")
-    Map<String, String> isFollowed(
+    public FollowInfoResponse isFollowed(
             @PathVariable UUID followedId
     ) {
         CurrentUser currentUser = AuthContext.get();
@@ -101,8 +131,8 @@ public class FollowController {
             CurrentUser currentUser = AuthContext.get();
 
             FollowNotificationEvent event = new FollowNotificationEvent();
-            event.setFollowedId(currentUser.getUserId());
-            event.setFollowerId(id);
+            event.setFollowedId(id);
+            event.setFollowerId(currentUser.getUserId());
             event.setFollowerAvatarUrl(currentUser.getAvatarUrl());
             event.setFollowerUsername(currentUser.getUsername());
 
@@ -130,7 +160,7 @@ public class FollowController {
     ) {
         try {
             CurrentUser currentUser = AuthContext.get();
-            boolean follow = followService.delete(currentUser.getUserId(), id);
+            boolean follow = followService.delete(id, currentUser.getUserId());
             Map<String, String> response = new HashMap<>();
             if (follow) {
                 response.put("status", "success");

@@ -4,6 +4,7 @@ import com.example.follow_service.entities.Block;
 import com.example.follow_service.entities.Follow;
 import com.example.follow_service.exceptions.ConflictException;
 import com.example.follow_service.repositories.BlockRepository;
+import com.example.follow_service.responses.BlockInfoResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -31,14 +32,16 @@ public class BlockService {
         return true;
     }
 
-    public Map<String, String> isBlocked(UUID userId, UUID blockerId) {
-        Optional<Block> followOpt =
-                blockRepository.findByUserIdAndBlockerId(userId, blockerId);
+    public BlockInfoResponse isBlocked(UUID userId, UUID blockerId) {
+        boolean isBlock = false;
 
-        Map<String, String> map = new HashMap<>();
-        map.put("isBlock", followOpt.isPresent() ? "true" : "false");
+        if (userId != null) {
+            isBlock = blockRepository
+                    .findByUserIdAndBlockerId(userId, blockerId)
+                    .isPresent();
+        }
 
-        return map;
+        return new BlockInfoResponse(isBlock);
     }
 
     public boolean isBlockedBool(UUID userId, UUID targetUserId) {

@@ -5,7 +5,6 @@ import {
   Body,
   Param,
   Query,
-  UseGuards,
   UseInterceptors,
   UploadedFile,
   HttpCode,
@@ -13,12 +12,15 @@ import {
   ParseIntPipe,
   BadRequestException,
   Delete,
+  ParseBoolPipe,
+  Put,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { StoryService } from './story.service';
 import {
   CreateStoryDto,
   CreateStoryMultipartDto,
+  StoryToStorageDto,
 } from './dto/create-story.dto';
 import { StoryResponseDto } from './dto/response-story.dto';
 import { EventPattern, Payload } from '@nestjs/microservices';
@@ -52,32 +54,60 @@ export class StoryController {
     }
   }
 
-  @Get(':id')
-  async findOne(
-    @Param('id', ParseIntPipe) id: number,
-  ): Promise<StoryResponseDto> {
-    return this.storyService.findOneWithUrl(id);
+  @Put('storage/add')
+  async addStoryToStorage(
+    @Query('storageId', ParseIntPipe) storageId: number,
+    @Query('storyId', ParseIntPipe) storyId: number,
+  ) {
+    const res = await this.storyService.addStoryToStorage(storageId, storyId);
+
+    return {
+      message: 'Add story from storage success!',
+      data: res,
+    };
   }
 
-  @Get('user/:userId')
+  @Put('storage/remove')
+  async removeStoryFromStorage(
+    @Query('storageId', ParseIntPipe) storageId: number,
+    @Query('storyId', ParseIntPipe) storyId: number,
+  ) {
+    const res = await this.storyService.removeStoryFromStorage(
+      storageId,
+      storyId,
+    );
+    return {
+      message: 'Remove story from storage success!',
+      data: res,
+    };
+  }
+
+  @Get('user')
   @ApiBearerAuth()
   async findByUser(
-    @Param('userId') userId: string,
+    @Query('userId') userId: string,
     @Query('page', new ParseIntPipe({ optional: true })) page = 1,
     @Query('size', new ParseIntPipe({ optional: true })) size = 10,
+    @Query('filterStorage', new ParseBoolPipe({ optional: true }))
+    filterStorage = false,
   ) {
     if (size > 50) {
       throw new BadRequestException('Maximum page size is 50');
     }
 
-    return this.storyService.findByUser(userId, page, size);
+    return this.storyService.findByUser(userId, page, size, filterStorage);
   }
 
   @Get('storage/:storageId')
   async findByStorage(
     @Param('storageId', ParseIntPipe) storageId: number,
-  ): Promise<StoryResponseDto[]> {
-    return this.storyService.findByStorage(storageId);
+    @Query('page', new ParseIntPipe({ optional: true })) page = 1,
+  ): Promise<{
+    content: StoryResponseDto[];
+    page: number;
+    total: number;
+  }> {
+    return this.storyService.getStoryInStorage(storageId, page);
   }
 
   @Get('me')
@@ -87,6 +117,13 @@ export class StoryController {
     @Query('size', new ParseIntPipe({ optional: true })) size = 10,
   ) {
     return this.storyService.getCurrentUserStory(page, size);
+  }
+
+  @Get(':id')
+  async findOne(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<StoryResponseDto> {
+    return this.storyService.findOneWithUrl(id);
   }
 
   @Delete(':id')

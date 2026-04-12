@@ -1,8 +1,7 @@
-import { PartialType } from '@nestjs/mapped-types';
-import { CreateConversationDto } from './create-conversation.dto';
+import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
 
-export class UpdateConversationDto extends PartialType(CreateConversationDto) {
-  name!: string;
-
-  avatarUrl!: string;
+export class UpdateConversationDto {
+  @IsOptional()
+  @IsString()
+  name?: string;
 }

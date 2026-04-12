@@ -1,12 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateConversationDto } from './dto/create-conversation.dto';
-import { UpdateConversationDto } from './dto/update-conversation.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Conversation } from './entities/conversation.entity';
 import { DataSource, Repository } from 'typeorm';
 import { ConversationMemberService } from '../conversation_member/conversation_member.service';
 import { ContextService } from '../context/context.service';
 import { ConversationType } from '../enums/conversation.type';
+import { MediaClient } from '../client/media.client';
+import { UpdateConversationDto } from './dto/update-conversation.dto';
 
 @Injectable()
 export class ConversationService {
@@ -14,9 +15,11 @@ export class ConversationService {
     @InjectRepository(Conversation)
     private conversationRepo: Repository<Conversation>,
     private memberService: ConversationMemberService,
+    private mediaClient: MediaClient,
     private dataSource: DataSource,
     private context: ContextService,
   ) {}
+
   async create(createConversationDto: CreateConversationDto) {
     return this.dataSource.transaction(async (manager) => {
       const newConversation = this.conversationRepo.create({
@@ -39,77 +42,179 @@ export class ConversationService {
     });
   }
 
-  async findAll(page = 1, limit = 20, keyword?: string) {
+  async update(
+    converstationId: number,
+    updateConversationDto: UpdateConversationDto,
+    file?: Express.Multer.File,
+  ) {
     const userId = this.context.getUserId();
-    const skip = (page - 1) * limit;
+
+    const existingConversation = await this.conversationRepo.findOne({
+      where: { id: converstationId },
+    });
+
+    if (!existingConversation) {
+      throw new NotFoundException("Can't find this conversation");
+    }
+
+    let mediaId = existingConversation.mediaId;
+    let mediaUrl = existingConversation.mediaUrl;
+
+    if (file) {
+      if (existingConversation.mediaId) {
+        await this.mediaClient.delete([existingConversation.mediaId], userId);
+      }
+
+      const res = await this.mediaClient.upload([file], userId);
+      mediaId = res[0].id;
+      mediaUrl = res[0].url;
+    }
+
+    const updateData: any = {};
+
+    if (updateConversationDto.name !== undefined) {
+      updateData.name = updateConversationDto.name;
+    }
+
+    if (file) {
+      updateData.mediaId = mediaId;
+      updateData.mediaUrl = mediaUrl;
+    }
+
+    return await this.conversationRepo.update(
+      { id: converstationId },
+      updateData,
+    );
+  }
+
+  async findPrivateConversation(userBId: string) {
+    const userAId = this.context.getUserId();
+
+    return this.conversationRepo
+      .createQueryBuilder('c')
+      .innerJoin('c.members', 'm')
+      .where('m.userId IN (:...userIds)', {
+        userIds: [userAId, userBId],
+      })
+      .andWhere('m.deletedAt IS NULL')
+      .groupBy('c.id')
+      .having('COUNT(DISTINCT m.userId) = 2')
+      .getOne();
+  }
+
+  async findOne(id: number) {
+    const userId = this.context.getUserId();
+    const conversation = await this.conversationRepo.findOne({
+      where: { id },
+      relations: ['members'],
+    });
+
+    if (!conversation) {
+      throw new NotFoundException("Can't find this conversation");
+    }
+
+    const otherMembers = conversation.members.filter(
+      (m) => m.userId !== userId,
+    );
+
+    const otherUsers =
+      conversation.type === ConversationType.PRIVATE
+        ? otherMembers.map(({ userId, avatarUrl, username }) => ({
+            userId,
+            avatarUrl,
+            username,
+          }))
+        : otherMembers.slice(0, 3).map(({ userId, avatarUrl, username }) => ({
+            userId,
+            avatarUrl,
+            username,
+          }));
+
+    const { members, ...conversationWithoutMembers } = conversation;
+
+    return { ...conversationWithoutMembers, otherUsers };
+  }
+
+  async getOrCreatePrivateConversation(userBId: string) {
+    const userAId = this.context.getUserId();
+
+    const conversation = await this.findPrivateConversation(userBId);
+
+    if (conversation) {
+      return await this.findOne(conversation.id);
+    }
+
+    const newConversation = await this.create({
+      memberIds: [userAId, userBId],
+    });
+    return await this.findOne(newConversation.id);
+  }
+
+  async findAll(page = 1, limit = 20) {
+    const userId = this.context.getUserId();
+    const safePage = Math.max(1, page);
+    const skip = (safePage - 1) * limit;
 
     const qb = this.conversationRepo
       .createQueryBuilder('c')
-
-      .innerJoin('c.conversation_members', 'cm', 'cm.userId = :userId', {
-        userId,
-      })
-
+      .innerJoin(
+        'c.members',
+        'cm',
+        'cm.userId = :userId AND cm.deletedAt IS NULL',
+        { userId },
+      )
       .leftJoinAndSelect(
         'c.messages',
         'm',
         `m.id = (
-        SELECT m2.id
-        FROM messages m2
-        WHERE m2.conversationId = c.id
-          AND m2.status = 'ACTIVE'
-        ORDER BY m2.createdAt DESC
-        LIMIT 1
+        SELECT m2.id FROM messages m2
+        WHERE m2.conversationId = c.id AND m2.deletedAt IS NULL
+        ORDER BY m2.createdAt DESC LIMIT 1
       )`,
-      ).andWhere(`
-      cm.deletedAt IS NULL
-      OR (
-        m.createdAt IS NOT NULL
-        AND m.createdAt > cm.deletedAt
       )
-    `);
-
-    if (keyword && keyword.trim() !== '') {
-      qb.andWhere(
-        `(LOWER(m.content) LIKE :keyword OR LOWER(c.name) LIKE :keyword)`,
-        { keyword: `%${keyword.toLowerCase()}%` },
-      );
-    }
-
-    qb.orderBy('m.createdAt', 'DESC', 'NULLS LAST');
-
-    qb.skip(skip).take(limit);
+      .leftJoinAndSelect(
+        'c.members',
+        'allMembers',
+        'allMembers.deletedAt IS NULL',
+      )
+      .addSelect('COALESCE(m.createdAt, c.createdAt)', 'lastActivity')
+      .orderBy('lastActivity', 'DESC')
+      .skip(skip)
+      .take(limit);
 
     const [conversations, total] = await qb.getManyAndCount();
+    const totalPages = Math.ceil(total / limit);
 
     return {
-      data: conversations.map((c: any) => {
+      content: conversations.map((c: Conversation) => {
         const lastMessage = c.messages?.[0] || null;
+        const otherMembers = c.members.filter((m) => m.userId !== userId);
 
-        const isRead =
-          !lastMessage || !c.conversation_members?.[0]?.lastSeenMessageId
+        const otherUsers = (
+          c.type === ConversationType.PRIVATE
+            ? otherMembers.slice(0, 1)
+            : otherMembers.slice(0, 3)
+        ).map(({ userId, avatarUrl, username }) => ({
+          userId,
+          avatarUrl,
+          username,
+        }));
+
+        const currentMember = c.members.find((m) => m.userId === userId);
+        const isRead = !lastMessage
+          ? true
+          : !currentMember?.lastSeenMessageId
             ? false
-            : c.conversation_members[0].lastSeenMessageId >= lastMessage.id;
+            : currentMember.lastSeenMessageId >= lastMessage.id;
 
-        return {
-          ...c,
-          lastMessage,
-          isRead,
-        };
+        const { members, messages, ...rest } = c as any;
+        return { ...rest, lastMessage, otherUsers, isRead };
       }),
-
-      meta: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-        keyword: keyword || null,
-        isSearch: !!keyword,
-      },
+      total,
+      page: safePage,
+      limit,
+      totalPages,
+      hasNext: safePage < totalPages,
     };
-  }
-
-  findOne(id: number) {
-    return this.conversationRepo.findOne({ where: { id } });
   }
 }

@@ -10,7 +10,13 @@ export class MessageMediaService {
     @InjectRepository(MessageMedia) private mediaRepo: Repository<MessageMedia>,
   ) {}
   async createMany(dtos: CreateMessageMediaDto[], manager: EntityManager) {
-    const entities = this.mediaRepo.create(dtos);
+    const entities = dtos.map((dto) =>
+      manager.create(MessageMedia, {
+        message: { id: dto.messageId },
+        mediaId: dto.mediaId,
+        url: dto.url,
+      }),
+    );
     return manager.save(MessageMedia, entities);
   }
 

@@ -7,14 +7,17 @@ import { ClientModule } from 'src/client/client.module';
 import { ContextModule } from 'src/context/context.module';
 import { LikeModule } from 'src/like/like.module';
 import { KafkaModule } from 'src/kafka/kafka.module';
+import { MentionModule } from 'src/mention/mention.module';
+import { Like } from 'src/like/entities/like.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Comment]),
+    TypeOrmModule.forFeature([Comment, Like]),
     ClientModule,
     KafkaModule,
     forwardRef(() => LikeModule),
     ContextModule,
+    MentionModule,
   ],
   controllers: [CommentController],
   providers: [CommentService],

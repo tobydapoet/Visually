@@ -2,6 +2,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import {
   OnGatewayConnection,
   OnGatewayDisconnect,
+  SubscribeMessage,
+  MessageBody,
+  ConnectedSocket,
   WebSocketGateway,
   WebSocketServer,
 } from '@nestjs/websockets';
@@ -25,6 +28,7 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
     client.join(`user:${userId}`);
     this.logger.log(`User ${userId} connected`);
+    client.emit('connected', { userId });
   }
 
   handleDisconnect(client: Socket) {
@@ -32,10 +36,34 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.logger.log(`User ${userId} disconnected`);
   }
 
+  @SubscribeMessage('join_conversation')
+  handleJoinConversation(
+    @MessageBody() data: { conversationId: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    client.join(`conversation:${data.conversationId}`);
+    this.logger.log(`Client joined conversation:${data.conversationId}`);
+  }
+
   sendMessage(event: any) {
     this.server
       .to(`conversation:${event.conversationId}`)
       .emit('new_message', event);
+  }
+
+  updateMessage(event: any) {
+    this.server
+      .to(`conversation:${event.conversationId}`)
+      .emit('message_updated', event);
+  }
+
+  deleteMessage(event: any) {
+    this.server
+      .to(`conversation:${event.conversationId}`)
+      .emit('message_deleted', {
+        messageId: event.id,
+        conversationId: event.conversationId,
+      });
   }
 
   sendNotification(event: any) {

@@ -36,15 +36,18 @@ export class StoryStorageController {
     },
   })
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() name: string) {
-    const savedStorage = await this.storyStorageService.create(name);
+  async create(@Body() body: { name: string; storyIds: number[] }) {
+    const savedStorage = await this.storyStorageService.create(
+      body.name,
+      body.storyIds,
+    );
     if (savedStorage) {
       return {
-        message: 'Update short success!',
+        message: 'Create storage success!',
       };
     } else {
       return {
-        message: 'Update short failed!',
+        message: 'Create storage failed!',
       };
     }
   }

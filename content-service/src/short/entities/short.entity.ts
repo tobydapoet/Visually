@@ -36,12 +36,6 @@ export class Short {
   @Column({ type: 'text', nullable: false })
   mediaUrl!: string;
 
-  @Column({ type: 'int' })
-  musicId?: number;
-
-  @Column({ type: 'text', nullable: true })
-  musicUrl?: string | null;
-
   @Column({ type: 'int', default: 0 })
   likeCount!: number;
 

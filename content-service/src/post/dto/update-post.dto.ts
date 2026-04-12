@@ -1,5 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsArray, IsNumber, IsString } from 'class-validator';
+import { CreateMentionContentDto } from 'src/mention/dto/create-mention.dto';
 
 export class UpdatePostDto {
   @ApiProperty()
@@ -15,6 +17,18 @@ export class UpdatePostDto {
 
   @ApiProperty()
   @IsArray()
-  @IsString({ each: true, message: 'Each tag must be a string' })
+  @IsNumber({}, { each: true })
+  @Type(() => Number)
   tagsIdRemove?: number[];
+
+  @ApiProperty()
+  @IsArray()
+  @IsString({ each: true })
+  mentionAdd?: CreateMentionContentDto[];
+
+  @ApiProperty()
+  @IsArray()
+  @IsNumber({}, { each: true })
+  @Type(() => Number)
+  mentionIdRemove?: number[];
 }

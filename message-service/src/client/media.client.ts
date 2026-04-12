@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { MediaResponse } from './dto/MediaResponse.dto';
-import { Express } from 'express';
+const FormData = require('form-data');
 
 @Injectable()
 export class MediaClient {
@@ -11,34 +11,42 @@ export class MediaClient {
   async upload(
     files: Express.Multer.File[],
     userId: string,
-    sessionId: number,
   ): Promise<MediaResponse[]> {
-    const res = await firstValueFrom(
-      this.http.post(`${process.env.MEDIA_SERVICE_URL}/media_file`, files, {
-        headers: {
-          'X-User-Id': userId,
-          'X-Session-Id': sessionId,
-        },
-        params: 'message',
-      }),
-    );
+    const formData = new FormData();
 
-    return res.data;
+    for (const file of files) {
+      formData.append('files', file.buffer, {
+        filename: file.originalname,
+        contentType: file.mimetype,
+      });
+    }
+
+    const url = `${process.env.MEDIA_SERVICE_URL}/media_file`;
+
+    try {
+      const res = await firstValueFrom(
+        this.http.post(url, formData, {
+          headers: {
+            ...formData.getHeaders(),
+            'X-User-Id': userId,
+          },
+          params: { folder: 'message' },
+        }),
+      );
+      return res.data;
+    } catch (error: any) {
+      throw error;
+    }
   }
 
-  async delete(
-    userId: string,
-    sessionId: number,
-    urlIds: number[],
-  ): Promise<void> {
+  async delete(ids: number[], userId: string): Promise<void> {
     await firstValueFrom(
       this.http.delete(`${process.env.MEDIA_SERVICE_URL}/media_file`, {
         data: {
-          urlIds,
+          ids,
         },
         headers: {
           'X-User-Id': userId,
-          'X-Session-Id': sessionId,
         },
       }),
     );

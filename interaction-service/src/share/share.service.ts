@@ -10,6 +10,7 @@ import { Share } from './entities/share.entity';
 import { In, Repository } from 'typeorm';
 import { ContextService } from 'src/context/context.service';
 import { ClientKafka } from '@nestjs/microservices';
+import { ContentType } from 'src/enums/ContentType';
 
 @Injectable()
 export class ShareService {
@@ -18,15 +19,29 @@ export class ShareService {
     private context: ContextService,
     @Inject('KAFKA_SERVICE') private kafkaClient: ClientKafka,
   ) {}
-  async create(createShareDto: CreateShareDto, userId: string) {
+  async create(createShareDto: CreateShareDto) {
+    const userId = this.context.getUserId();
+
+    const existingShare = await this.shareRepo.findOne({
+      where: {
+        userId: userId,
+        targetId: createShareDto.targetId,
+        targetType: createShareDto.targetType,
+      },
+    });
+    if (existingShare) {
+      return { shared: true };
+    }
+
     const newShare = this.shareRepo.create({
       userId,
       username: this.context.getUsername(),
       avatarUrl: this.context.getAvatarUrl(),
       targetId: createShareDto.targetId,
       targetType: createShareDto.targetType,
-      isPublic: createShareDto.isPublic ? createShareDto.isPublic : true,
+      isPublic: createShareDto.isPublic ?? true,
     });
+
     const savedShare = await this.shareRepo.save(newShare);
     this.kafkaClient.emit(`content.shared`, {
       contentId: createShareDto.targetId,
@@ -42,7 +57,7 @@ export class ShareService {
       contentType: savedShare.targetType,
       timestamp: new Date().toISOString(),
     });
-    return savedShare;
+    return { shared: true };
   }
 
   async findByUser(userId: string, page = 1, size = 10, isPublic: boolean) {
@@ -98,22 +113,38 @@ export class ShareService {
     return this.shareRepo.save(share);
   }
 
-  async remove(userId: string, id: number) {
-    const share = await this.shareRepo.findOne({ where: { id } });
-    if (share?.userId !== userId) {
+  async remove(targetId: number, targetType: ContentType) {
+    const userId = this.context.getUserId();
+    const existShare = await this.shareRepo.findOne({
+      where: { targetId, targetType, userId },
+    });
+    if (existShare?.userId !== userId) {
       throw new ForbiddenException(
         "You don't have permission to do this action",
       );
     }
-    if (!share) {
+    if (!existShare) {
       throw new NotFoundException('Share not found!');
     }
     const eventName = `content.unshared`;
     this.kafkaClient.emit(eventName, {
-      contentId: share.targetId,
+      contentId: existShare.targetId,
       userId: this.context.getUserId(),
-      contentType: share.targetType,
+      contentType: existShare.targetType,
     });
-    return this.shareRepo.delete(id);
+    return this.shareRepo.delete(existShare.id);
+  }
+
+  async getSharedIds(
+    userId: string,
+    targetIds: number[],
+    targetType: ContentType,
+    isPublic: boolean,
+  ) {
+    const shares = await this.shareRepo.find({
+      where: { userId, targetId: In(targetIds), targetType, isPublic },
+      select: ['targetId'],
+    });
+    return shares.map((s) => s.targetId);
   }
 }

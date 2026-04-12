@@ -1,21 +1,23 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
+  Scope,
 } from '@nestjs/common';
 import { CreateLikeDto } from './dto/create-like.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Like } from './entities/like.entity';
 import { In, Repository } from 'typeorm';
-import { ContetServiceType, LikeTargetType } from 'src/enums/ContentType';
+import { LikeTargetType } from 'src/enums/ContentType';
 import { ContextService } from 'src/context/context.service';
 import { ClientKafka } from '@nestjs/microservices';
 import { CommentService } from 'src/comment/comment.service';
 import { InteractionType } from 'src/enums/InteractionType';
 import { ContentClient } from 'src/client/content.client';
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class LikeService {
   constructor(
     @InjectRepository(Like) private likeRepo: Repository<Like>,
@@ -28,6 +30,19 @@ export class LikeService {
     const currentUserId = this.context.getUserId();
     const currentUserAvatarUrl = this.context.getAvatarUrl();
     const currentUsername = this.context.getUsername();
+
+    const existingLike = await this.likeRepo.findOne({
+      where: {
+        userId: currentUserId,
+        targetId: createLikeDto.targetId,
+        targetType: createLikeDto.targetType,
+      },
+    });
+    if (existingLike) {
+      return {
+        liked: true,
+      };
+    }
 
     const newLike = this.likeRepo.create({
       userId: currentUserId,
@@ -49,7 +64,10 @@ export class LikeService {
         createLikeDto.targetType === LikeTargetType.POST
           ? await this.contentClient.getPostOwner(createLikeDto.targetId)
           : await this.contentClient.getShortOwner(createLikeDto.targetId);
-
+    } else if (createLikeDto.targetType === LikeTargetType.STORY) {
+      const owner = await this.contentClient.getStoryOwner(
+        createLikeDto.targetId,
+      );
       ownerId = owner?.userId;
 
       if (ownerId) {
@@ -89,7 +107,9 @@ export class LikeService {
       });
     }
 
-    return savedLike;
+    return {
+      liked: true,
+    };
   }
 
   async updateAvatarUrl(userId: string, avatarUrl: string) {
@@ -144,16 +164,19 @@ export class LikeService {
     };
   }
 
-  async remove(id: number) {
+  async remove(targetId: number, targetType: LikeTargetType) {
     const userId = this.context.getUserId();
-    const existLike = await this.likeRepo.findOne({ where: { id } });
-    if (existLike?.userId !== userId) {
+    const existLike = await this.likeRepo.findOne({
+      where: { targetId, targetType, userId },
+    });
+    if (!existLike) {
+      throw new NotFoundException('Like not found!');
+    }
+
+    if (existLike.userId !== userId) {
       throw new ForbiddenException(
         "You don't have permission to do this action",
       );
-    }
-    if (!existLike) {
-      throw new NotFoundException('Like not found!');
     }
     if (existLike.targetType === LikeTargetType.COMMENT) {
       this.commentService.updateInteraction(
@@ -161,13 +184,14 @@ export class LikeService {
         InteractionType.UNLIKE,
       );
     } else {
-      const eventName = `${existLike.targetType.toLowerCase()}.unliked`;
-      this.kafkaClient.emit(eventName, {
-        [`${existLike.targetType.toLowerCase()}Id`]: existLike.targetId,
-        userId: this.context.getUserId(),
+      this.kafkaClient.emit(`content.unliked`, {
+        contentId: targetId,
+        contentType: targetType,
+        userId,
+        timestamp: new Date().toISOString(),
       });
     }
-    return this.likeRepo.delete(id);
+    await this.likeRepo.delete({ id: existLike.id });
   }
 
   async removeByTargetIds(targetIds: number[], type: LikeTargetType) {
@@ -177,5 +201,17 @@ export class LikeService {
       targetId: In(targetIds),
       targetType: type,
     });
+  }
+
+  async getLikedIds(
+    userId: string,
+    targetIds: number[],
+    targetType: LikeTargetType,
+  ) {
+    const likes = await this.likeRepo.find({
+      where: { userId, targetId: In(targetIds), targetType },
+      select: ['targetId'],
+    });
+    return likes.map((l) => l.targetId);
   }
 }

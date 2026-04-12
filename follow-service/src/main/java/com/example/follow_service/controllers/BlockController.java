@@ -3,6 +3,7 @@ package com.example.follow_service.controllers;
 import com.example.follow_service.contexts.AuthContext;
 import com.example.follow_service.entities.Block;
 import com.example.follow_service.requests.CurrentUser;
+import com.example.follow_service.responses.BlockInfoResponse;
 import com.example.follow_service.services.BlockService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,7 +22,7 @@ public class BlockController {
     private BlockService blockService;
 
     @GetMapping("/{id}")
-    Map<String, String> isBlocked(
+    public BlockInfoResponse isBlocked(
             @PathVariable UUID blockedId
     ) {
         CurrentUser currentUser = AuthContext.get();

@@ -13,10 +13,9 @@ export enum LikeTargetType {
 export enum CommentTargetType {
   POST = 'POST',
   SHORT = 'SHORT',
-  COMMENT = 'COMMENT',
 }
 
-export enum ContetServiceType {
+export enum ContentServiceType {
   POST = 'POST',
   SHORT = 'SHORT',
   STORY = 'STORY',

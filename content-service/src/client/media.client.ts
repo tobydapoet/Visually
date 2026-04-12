@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, lastValueFrom } from 'rxjs';
 import { MediaResponse } from './dto/MediaResponse.dto';
 import { MusicResponse } from './dto/MusicResponse.dto';
 const FormData = require('form-data');
@@ -62,7 +62,7 @@ export class MediaClient {
     this.logger.debug(`[delete] userId: ${userId}, urlIds: ${urlIds}`);
 
     try {
-      await firstValueFrom(
+      await lastValueFrom(
         this.http.delete(url, {
           data: { urlIds },
           headers: { 'X-User-Id': userId },
@@ -74,7 +74,6 @@ export class MediaClient {
       this.logger.error(
         `[delete] Response data: ${JSON.stringify(error.response?.data)}`,
       );
-      throw error;
     }
   }
 

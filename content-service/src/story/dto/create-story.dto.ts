@@ -1,11 +1,19 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, IsOptional, IsArray, IsNotEmpty } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsNumber, IsOptional, IsArray, IsInt } from 'class-validator';
 
 export class CreateStoryDto {
   @ApiProperty()
   @IsOptional()
+  @Transform(({ value }) => JSON.parse(value))
   @IsNumber({}, { message: 'musicId must be a number' })
   musicId?: number;
+
+  @ApiProperty()
+  @IsOptional()
+  @Transform(({ value }) => JSON.parse(value))
+  @IsNumber({}, { message: 'startMusicTime must be a number' })
+  startMusicTime?: number;
 }
 
 export class CreateStoryMultipartDto extends CreateStoryDto {
@@ -15,4 +23,10 @@ export class CreateStoryMultipartDto extends CreateStoryDto {
     isArray: true,
   })
   files?: any[];
+}
+
+export class StoryToStorageDto {
+  @IsArray()
+  @IsInt({ each: true })
+  storyIds!: number[];
 }
