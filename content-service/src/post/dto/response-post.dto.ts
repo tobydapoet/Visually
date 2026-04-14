@@ -14,13 +14,13 @@ export class PostResponseDto {
   medias?: MediaResponse[];
   likeCount!: number;
   commentCount!: number;
-  shareCount!: number;
-  status!: ContentStatus;
+  saveCount!: number;
+  repostCount!: number;
   createdAt!: Date;
   tags?: Tag[];
   mentions?: MentionResponse[];
   isLiked!: boolean;
   isCommented!: boolean;
-  isShared!: boolean;
   isSaved!: boolean;
+  isReposted!: boolean;
 }

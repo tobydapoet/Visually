@@ -4,14 +4,13 @@ import com.example.service.contexts.AuthContext;
 import com.example.service.entities.Ad;
 import com.example.service.enums.AdStatus;
 import com.example.service.enums.AdType;
-import com.example.service.requests.CreatePostAdDto;
-import com.example.service.requests.CreateShortAdDto;
+import com.example.service.requests.CreateAdDto;
 import com.example.service.requests.CurrentUser;
 import com.example.service.responses.AdFeedResponse;
+import com.example.service.responses.AdResponse;
 import com.example.service.responses.ApiResponse;
 import com.example.service.services.AdService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import org.apache.tomcat.util.descriptor.web.ContextService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
@@ -30,48 +29,33 @@ public class AdController {
     @Autowired
     private AdService adService;
 
-    @PostMapping(value = "/post", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ApiResponse<Ad>> createPostAd(
-            @ModelAttribute CreatePostAdDto createPostAdDto) {
-        Ad ad = adService.saveAdPost(createPostAdDto);
+    @PostMapping()
+    public ResponseEntity<ApiResponse<Ad>> createAd(
+            @ModelAttribute CreateAdDto createAdDto) {
+        Ad ad = adService.createAd(createAdDto);
         ApiResponse<Ad> response = new ApiResponse<>();
-        response.setMessage("Post ad created successfully");
+        response.setMessage("Ad created successfully");
         response.setData(ad);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @PostMapping(value = "/short", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ApiResponse<Ad>> createShortAd(
-            @ModelAttribute CreateShortAdDto createShortAdDto) {
-        Ad ad = adService.saveAdShort(createShortAdDto);
-        ApiResponse<Ad> response = new ApiResponse<>();
-        response.setMessage("Short ad created successfully");
-        response.setData(ad);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
-    }
 
     @GetMapping("/my-ads")
-    public ResponseEntity<ApiResponse<Page<Ad>>> getMyAds(
+    public Page<AdResponse> getMyAds(
             @RequestParam(defaultValue = "0") Integer page,
             @RequestParam(defaultValue = "10") Integer size) {
         CurrentUser currentUser = AuthContext.get();
-        Page<Ad> ads = adService.FindByUserId(currentUser.getUserId(), page, size);
-        ApiResponse<Page<Ad>> response = new ApiResponse<>();
-        response.setMessage("Ads retrieved successfully");
-        response.setData(ads);
-        return ResponseEntity.ok(response);
+        Page<AdResponse> res = adService.findByUserIdWithContent(currentUser.getUserId(), page, size);
+        return res;
     }
 
     @GetMapping("/user/{userId}")
-    public ResponseEntity<ApiResponse<Page<Ad>>> getAdsByUserId(
+    public Page<AdResponse> getAdsByUserId(
             @PathVariable UUID userId,
             @RequestParam(defaultValue = "0") Integer page,
             @RequestParam(defaultValue = "10") Integer size) {
-        Page<Ad> ads = adService.FindByUserId(userId, page, size);
-        ApiResponse<Page<Ad>> response = new ApiResponse<>();
-        response.setMessage("Ads retrieved successfully");
-        response.setData(ads);
-        return ResponseEntity.ok(response);
+        Page<AdResponse> res = adService.findByUserIdWithContent(userId, page, size);
+        return res;
     }
 
     @GetMapping("/feed")
@@ -85,8 +69,8 @@ public class AdController {
         List<Ad> ads = adService.getAdsForFeed(currentUser.getUserId(), size, type);
 
         return ads.stream().map(ad -> new AdFeedResponse(
-                ad.getAdContentId(),
-                ad.getAdType()
+                ad.getContentId(),
+                ad.getType()
         )).toList();
     }
 
@@ -102,12 +86,10 @@ public class AdController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<Ad>> getAdById(@PathVariable Long id) {
-        Ad ad = adService.findById(id);
-        ApiResponse<Ad> response = new ApiResponse<>();
-        response.setMessage("Ad retrieved successfully");
-        response.setData(ad);
-        return ResponseEntity.ok(response);
+    public AdResponse getAdById(@PathVariable Long id) {
+        CurrentUser currentUser = AuthContext.get();
+        AdResponse res = adService.findContentById(id, currentUser.getUserId());
+        return res;
     }
 
     @PatchMapping("/{id}/status")
@@ -122,14 +104,12 @@ public class AdController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<ApiResponse<Page<Ad>>> searchAds(
+    public Page<AdResponse> searchAds(
             @RequestParam String keyword,
             @RequestParam(defaultValue = "0") Integer page,
             @RequestParam(defaultValue = "10") Integer size) {
-        Page<Ad> ads = adService.search(keyword, page, size);
-        ApiResponse<Page<Ad>> response = new ApiResponse<>();
-        response.setMessage("Search results retrieved successfully");
-        response.setData(ads);
-        return ResponseEntity.ok(response);
+        CurrentUser currentUser = AuthContext.get();
+        Page<AdResponse> res = adService.search(keyword, page, size, currentUser.getUserId());
+        return res;
     }
 }

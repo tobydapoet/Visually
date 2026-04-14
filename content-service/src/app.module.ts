@@ -15,6 +15,7 @@ import { KafkaModule } from './kafka/kafka.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ContentModule } from './content/content.module';
 import { MentionModule } from './mention/mention.module';
+import { RepostModule } from './repost/repost.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { MentionModule } from './mention/mention.module';
     KafkaModule,
     ContentModule,
     MentionModule,
+    RepostModule,
   ],
   providers: [AppService],
 })

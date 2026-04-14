@@ -17,7 +17,10 @@ import { ContentServiceType, ContentType } from 'src/enums/content.type';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { PostResponseDto } from './dto/response-post.dto';
 import { CollabService } from 'src/collab/collab.service';
-import { PostResponsePageDto } from './dto/response-page-post.dto';
+import {
+  PostResponsePageDto,
+  PostSinglePageDto,
+} from './dto/response-page-post.dto';
 import { MediaClient } from 'src/client/media.client';
 import { ContextService } from 'src/context/context.service';
 import { InteractionType } from 'src/enums/interaction.type';
@@ -25,6 +28,9 @@ import { OutboxEventsService } from 'src/outbox_events/outbox_events.service';
 import { Tag } from 'src/tag/entities/tag.entity';
 import { MentionsService } from 'src/mention/mention.service';
 import { InteractionClient } from 'src/client/interaction.client';
+import { MentionResponse } from 'src/mention/dto/response-mentions.dto';
+import { DefaultReponseDto } from 'src/repost/dto/respose-default.dto';
+import { Repost } from 'src/repost/entities/repost.entity';
 
 @Injectable()
 export class PostService {
@@ -33,6 +39,8 @@ export class PostService {
   constructor(
     @InjectRepository(Post)
     private readonly postRepo: Repository<Post>,
+    @InjectRepository(Repost)
+    private readonly repostRepo: Repository<Repost>,
     private postMediaService: PostMediaService,
     private readonly mediaClient: MediaClient,
     private context: ContextService,
@@ -223,17 +231,27 @@ export class PostService {
       case InteractionType.LIKE:
         post.likeCount += 1;
         break;
-      case InteractionType.SHARE:
-        post.shareCount += 1;
+      case InteractionType.SAVE:
+        post.saveCount += 1;
         break;
       case InteractionType.UNLIKE:
         if (post.likeCount > 0) {
           post.likeCount -= 1;
         }
         break;
-      case InteractionType.UNSHARE:
-        if (post.shareCount > 0) {
-          post.shareCount -= 1;
+      case InteractionType.UNSAVE:
+        if (post.saveCount > 0) {
+          post.saveCount -= 1;
+        }
+        break;
+      case InteractionType.REPOST:
+        if (post.saveCount > 0) {
+          post.repostCount += 1;
+        }
+        break;
+      case InteractionType.UNREPOST:
+        if (post.saveCount > 0) {
+          post.repostCount -= 1;
         }
         break;
       default:
@@ -254,6 +272,72 @@ export class PostService {
     }
   }
 
+  async findManyByIds(ids: number[]): Promise<DefaultReponseDto[]> {
+    const userId = this.context.getUserId();
+
+    const [posts, allTags, allMentions, reposts] = await Promise.all([
+      this.postRepo.find({
+        where: { id: In(ids) },
+        relations: ['medias'],
+      }),
+      this.tagService.findByTargetIds(ids, ContentType.POST),
+      this.mentionService.findManyByTargetIds(ids, ContentType.POST),
+      this.repostRepo.find({
+        where: {
+          userId,
+          originalId: In(ids),
+          originalType: ContentType.POST,
+        },
+      }),
+    ]);
+
+    const interactions = await this.interactionClient.getCurrentInteraction(
+      userId,
+      posts.map((post) => post.id),
+      ContentServiceType.POST,
+    );
+
+    const interactionMap = new Map<number, (typeof interactions)[0]>();
+    interactions.forEach((i) => interactionMap.set(i.targetId, i));
+
+    const tagsMap = new Map<number, Tag[]>();
+    allTags.forEach((tag) => {
+      if (!tagsMap.has(tag.targetId)) tagsMap.set(tag.targetId, []);
+      tagsMap.get(tag.targetId)!.push(tag);
+    });
+
+    const mentionsMap = new Map<number, MentionResponse[]>();
+    allMentions.forEach((mention) => {
+      if (!mentionsMap.has(mention.targetId))
+        mentionsMap.set(mention.targetId, []);
+      mentionsMap.get(mention.targetId)!.push(mention);
+    });
+
+    const repostedIds = new Set(reposts.map((r) => r.originalId));
+
+    return posts.map((post) => {
+      const interaction = interactionMap.get(post.id);
+      return {
+        id: post.id,
+        caption: post.caption,
+        userId: post.userId,
+        username: post.username,
+        avatarUrl: post.avatarUrl,
+        thumbnailUrl: post.medias?.[0]?.mediaUrl,
+        likeCount: post.likeCount,
+        commentCount: post.commentCount,
+        saveCount: post.saveCount,
+        repostCount: post.repostCount,
+        createdAt: post.createdAt,
+        tags: tagsMap.get(post.id) ?? [],
+        mentions: mentionsMap.get(post.id) ?? [],
+        isLiked: interaction?.isLiked ?? false,
+        isCommented: interaction?.isCommented ?? false,
+        isSaved: interaction?.isSaved ?? false,
+        isReposted: repostedIds.has(post.id),
+      };
+    });
+  }
   async findByUser(
     userId: string,
     page = 1,
@@ -288,10 +372,10 @@ export class PostService {
           mediaUrl: post.medias?.[0]?.mediaUrl,
           likeCount: post.likeCount,
           commentCount: post.commentCount,
-          shareCount: post.shareCount,
+          repostCount: post.repostCount,
+          saveCount: post.saveCount,
           isLiked: interaction?.isLiked ?? false,
           isCommented: interaction?.isCommented ?? false,
-          isShared: interaction?.isShared ?? false,
           isSaved: interaction?.isSaved ?? false,
         };
       }),
@@ -327,30 +411,23 @@ export class PostService {
   async findOneWithUrl(postId: number): Promise<PostResponseDto> {
     const userId = this.context.getUserId();
 
-    const post = await this.postRepo.findOne({
-      where: { id: postId },
-      relations: ['medias'],
-    });
-    if (!post) {
-      throw new NotFoundException(`Post not found!`);
-    }
+    const [post, tags, interaction, mentions, repost] = await Promise.all([
+      this.postRepo.findOne({ where: { id: postId }, relations: ['medias'] }),
+      this.tagService.findByTargetId(postId, ContentType.POST),
+      this.interactionClient.getCurrentInteraction(
+        userId,
+        [postId],
+        ContentServiceType.POST,
+      ),
+      this.mentionService.findMany(postId, ContentType.POST),
+      this.repostRepo.findOne({
+        where: { userId, originalId: postId, originalType: ContentType.POST },
+      }),
+    ]);
 
-    const tags = await this.tagService.findByTargetId(postId, ContentType.POST);
-
-    const interaction = await this.interactionClient.getCurrentInteraction(
-      userId,
-      [postId],
-      ContentServiceType.POST,
-    );
-
-    if (post.status === ContentStatus.DELETED) {
+    if (!post) throw new NotFoundException(`Post not found!`);
+    if (post.status === ContentStatus.DELETED)
       throw new NotFoundException('Post not available');
-    }
-
-    const mentions = await this.mentionService.findMany(
-      postId,
-      ContentType.POST,
-    );
 
     return {
       id: postId,
@@ -360,19 +437,19 @@ export class PostService {
       caption: post.caption,
       likeCount: post.likeCount,
       commentCount: post.commentCount,
-      shareCount: post.shareCount,
+      saveCount: post.saveCount,
+      repostCount: post.repostCount,
       medias: (post.medias ?? []).map((media) => ({
         id: media.mediaId,
         url: media.mediaUrl,
       })),
-      status: post.status,
       createdAt: post.createdAt,
       tags,
+      mentions,
       isLiked: interaction[0]?.isLiked ?? false,
       isCommented: interaction[0]?.isCommented ?? false,
-      isShared: interaction[0]?.isShared ?? false,
       isSaved: interaction[0]?.isSaved ?? false,
-      mentions,
+      isReposted: !!repost,
     };
   }
 
@@ -492,7 +569,7 @@ export class PostService {
         'post.avatarUrl',
         'post.likeCount',
         'post.commentCount',
-        'post.shareCount',
+        'post.saveCount',
         'media.id',
         'media.url',
       ])
@@ -531,11 +608,11 @@ export class PostService {
           avatarUrl: post.avatarUrl,
           likeCount: post.likeCount,
           commentCount: post.commentCount,
-          shareCount: post.shareCount,
+          saveCount: post.saveCount,
+          repostCount: post.repostCount,
           mediaUrl: post.medias?.[0]?.mediaUrl || '',
           isLiked: interaction?.isLiked ?? false,
           isCommented: interaction?.isCommented ?? false,
-          isShared: interaction?.isShared ?? false,
           isSaved: interaction?.isSaved ?? false,
         };
       }),

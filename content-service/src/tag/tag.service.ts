@@ -25,6 +25,15 @@ export class TagService {
     return repo.find({ where: { targetId, type } });
   }
 
+  async findByTargetIds(
+    targetIds: number[],
+    type: ContentType,
+  ): Promise<Tag[]> {
+    return this.tagRepo.find({
+      where: { targetId: In(targetIds), type: type },
+    });
+  }
+
   async createMany(
     createTagDto: CreateTagDto,
     manager?: EntityManager,

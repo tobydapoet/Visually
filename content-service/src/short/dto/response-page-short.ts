@@ -11,10 +11,9 @@ export class ShortResponsePageDto {
     thumbnailUrl: string;
     likeCount: number;
     commentCount: number;
-    shareCount: number;
+    saveCount: number;
     isLiked: boolean;
     isCommented: boolean;
-    isShared: boolean;
     isSaved: boolean;
   }[];
 }

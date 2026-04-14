@@ -25,6 +25,9 @@ import { OutboxEventsService } from 'src/outbox_events/outbox_events.service';
 import { Tag } from 'src/tag/entities/tag.entity';
 import { MentionsService } from 'src/mention/mention.service';
 import { InteractionClient } from 'src/client/interaction.client';
+import { MentionResponse } from 'src/mention/dto/response-mentions.dto';
+import { DefaultReponseDto } from 'src/repost/dto/respose-default.dto';
+import { Repost } from 'src/repost/entities/repost.entity';
 
 @Injectable()
 export class ShortService {
@@ -33,6 +36,8 @@ export class ShortService {
   constructor(
     @InjectRepository(Short)
     private readonly shortRepo: Repository<Short>,
+    @InjectRepository(Repost)
+    private readonly repostRepo: Repository<Repost>,
     private readonly mediaClient: MediaClient,
     private context: ContextService,
     private tagService: TagService,
@@ -169,19 +174,28 @@ export class ShortService {
       case InteractionType.LIKE:
         short.likeCount += 1;
         break;
-      case InteractionType.SHARE:
-        short.shareCount += 1;
+      case InteractionType.SAVE:
+        short.saveCount += 1;
         break;
       case InteractionType.UNLIKE:
         if (short.likeCount > 0) {
           short.likeCount -= 1;
         }
         break;
-      case InteractionType.UNSHARE:
-        if (short.shareCount > 0) {
-          short.shareCount -= 1;
+      case InteractionType.UNSAVE:
+        if (short.saveCount > 0) {
+          short.saveCount -= 1;
         }
         break;
+      case InteractionType.REPOST:
+        if (short.saveCount > 0) {
+          short.repostCount += 1;
+        }
+        break;
+      case InteractionType.UNREPOST:
+        if (short.saveCount > 0) {
+          short.repostCount -= 1;
+        }
       default:
         break;
     }
@@ -282,6 +296,71 @@ export class ShortService {
     }
   }
 
+  async findManyByIds(ids: number[]): Promise<DefaultReponseDto[]> {
+    const userId = this.context.getUserId();
+
+    const [shorts, allTags, allMentions, reposts] = await Promise.all([
+      this.shortRepo.find({ where: { id: In(ids) } }),
+      this.tagService.findByTargetIds(ids, ContentType.SHORT),
+      this.mentionService.findManyByTargetIds(ids, ContentType.SHORT),
+      this.repostRepo.find({
+        where: {
+          userId,
+          originalId: In(ids),
+          originalType: ContentType.SHORT,
+        },
+      }),
+    ]);
+
+    const interactions = await this.interactionClient.getCurrentInteraction(
+      userId,
+      shorts.map((short) => short.id),
+      ContentServiceType.SHORT,
+    );
+
+    const interactionMap = new Map<number, (typeof interactions)[0]>();
+    interactions.forEach((i) => interactionMap.set(i.targetId, i));
+
+    const tagsMap = new Map<number, Tag[]>();
+    allTags.forEach((tag) => {
+      if (!tagsMap.has(tag.targetId)) tagsMap.set(tag.targetId, []);
+      tagsMap.get(tag.targetId)!.push(tag);
+    });
+
+    const mentionsMap = new Map<number, MentionResponse[]>();
+    allMentions.forEach((mention) => {
+      if (!mentionsMap.has(mention.targetId))
+        mentionsMap.set(mention.targetId, []);
+      mentionsMap.get(mention.targetId)!.push(mention);
+    });
+
+    const repostedIds = new Set(reposts.map((r) => r.originalId));
+
+    return shorts.map((short) => {
+      const interaction = interactionMap.get(short.id);
+      return {
+        id: short.id,
+        caption: short.caption,
+        userId: short.userId,
+        username: short.username,
+        avatarUrl: short.avatarUrl,
+        thumbnailUrl: short.thumbnailUrl,
+        mediaUrl: short.mediaUrl,
+        likeCount: short.likeCount,
+        commentCount: short.commentCount,
+        saveCount: short.saveCount,
+        repostCount: short.repostCount,
+        createdAt: short.createdAt,
+        tags: tagsMap.get(short.id) ?? [],
+        mentions: mentionsMap.get(short.id) ?? [],
+        isLiked: interaction?.isLiked ?? false,
+        isCommented: interaction?.isCommented ?? false,
+        isSaved: interaction?.isSaved ?? false,
+        isReposted: repostedIds.has(short.id),
+      };
+    });
+  }
+
   async findByUser(
     userId: string,
     page = 1,
@@ -300,7 +379,7 @@ export class ShortService {
         'avatarUrl',
         'likeCount',
         'commentCount',
-        'shareCount',
+        'saveCount',
       ],
       order: { createdAt: 'DESC' },
       skip: (page - 1) * size,
@@ -328,10 +407,9 @@ export class ShortService {
           username: short.username,
           likeCount: short.likeCount,
           commentCount: short.commentCount,
-          shareCount: short.shareCount,
+          saveCount: short.saveCount,
           isLiked: interaction?.isLiked ?? false,
           isCommented: interaction?.isCommented ?? false,
-          isShared: interaction?.isShared ?? false,
           isSaved: interaction?.isSaved ?? false,
         };
       }),
@@ -344,26 +422,21 @@ export class ShortService {
   async findOneWithUrl(shortId: number): Promise<ShortResponseDto> {
     const userId = this.context.getUserId();
 
-    const short = await this.shortRepo.findOne({ where: { id: shortId } });
-    if (!short) {
-      throw new NotFoundException(`Short not found!`);
-    }
+    const [short, tags, interaction, mentions, repost] = await Promise.all([
+      this.shortRepo.findOne({ where: { id: shortId } }),
+      this.tagService.findByTargetId(shortId, ContentType.SHORT),
+      this.interactionClient.getCurrentInteraction(
+        userId,
+        [shortId],
+        ContentServiceType.SHORT,
+      ),
+      this.mentionService.findMany(shortId, ContentType.SHORT),
+      this.repostRepo.findOne({
+        where: { userId, originalId: shortId, originalType: ContentType.SHORT },
+      }),
+    ]);
 
-    const tags = await this.tagService.findByTargetId(
-      shortId,
-      ContentType.SHORT,
-    );
-
-    const interaction = await this.interactionClient.getCurrentInteraction(
-      userId,
-      [shortId],
-      ContentServiceType.SHORT,
-    );
-
-    const mentions = await this.mentionService.findMany(
-      shortId,
-      ContentType.SHORT,
-    );
+    if (!short) throw new NotFoundException(`Short not found!`);
 
     return {
       id: shortId,
@@ -374,16 +447,16 @@ export class ShortService {
       mediaUrl: short.mediaUrl,
       commentCount: short.commentCount,
       likeCount: short.likeCount,
-      shareCount: short.shareCount,
+      repostCount: short.repostCount,
+      saveCount: short.saveCount,
       createdAt: short.createdAt,
-      status: short.status,
       thumbnailUrl: short.thumbnailUrl,
       tags,
+      mentions,
       isLiked: interaction[0]?.isLiked ?? false,
       isCommented: interaction[0]?.isCommented ?? false,
-      isShared: interaction[0]?.isShared ?? false,
       isSaved: interaction[0]?.isSaved ?? false,
-      mentions,
+      isReposted: !!repost,
     };
   }
 
@@ -511,7 +584,7 @@ export class ShortService {
         'short.thumbnailUrl',
         'short.likeCount',
         'short.commentCount',
-        'short.shareCount',
+        'short.saveCount',
       ])
       .where('short.status = :status', {
         status: ContentStatus.ACTIVE,
@@ -551,10 +624,9 @@ export class ShortService {
         thumbnailUrl: short.thumbnailUrl,
         likeCount: short.likeCount,
         commentCount: short.commentCount,
-        shareCount: short.shareCount,
+        saveCount: short.saveCount,
         isLiked: interaction?.isLiked ?? false,
         isCommented: interaction?.isCommented ?? false,
-        isShared: interaction?.isShared ?? false,
         isSaved: interaction?.isSaved ?? false,
       };
     });

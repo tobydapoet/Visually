@@ -180,7 +180,6 @@ export class StoryService {
       likeCount: story.likeCount,
       isLiked: interaction[0]?.isLiked ?? false,
       isCommented: interaction[0]?.isCommented ?? false,
-      isShared: interaction[0]?.isShared ?? false,
       isSaved: interaction[0]?.isSaved ?? false,
     };
   }
@@ -262,7 +261,6 @@ export class StoryService {
           likeCount: story.likeCount,
           isLiked: interaction?.isLiked ?? false,
           isCommented: interaction?.isCommented ?? false,
-          isShared: interaction?.isShared ?? false,
           isSaved: interaction?.isSaved ?? false,
         };
       }),
@@ -332,7 +330,6 @@ export class StoryService {
           startMusicTime: story.startMusicTime,
           isLiked: interaction?.isLiked ?? false,
           isCommented: interaction?.isCommented ?? false,
-          isShared: interaction?.isShared ?? false,
           isSaved: interaction?.isSaved ?? false,
         };
       }),

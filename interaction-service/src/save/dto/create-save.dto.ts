@@ -2,7 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsBoolean, IsEnum, IsNotEmpty, IsNumber } from 'class-validator';
 import { ContentType } from 'src/enums/ContentType';
 
-export class CreateShareDto {
+export class CreateSaveDto {
   @ApiProperty()
   @IsNotEmpty()
   @IsNumber()
@@ -15,8 +15,4 @@ export class CreateShareDto {
   @IsNotEmpty()
   @IsEnum(ContentType)
   targetType!: ContentType;
-
-  @ApiProperty()
-  @IsBoolean()
-  isPublic?: boolean;
 }

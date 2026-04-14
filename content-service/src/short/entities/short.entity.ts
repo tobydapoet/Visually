@@ -43,7 +43,10 @@ export class Short {
   commentCount!: number;
 
   @Column({ type: 'int', default: 0 })
-  shareCount!: number;
+  saveCount!: number;
+
+  @Column({ type: 'int', default: 0 })
+  repostCount!: number;
 
   @Column({ type: 'enum', enum: ContentStatus, default: ContentStatus.ACTIVE })
   status!: ContentStatus;

@@ -1,4 +1,11 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import {
+  ConflictException,
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  Query,
+} from '@nestjs/common';
 import { EventPattern, Payload } from '@nestjs/microservices';
 import { ContentServiceType, ContentType } from 'src/enums/content.type';
 import {
@@ -6,6 +13,7 @@ import {
   StoryInteractionType,
 } from 'src/enums/interaction.type';
 import { PostService } from 'src/post/post.service';
+import { DefaultReponseDto } from 'src/repost/dto/respose-default.dto';
 import { ShortService } from 'src/short/short.service';
 import { StoryService } from 'src/story/story.service';
 
@@ -16,6 +24,20 @@ export class ContentController {
     private readonly shortService: ShortService,
     private readonly storyService: StoryService,
   ) {}
+
+  @Get('/target')
+  async getContent(
+    @Query('contentId', ParseIntPipe) contentId: number,
+    @Query('contentType') contentType: ContentType,
+  ): Promise<DefaultReponseDto> {
+    if (contentType === ContentType.POST) {
+      return this.postService.findOneWithUrl(contentId);
+    } else if (contentType === ContentType.SHORT) {
+      return this.shortService.findOneWithUrl(contentId);
+    } else {
+      throw new ConflictException("Can't find this type");
+    }
+  }
 
   @Get(':userId')
   async getCount(@Param('userId') userId: string) {
@@ -178,8 +200,8 @@ export class ContentController {
     if (data.contentType !== ContentType.SHORT) return;
   }
 
-  @EventPattern('content.shared')
-  async handleContentShared(
+  @EventPattern('content.saved')
+  async handleContentSaved(
     @Payload()
     data: {
       contentId: number;
@@ -187,21 +209,21 @@ export class ContentController {
       contentType: ContentType;
     },
   ) {
-    console.log('📨 Content shared:', data);
+    console.log('📨 Content saved:', data);
 
     try {
       switch (data.contentType) {
         case ContentType.POST:
           await this.postService.updateInteraction(
             data.contentId,
-            InteractionType.SHARE,
+            InteractionType.SAVE,
           );
           break;
 
         case ContentType.SHORT:
           await this.shortService.updateInteraction(
             data.contentId,
-            InteractionType.SHARE,
+            InteractionType.SAVE,
           );
           break;
 
@@ -209,34 +231,34 @@ export class ContentController {
           break;
       }
     } catch (err) {
-      console.error('handleContentShared error:', err);
+      console.error('handleContentSaved error:', err);
     }
   }
 
-  @EventPattern('content.unshared')
-  async handleContentUnshared(
+  @EventPattern('content.unsaved')
+  async handleContentsaved(
     @Payload()
     data: {
       contentId: number;
-      shareId: number;
+      saveId: number;
       contentType: ContentType;
     },
   ) {
-    console.log('📨 Content unshared:', data);
+    console.log('📨 Content unsaved:', data);
 
     try {
       switch (data.contentType) {
         case ContentType.POST:
           await this.postService.updateInteraction(
             data.contentId,
-            InteractionType.UNSHARE,
+            InteractionType.UNSAVE,
           );
           break;
 
         case ContentType.SHORT:
           await this.shortService.updateInteraction(
             data.contentId,
-            InteractionType.UNSHARE,
+            InteractionType.UNSAVE,
           );
           break;
 
@@ -244,7 +266,7 @@ export class ContentController {
           break;
       }
     } catch (err) {
-      console.error('handleContentUnShared error:', err);
+      console.error('handleContentUnSaved error:', err);
     }
   }
 }

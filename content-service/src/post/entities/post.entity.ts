@@ -20,7 +20,7 @@ export class Post {
   @Column({ type: 'text', nullable: false })
   username!: string;
 
-  @Column({ type: 'text' })
+  @Column({ type: 'text', nullable: true })
   avatarUrl?: string;
 
   @Column({ type: 'text' })
@@ -36,7 +36,10 @@ export class Post {
   commentCount!: number;
 
   @Column({ type: 'int', default: 0 })
-  shareCount!: number;
+  saveCount!: number;
+
+  @Column({ type: 'int', default: 0 })
+  repostCount!: number;
 
   @Column({ type: 'enum', enum: ContentStatus, default: ContentStatus.ACTIVE })
   status!: ContentStatus;

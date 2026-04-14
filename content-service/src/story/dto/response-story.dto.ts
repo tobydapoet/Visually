@@ -12,6 +12,5 @@ export class StoryResponseDto {
   likeCount!: number;
   isLiked!: boolean;
   isCommented!: boolean;
-  isShared!: boolean;
   isSaved!: boolean;
 }

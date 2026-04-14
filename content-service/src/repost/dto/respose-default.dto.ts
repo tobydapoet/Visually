@@ -1,13 +1,4 @@
-import { InteractionResponse } from 'src/client/dto/InteractionResponse.dto';
-
-export class PostResponsePageDto {
-  page!: number;
-  size!: number;
-  total!: number;
-  content!: PostSinglePageDto[];
-}
-
-export class PostSinglePageDto {
+export class DefaultReponseDto {
   id!: number;
   caption?: string;
   userId!: string;
@@ -21,4 +12,5 @@ export class PostSinglePageDto {
   isLiked!: boolean;
   isCommented!: boolean;
   isSaved!: boolean;
+  isReposted!: boolean;
 }

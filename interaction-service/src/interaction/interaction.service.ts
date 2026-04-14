@@ -8,14 +8,14 @@ import {
   LikeTargetType,
 } from 'src/enums/ContentType';
 import { LikeService } from 'src/like/like.service';
-import { ShareService } from 'src/share/share.service';
+import { SaveService } from 'src/save/save.service';
 
 @Injectable()
 export class InteractionService {
   constructor(
     private likeService: LikeService,
     private commentService: CommentService,
-    private shareService: ShareService,
+    private saveService: SaveService,
     private context: ContextService,
   ) {}
 
@@ -26,7 +26,7 @@ export class InteractionService {
     const userId = this.context.getUserId();
     const isStory = targetType === ContentServiceType.STORY;
 
-    const [likedIds, commentedIds, sharedIds, savedIds] = await Promise.all([
+    const [likedIds, commentedIds, savedIds] = await Promise.all([
       this.likeService.getLikedIds(
         userId,
         targetIds,
@@ -43,20 +43,10 @@ export class InteractionService {
 
       isStory
         ? Promise.resolve([])
-        : this.shareService.getSharedIds(
+        : this.saveService.getSavedIds(
             userId,
             targetIds,
             targetType as unknown as ContentType,
-            true,
-          ),
-
-      isStory
-        ? Promise.resolve([])
-        : this.shareService.getSharedIds(
-            userId,
-            targetIds,
-            targetType as unknown as ContentType,
-            false,
           ),
     ]);
 
@@ -64,7 +54,6 @@ export class InteractionService {
       targetId: id,
       isLiked: likedIds.includes(id),
       isCommented: commentedIds.includes(id),
-      isShared: sharedIds.includes(id),
       isSaved: savedIds.includes(id),
     }));
   }

@@ -6,8 +6,8 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
-@Entity('shares')
-export class Share {
+@Entity('saves')
+export class Save {
   @PrimaryGeneratedColumn()
   id!: number;
 
@@ -25,9 +25,6 @@ export class Share {
 
   @Column({ type: 'enum', enum: ContentType, nullable: false })
   targetType!: ContentType;
-
-  @Column({ type: 'boolean', default: true, nullable: false })
-  isPublic!: boolean;
 
   @CreateDateColumn()
   createdAt!: Date;

@@ -3,30 +3,27 @@ package com.example.service.services;
 import com.example.service.clients.ContentClient;
 import com.example.service.contexts.AuthContext;
 import com.example.service.entities.Ad;
-import com.example.service.entities.AdMetric;
-import com.example.service.entities.AdTarget;
 import com.example.service.entities.AdUserProfile;
 import com.example.service.enums.AdStatus;
 import com.example.service.enums.AdType;
 import com.example.service.enums.Gender;
 import com.example.service.enums.GenderOption;
 import com.example.service.exceptions.NotFoundException;
-import com.example.service.repositories.AdMetricRepository;
 import com.example.service.repositories.AdRepository;
 import com.example.service.requests.*;
-import com.example.service.responses.ApiResponse;
-import com.example.service.responses.CreatePostResponse;
-import com.example.service.responses.CreateShortResponse;
+import com.example.service.responses.AdResponse;
+import com.example.service.responses.ContentResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -35,16 +32,7 @@ public class AdService {
     private AdRepository adRepository;
 
     @Autowired
-    private AdMetricRepository adMetricRepository;
-
-    @Autowired
-    private AdBudgetService adBudgetService;
-
-    @Autowired
     private ContentClient contentClient;
-
-    @Autowired
-    private AdTargetService adTargetService;
 
     @Autowired
     private AdUserProfileService adUserProfileService;
@@ -74,87 +62,79 @@ public class AdService {
         );
     }
 
-    public Ad saveAdPost(CreatePostAdDto createPostAdDto) {
+    public void updateStatus(Long id , AdStatus adStatus) {
+        Ad ad = findById(id);
+        ad.setStatus(adStatus);
+        adRepository.save(ad);
+    }
+
+    public Ad createAd(CreateAdDto dto) {
         CurrentUser currentUser = AuthContext.get();
-
-        CreatePostDto postDto = createPostAdDto;
-
-        List<MultipartFile> files = createPostAdDto.getFiles();
 
         LocalDateTime now = LocalDateTime.now();
 
-        LocalDateTime endDate = now.plusHours(createPostAdDto.getTime());
+        LocalDateTime endDate = now.plusHours(dto.getTime());
 
-        CreateAdTargetDto dto = new CreateAdTargetDto();
-        dto.setGender(createPostAdDto.getGender());
-        dto.setAgeMin(createPostAdDto.getAgeMin());
-        dto.setAgeMax(createPostAdDto.getAgeMax());
-        AdTarget savedAdtarget = adTargetService.create(dto);
-
-        ApiResponse<CreatePostResponse> createPostResponse =
-                contentClient.createPost(postDto, files, currentUser.getUserId());
-        CreatePostResponse createPostResponseBody = createPostResponse.getData();
         Ad ad = new Ad();
+        ad.setGender(dto.getGender());
+        ad.setAgeMin(dto.getAgeMin());
+        ad.setAgeMax(dto.getAgeMax());
+        ad.setAgeMax(dto.getAgeMax());
+        ad.setAgeMin(dto.getAgeMin());
+        ad.setDailyBudget(dto.getDailyBudget());
         ad.setUserId(currentUser.getUserId());
-        ad.setAdContentId(createPostResponseBody.getId());
-        ad.setSnapshotUrl(createPostResponseBody.getMedias().get(0));
-        ad.setSnapshotCaption(createPostResponseBody.getCaption());
-        ad.setSnapshotAvatarUrl(createPostResponseBody.getAvatarUrl());
-        ad.setSnapshotUsername(createPostResponseBody.getUsername());
-        ad.setAdType(AdType.POST);
-        ad.setEndAt(endDate);
-        ad.setAdTarget(savedAdtarget);
+        ad.setType(dto.getType());
+        ad.setContentId(dto.getContentId());
+        ad.setStartDate(LocalDateTime.now());
+        ad.setEndDate(LocalDateTime.now().plusHours(dto.getTime()));
+        ad.setUsername(currentUser.getUsername());
 
-        Ad savedAd =  adRepository.save(ad);
-        adBudgetService.save(savedAd, createPostAdDto.getBudget());
-        AdMetric adMetric = new AdMetric();
-        adMetric.setAd(savedAd);
-        adMetricRepository.save(adMetric);
-        return savedAd;
+        return adRepository.save(ad);
     }
 
-    public Ad saveAdShort(CreateShortAdDto createShortAdDto) {
-        CurrentUser currentUser = AuthContext.get();
-
-        CreateShortAdDto shortDto = createShortAdDto;
-
-        MultipartFile file = createShortAdDto.getFile();
-
-        LocalDateTime now = LocalDateTime.now();
-
-        LocalDateTime endDate = now.plusHours(createShortAdDto.getTime());
-
-        CreateAdTargetDto dto = new CreateAdTargetDto();
-        dto.setGender(createShortAdDto.getGender());
-        dto.setAgeMin(createShortAdDto.getAgeMin());
-        dto.setAgeMax(createShortAdDto.getAgeMax());
-        AdTarget savedAdtarget = adTargetService.create(dto);
-
-        ApiResponse<CreateShortResponse> createPostResponse =
-                contentClient.createShort(shortDto, file, currentUser.getUserId());
-        CreateShortResponse createShortResponseBody = createPostResponse.getData();
-        Ad ad = new Ad();
-        ad.setUserId(currentUser.getUserId());
-        ad.setAdContentId(createShortResponseBody.getId());
-        ad.setSnapshotUrl(createShortResponseBody.getMediaUrl());
-        ad.setSnapshotCaption(createShortResponseBody.getCaption());
-        ad.setSnapshotAvatarUrl(createShortResponseBody.getAvatarUrl());
-        ad.setSnapshotUsername(createShortResponseBody.getUsername());
-        ad.setAdType(AdType.SHORT);
-        ad.setEndAt(endDate);
-        ad.setAdTarget(savedAdtarget);
-
-        Ad savedAd =  adRepository.save(ad);
-        AdMetric adMetric = new AdMetric();
-        adBudgetService.save(savedAd, createShortAdDto.getBudget());
-        adMetric.setAd(savedAd);
-        adMetricRepository.save(adMetric);
-        return savedAd;
-    }
-
-    public Page<Ad> FindByUserId(UUID userId, Integer page, Integer size) {
+    public Page<AdResponse> findByUserIdWithContent(UUID userId, Integer page, Integer size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        return adRepository.findByUserId(userId, pageable);
+
+        Page<Ad> ads = adRepository.findByUserId(userId, pageable);
+
+        if (ads.isEmpty()) return Page.empty(pageable);
+
+        List<Long> postIds = ads.stream()
+                .filter(a -> a.getType() == AdType.POST)
+                .map(Ad::getContentId)
+                .toList();
+
+        List<Long> shortIds = ads.stream()
+                .filter(a -> a.getType() == AdType.SHORT)
+                .map(Ad::getContentId)
+                .toList();
+
+        Map<Long, ContentResponse> contentMap = new HashMap<>();
+
+        if (!postIds.isEmpty()) {
+            contentClient.getPostsByIds(postIds)
+                    .forEach(c -> contentMap.put(c.getId(), c));
+        }
+
+        if (!shortIds.isEmpty()) {
+            contentClient.getShortsByIds(shortIds)
+                    .forEach(c -> contentMap.put(c.getId(), c));
+        }
+        return ads.map(ad -> AdResponse.builder()
+                .id(ad.getId())
+                .type(ad.getType())
+                .ageMin(ad.getAgeMin())
+                .ageMax(ad.getAgeMax())
+                .gender(ad.getGender())
+                .dailyBudget(ad.getDailyBudget())
+                .spentAmount(ad.getSpentAmount())
+                .startDate(ad.getStartDate())
+                .endDate(ad.getEndDate())
+                .views(ad.getViews())
+                .clicks(ad.getClicks())
+                .content(contentMap.get(ad.getContentId()))
+                .build()
+        );
     }
 
     public Page<Ad> FindByPage(Integer page, Integer size) {
@@ -167,14 +147,81 @@ public class AdService {
                 .orElseThrow(() -> new NotFoundException("Ad not found with id: " + id));
     }
 
-    public void updateStatus(Long id , AdStatus adStatus) {
+    public AdResponse findContentById(Long id, UUID userId) {
         Ad ad = findById(id);
-        ad.setStatus(adStatus);
+        ContentResponse contentResponse = contentClient.getContent(ad.getContentId(), ad.getType(), userId);
+        AdResponse adResponse = new AdResponse();
+        adResponse.setContent(contentResponse);
+        adResponse.setId(ad.getId());
+        adResponse.setType(ad.getType());
+        adResponse.setStartDate(ad.getStartDate());
+        adResponse.setEndDate(ad.getEndDate());
+        adResponse.setDailyBudget(ad.getDailyBudget());
+        adResponse.setGender(ad.getGender());
+        adResponse.setViews(ad.getViews());
+        adResponse.setClicks(ad.getClicks());
+        adResponse.setSpentAmount(ad.getSpentAmount());
+        adResponse.setAgeMax(ad.getAgeMax());
+        adResponse.setAgeMin(ad.getAgeMin());
+        return adResponse;
+    }
+
+
+    public Page<AdResponse> search(String keyword, Integer page, Integer size, UUID userId) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        Page<Ad> ads = adRepository.search(keyword, pageable);
+
+        if (ads.isEmpty()) return Page.empty(pageable);
+
+        List<Long> postIds = ads.stream()
+                .filter(a -> a.getType() == AdType.POST)
+                .map(Ad::getContentId)
+                .toList();
+
+        List<Long> shortIds = ads.stream()
+                .filter(a -> a.getType() == AdType.SHORT)
+                .map(Ad::getContentId)
+                .toList();
+
+        Map<Long, ContentResponse> contentMap = new HashMap<>();
+
+        if (!postIds.isEmpty()) {
+            contentClient.getPostsByIds(postIds)
+                    .forEach(c -> contentMap.put(c.getId(), c));
+        }
+
+        if (!shortIds.isEmpty()) {
+            contentClient.getShortsByIds(shortIds)
+                    .forEach(c -> contentMap.put(c.getId(), c));
+        }
+
+        return ads.map(ad -> AdResponse.builder()
+                .id(ad.getId())
+                .type(ad.getType())
+                .ageMin(ad.getAgeMin())
+                .ageMax(ad.getAgeMax())
+                .gender(ad.getGender())
+                .dailyBudget(ad.getDailyBudget())
+                .spentAmount(ad.getSpentAmount())
+                .startDate(ad.getStartDate())
+                .endDate(ad.getEndDate())
+                .views(ad.getViews())
+                .clicks(ad.getClicks())
+                .content(contentMap.get(ad.getContentId()))
+                .build()
+        );
+    }
+
+    public void AdClick (Long id) {
+        Ad ad = findById(id);
+        ad.setClicks(ad.getClicks() + 1);
         adRepository.save(ad);
     }
 
-    public Page<Ad> search(String keyword, Integer page, Integer size) {
-        Pageable pageable = PageRequest.of(page, size);
-        return adRepository.search(keyword,pageable);
+    public void AdView (Long id) {
+        Ad ad = findById(id);
+        ad.setViews(ad.getViews() + 1);
+        adRepository.save(ad);
     }
 }

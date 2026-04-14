@@ -1,17 +1,17 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ShareController } from './share.controller';
-import { ShareService } from './share.service';
+import { SaveController } from './save.controller';
+import { SaveService } from './save.service';
 
 describe('ShareController', () => {
-  let controller: ShareController;
+  let controller: SaveController;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      controllers: [ShareController],
-      providers: [ShareService],
+      controllers: [SaveController],
+      providers: [SaveService],
     }).compile();
 
-    controller = module.get<ShareController>(ShareController);
+    controller = module.get<SaveController>(SaveController);
   });
 
   it('should be defined', () => {

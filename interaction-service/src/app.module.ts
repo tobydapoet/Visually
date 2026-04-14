@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { AppService } from './app.service';
 import { LikeModule } from './like/like.module';
 import { CommentModule } from './comment/comment.module';
-import { ShareModule } from './share/share.module';
+import { SaveModule } from './save/save.module';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ContextModule } from './context/context.module';
@@ -29,7 +29,7 @@ import { MentionModule } from './mention/mention.module';
     }),
     LikeModule,
     CommentModule,
-    ShareModule,
+    SaveModule,
     ContextModule,
     ClientModule,
     ReportModule,

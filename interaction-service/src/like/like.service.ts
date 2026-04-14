@@ -64,22 +64,13 @@ export class LikeService {
         createLikeDto.targetType === LikeTargetType.POST
           ? await this.contentClient.getPostOwner(createLikeDto.targetId)
           : await this.contentClient.getShortOwner(createLikeDto.targetId);
+
+      ownerId = owner?.userId;
     } else if (createLikeDto.targetType === LikeTargetType.STORY) {
       const owner = await this.contentClient.getStoryOwner(
         createLikeDto.targetId,
       );
       ownerId = owner?.userId;
-
-      if (ownerId) {
-        this.kafkaClient.emit(`content.liked`, {
-          contentId: createLikeDto.targetId,
-          contentType: createLikeDto.targetType,
-          userId: currentUserId,
-          authorId: ownerId,
-          likeId: savedLike.id,
-          timestamp: new Date().toISOString(),
-        });
-      }
     } else if (createLikeDto.targetType === LikeTargetType.COMMENT) {
       const existingComment = await this.commentService.findOne(
         createLikeDto.targetId,
@@ -93,6 +84,17 @@ export class LikeService {
         createLikeDto.targetId,
         InteractionType.LIKE,
       );
+    }
+
+    if (ownerId && createLikeDto.targetType !== LikeTargetType.COMMENT) {
+      this.kafkaClient.emit(`content.liked`, {
+        contentId: createLikeDto.targetId,
+        contentType: createLikeDto.targetType,
+        userId: currentUserId,
+        authorId: ownerId,
+        likeId: savedLike.id,
+        timestamp: new Date().toISOString(),
+      });
     }
 
     if (ownerId && ownerId !== currentUserId) {

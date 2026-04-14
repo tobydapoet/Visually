@@ -29,6 +29,7 @@ import {
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
+import { DefaultReponseDto } from 'src/repost/dto/respose-default.dto';
 
 @ApiTags('Post')
 @Controller('post')
@@ -64,7 +65,9 @@ export class PostController {
 
       likeCount: savedPost.likeCount,
       commentCount: savedPost.commentCount,
-      shareCount: savedPost.shareCount,
+      saveCount: savedPost.saveCount,
+      repostCount: savedPost.repostCount,
+
       status: savedPost.status,
       createdAt: savedPost.createdAt,
       updatedAt: savedPost.updatedAt,
@@ -128,6 +131,13 @@ export class PostController {
   ): Promise<PostResponsePageDto> {
     const res = await this.postService.search(caption, page, size);
     return res;
+  }
+
+  @Get('batch')
+  async getManyByIds(
+    @Query('ids') ids: number[],
+  ): Promise<DefaultReponseDto[]> {
+    return await this.postService.findManyByIds(ids);
   }
 
   @Get('user')

@@ -11,10 +11,11 @@ import { CollabModule } from 'src/collab/collab.module';
 import { OutboxEventsModule } from 'src/outbox_events/outbox_events.module';
 import { ShortModule } from 'src/short/short.module';
 import { MentionModule } from 'src/mention/mention.module';
+import { Repost } from 'src/repost/entities/repost.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Post]),
+    TypeOrmModule.forFeature([Post, Repost]),
     ClientModule,
     PostMediaModule,
     ContextModule,

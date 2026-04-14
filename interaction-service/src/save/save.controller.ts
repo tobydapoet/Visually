@@ -13,22 +13,22 @@ import {
   Put,
   ParseEnumPipe,
 } from '@nestjs/common';
-import { ShareService } from './share.service';
-import { CreateShareDto } from './dto/create-share.dto';
+import { SaveService } from './save.service';
+import { CreateSaveDto } from './dto/create-save.dto';
 import { EventPattern, Payload } from '@nestjs/microservices';
 import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { ContentType } from 'src/enums/ContentType';
 
-@ApiTags('Share')
-@Controller('share')
-export class ShareController {
-  constructor(private readonly shareService: ShareService) {}
+@ApiTags('Save')
+@Controller('save')
+export class SaveController {
+  constructor(private readonly saveService: SaveService) {}
 
   @Post()
   @ApiBearerAuth()
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() createShareDto: CreateShareDto) {
-    return this.shareService.create(createShareDto);
+  create(@Body() createSaveDto: CreateSaveDto) {
+    return this.saveService.create(createSaveDto);
   }
 
   @Get('user/:userId')
@@ -36,17 +36,10 @@ export class ShareController {
   @ApiQuery({ name: 'size', required: false, example: 10 })
   findByUser(
     @Query('userId') userId: string,
-    @Query('public') isPublic: boolean,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
     @Query('size', new DefaultValuePipe(10), ParseIntPipe) size?: number,
   ) {
-    return this.shareService.findByUser(userId, page, size, isPublic);
-  }
-
-  @ApiBearerAuth()
-  @Put(':id/toggle-public')
-  togglePublic(@Param('id', ParseIntPipe) id: number) {
-    return this.shareService.togglePublic(id);
+    return this.saveService.findByUser(userId, page, size);
   }
 
   @Delete()
@@ -57,11 +50,11 @@ export class ShareController {
     @Query('targetType', new ParseEnumPipe(ContentType))
     targetType: ContentType,
   ) {
-    return this.shareService.remove(targetId, targetType);
+    return this.saveService.remove(targetId, targetType);
   }
 
   @EventPattern('user.updated.avatar')
   updateAvarUrl(@Payload() data: { id: string; avatarUrl: string }) {
-    return this.shareService.updateAvatarUrl(data.id, data.avatarUrl);
+    return this.saveService.updateAvatarUrl(data.id, data.avatarUrl);
   }
 }

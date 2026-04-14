@@ -33,6 +33,7 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
+import { DefaultReponseDto } from 'src/repost/dto/respose-default.dto';
 
 @ApiTags('Short')
 @Controller('short')
@@ -123,6 +124,13 @@ export class ShortController {
   ): Promise<ShortResponsePageDto> {
     const res = await this.shortService.search(caption, page, size);
     return res;
+  }
+
+  @Get('batch')
+  async getManyByIds(
+    @Query('ids') ids: number[],
+  ): Promise<DefaultReponseDto[]> {
+    return await this.shortService.findManyByIds(ids);
   }
 
   @Get('user')
