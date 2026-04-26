@@ -10,13 +10,16 @@ import { ClientModule } from './client/client.module';
 import { ReportModule } from './report/report.module';
 import { InteractionModule } from './interaction/interaction.module';
 import { MentionModule } from './mention/mention.module';
+import { OutboxEventsModule } from './outbox_events/outbox_events.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { ViewModule } from './view/view.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
-
+    ScheduleModule.forRoot(),
     TypeOrmModule.forRoot({
       type: 'mysql',
       host: process.env.DB_HOST,
@@ -35,6 +38,8 @@ import { MentionModule } from './mention/mention.module';
     ReportModule,
     InteractionModule,
     MentionModule,
+    OutboxEventsModule,
+    ViewModule,
   ],
   providers: [AppService],
 })

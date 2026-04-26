@@ -1,20 +1,21 @@
 package com.example.user_service.controllers;
 
 import com.example.user_service.exceptions.UnauthorizedException;
-import com.example.user_service.requests.GoogleRequest;
-import com.example.user_service.requests.LoginRequest;
-import com.example.user_service.requests.RegisterRequest;
+import com.example.user_service.requests.*;
 import com.example.user_service.entities.User;
+import com.example.user_service.services.JwtService;
+import com.example.user_service.services.MailService;
+import com.example.user_service.services.OtpService;
 import com.example.user_service.services.UserService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/auth")
@@ -22,6 +23,15 @@ public class AuthController {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private MailService mailService;
+
+    @Autowired
+    private OtpService otpService;
+
+    @Autowired
+    private JwtService jwtService;
 
     @PostMapping("/login")
     public ResponseEntity<Map<String, String>> login(@RequestBody LoginRequest req) {
@@ -81,5 +91,65 @@ public class AuthController {
                 "accessToken", tokens.get("accessToken"),
                 "refreshToken", tokens.get("refreshToken")
         ));
+    }
+
+
+    @PostMapping("/verify-otp")
+    public ResponseEntity<Map<String, String>> verifyOtp(
+            @RequestBody @Valid OtpReq req) {
+
+        OtpService.VerifyResult result =
+                otpService.verify(req.getEmail(), req.getOtp());
+
+        return switch (result) {
+            case SUCCESS -> {
+                String resetToken =
+                        jwtService.generateResetToken(req.getEmail());
+
+                yield ResponseEntity.ok(
+                        Map.of(
+                                "message", "Verification successful",
+                                "resetToken", resetToken
+                        )
+                );
+            }
+
+            case INVALID ->
+                    ResponseEntity.status(401)
+                            .body(Map.of("message", "Invalid OTP"));
+
+            case EXPIRED ->
+                    ResponseEntity.status(401)
+                            .body(Map.of("message", "OTP has expired"));
+
+            case TOO_MANY_ATTEMPTS ->
+                    ResponseEntity.status(429)
+                            .body(Map.of(
+                                    "message",
+                                    "Too many attempts, please log in again"
+                            ));
+        };
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<Map<String, String>> resetPassword(
+            @RequestBody @Valid ResetPasswordReq req) {
+
+        userService.resetPassword(req);
+
+        return ResponseEntity.ok(
+                Map.of(
+                        "message",
+                        "Password reset successfully"
+                )
+        );
+    }
+
+    @PostMapping("/resend-otp")
+    public ResponseEntity<Map<String, String>>resendOtp(@RequestBody Map<String, String> body) {
+        String email = body.get("email");
+        String otp = otpService.generateAndStore(email);
+        mailService.sendOtp(email, otp);
+        return ResponseEntity.ok(Map.of("message", "OTP has been resent"));
     }
 }

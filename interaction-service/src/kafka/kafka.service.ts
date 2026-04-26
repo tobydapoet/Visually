@@ -3,18 +3,26 @@ import { ClientKafka } from '@nestjs/microservices';
 
 @Injectable()
 export class KafkaService {
-  constructor(@Inject('KAFKA_SERVICE') private contentClient: ClientKafka) {}
+  constructor(@Inject('KAFKA_SERVICE') private kafkaClient: ClientKafka) {}
 
   async onModuleInit() {
-    this.contentClient.subscribeToResponseOf('user.get');
-    await this.contentClient.connect();
+    await this.kafkaClient.connect();
   }
 
   emit(topic: string, data: any) {
-    return this.contentClient.emit(topic, data);
+    return this.kafkaClient.emit(topic, data);
   }
 
   send(topic: string, data: any) {
-    return this.contentClient.send(topic, data);
+    return this.kafkaClient.send(topic, data);
+  }
+
+  async publish<T>(topic: string, key: string, payload: T): Promise<void> {
+    await this.kafkaClient
+      .emit(topic, {
+        key,
+        value: payload,
+      })
+      .toPromise();
   }
 }

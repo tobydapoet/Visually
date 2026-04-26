@@ -1,27 +1,32 @@
 package com.example.media_service.services;
 
-import com.cloudinary.Cloudinary;
-import com.cloudinary.utils.ObjectUtils;
 import com.example.media_service.enums.FileType;
 import com.example.media_service.exceptions.ConflictException;
 import com.example.media_service.exceptions.SystemException;
 import com.example.media_service.responses.UploadResult;
+import org.springframework.beans.factory.annotation.Value;
+import com.google.cloud.storage.BlobId;
+import com.google.cloud.storage.BlobInfo;
+import com.google.cloud.storage.Storage;
 import org.apache.tika.Tika;
+import org.jaudiotagger.audio.AudioFile;
+import org.jaudiotagger.audio.AudioFileIO;
+import org.mp4parser.IsoFile;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.Files;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Service
 public class UploadService {
     @Autowired
-    private Cloudinary cloudinary;
+    private Storage storage;
+
+    @Value("${gcs.bucket-name}")
+    private String bucketName;
 
     public FileType detectFileType(MultipartFile file) {
         try {
@@ -53,79 +58,72 @@ public class UploadService {
         }
     }
 
+    private Double getDuration(MultipartFile file, FileType type) {
+        try {
+            File tempFile = File.createTempFile("duration-", ".tmp");
+            Files.write(tempFile.toPath(), file.getBytes());
+
+            if (type == FileType.VIDEO) {
+                IsoFile isoFile = new IsoFile(tempFile.getAbsolutePath());
+                double duration = (double) isoFile
+                        .getMovieBox()
+                        .getMovieHeaderBox()
+                        .getDuration()
+                        /
+                        isoFile.getMovieBox()
+                                .getMovieHeaderBox()
+                                .getTimescale();
+                isoFile.close();
+                return duration;
+            }
+
+            if (type == FileType.AUDIO) {
+                AudioFile audioFile = AudioFileIO.read(tempFile);
+                return (double) audioFile.getAudioHeader().getTrackLength();
+            }
+
+            return null;
+
+        } catch (Exception e) {
+            return null;
+        }
+    }
 
     public UploadResult upload(MultipartFile file, String folder) {
         try {
-            System.out.println("=== UPLOAD SERVICE - CLOUDINARY ===");
-
             FileType type = detectFileType(file);
 
-            System.out.println("Detected FileType enum: " + type);
-            System.out.println("Cloudinary resource_type: " + type.cloudinary());
-            System.out.println("Folder: " + folder);
+            String originalFilename = file.getOriginalFilename();
+            String extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+            String fileName = folder + "/" + System.currentTimeMillis() + extension;
 
-            byte[] fileBytes = file.getBytes();
-            File tempFile = File.createTempFile("upload-", ".tmp");
-            Files.write(tempFile.toPath(), fileBytes);
+            BlobId blobId = BlobId.of(bucketName, fileName);
+            BlobInfo blobInfo = BlobInfo.newBuilder(blobId)
+                    .setContentType(file.getContentType())
+                    .build();
 
-            Map uploadRes = cloudinary.uploader().upload(
-                    tempFile,
-                    ObjectUtils.asMap(
-                            "folder", folder,
-                            "resource_type", type.cloudinary()
-                    )
-            );
+            storage.create(blobInfo, file.getBytes());
 
-            System.out.println("Cloudinary upload SUCCESS!");
-            System.out.println("Cloudinary response: " + uploadRes);
-
-            String url = uploadRes.get("secure_url").toString();
+            String url = String.format("https://storage.googleapis.com/%s/%s", bucketName, fileName);
 
             Double duration = null;
-            if (type == FileType.AUDIO || type == FileType.VIDEO) {
-                Object dur = uploadRes.get("duration");
-                if (dur != null) {
-                    duration = ((Number) dur).doubleValue();
-                }
+            if (type == FileType.VIDEO || type == FileType.AUDIO) {
+                duration = getDuration(file, type);
             }
 
             return new UploadResult(url, type, duration);
 
         } catch (Exception e) {
-            e.printStackTrace();
             throw new SystemException("Upload failed: " + e.getMessage(), e);
         }
     }
 
-
-
     public void deleteMany(List<String> urls) {
-        List<String> publicIds = urls.stream()
-                .map(url -> {
-                    String[] parts = url.split("/upload/");
-                    if (parts.length < 2)
-                        throw new RuntimeException("Invalid Cloudinary URL: " + url);
-
-                    String path = parts[1];
-
-                    int firstSlash = path.indexOf("/");
-                    if (firstSlash != -1) {
-                        path = path.substring(firstSlash + 1);
-                    }
-
-                    int dotIndex = path.lastIndexOf(".");
-                    if (dotIndex != -1) {
-                        path = path.substring(0, dotIndex);
-                    }
-
-                    return path;
-                })
-                .toList();
-
-        try {
-            cloudinary.api().deleteResources(publicIds, ObjectUtils.emptyMap());
-        } catch (Exception e) {
-            throw new RuntimeException("Delete files error", e);
-        }
+        urls.forEach(url -> {
+            String fileName = url.replace(
+                    String.format("https://storage.googleapis.com/%s/", bucketName), ""
+            );
+            storage.delete(BlobId.of(bucketName, fileName));
+        });
     }
 }

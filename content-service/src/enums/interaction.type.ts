@@ -1,6 +1,6 @@
 export enum InteractionType {
   LIKE = 'LIKE',
-  UNLIKE = 'UNLIKE',
+  DISLIKE = 'DISLIKE',
   SAVE = 'SAVE',
   UNSAVE = 'UNSAVE',
   COMMENT = 'COMMENT',
@@ -10,5 +10,5 @@ export enum InteractionType {
 
 export enum StoryInteractionType {
   LIKE = 'LIKE',
-  UNLIKE = 'UNLIKE',
+  DISLIKE = 'DISLIKE',
 }

@@ -16,6 +16,10 @@ import java.util.UUID;
 
 @Component
 public class AuthFilter extends OncePerRequestFilter {
+    private static final List<String> OPTIONAL_AUTH_PATHS = List.of(
+            "/username/",
+            "/search"
+    );
 
     @Override
     protected void doFilterInternal(
@@ -23,23 +27,25 @@ public class AuthFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain
     ) throws ServletException, IOException {
-        System.out.println("AUTH FILTER RUNNING");
         String userId = request.getHeader("X-User-Id");
         String sessionId = request.getHeader("X-Session-Id");
-        String roles = request.getHeader("X-User-Roles");
+        String role = request.getHeader("X-User-Role");
 
-        if (userId == null || sessionId == null) {
+        boolean isOptional = OPTIONAL_AUTH_PATHS.stream()
+                .anyMatch(p -> request.getRequestURI().contains(p));
+
+        if (userId == null && !isOptional) {
             response.setStatus(HttpStatus.UNAUTHORIZED.value());
             return;
         }
 
-        CurrentUser currentUser = new CurrentUser(
-                UUID.fromString(userId),
-                Long.parseLong(sessionId),
-                roles != null ? List.of(roles.split(",")) : List.of()
-        );
-
-        AuthContext.set(currentUser);
+        if (userId != null) {
+            AuthContext.set(new CurrentUser(
+                    UUID.fromString(userId),
+                    sessionId != null ? Long.parseLong(sessionId) : null,
+                    role
+            ));
+        }
 
         try {
             filterChain.doFilter(request, response);
@@ -61,7 +67,7 @@ public class AuthFilter extends OncePerRequestFilter {
                 || path.contains("/v3/api-docs")
                 || path.contains("swagger")
                 || path.contains("refresh")
-                || path.contains("username");
-
+                || path.contains("otp")
+                || path.contains("reset-password");
     }
 }

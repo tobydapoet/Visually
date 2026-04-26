@@ -1,6 +1,5 @@
 import {
   ForbiddenException,
-  forwardRef,
   Inject,
   Injectable,
   NotFoundException,
@@ -19,6 +18,8 @@ import { UserDto } from 'src/client/dto/user-response.dto';
 import { MentionService } from 'src/mention/mention.service';
 import { UpdateCommentDto } from './dto/update-comment.dto';
 import { Like } from 'src/like/entities/like.entity';
+import { DataSource } from 'typeorm';
+import { OutboxEventsService } from 'src/outbox_events/outbox_events.service';
 
 @Injectable({ scope: Scope.REQUEST })
 export class CommentService {
@@ -30,6 +31,8 @@ export class CommentService {
     private contentClient: ContentClient,
     private mentionService: MentionService,
     @Inject('KAFKA_SERVICE') private kafkaClient: ClientKafka,
+    private outboxEventService: OutboxEventsService,
+    private dataSource: DataSource,
   ) {}
 
   async updateAvatarUrl(userId: string, avatarUrl: string) {
@@ -57,39 +60,13 @@ export class CommentService {
 
   async create(createCommentDto: CreateCommentDto) {
     const userId = this.context.getUserId();
+    const username = this.context.getUsername();
+    const avatarUrl = this.context.getAvatarUrl();
 
-    const comment = this.commentRepo.create({
-      userId,
-      username: this.context.getUsername(),
-      avatarUrl: this.context.getAvatarUrl(),
-      targetId: createCommentDto.targetId,
-      targetType: createCommentDto.targetType,
-      content: createCommentDto.content,
-      ...(createCommentDto.replyToId && {
-        replyTo: { id: createCommentDto.replyToId },
-      }),
-    });
-
-    const savedComment = await this.commentRepo.save(comment);
-
-    if (createCommentDto.replyToId) {
-      await this.updateInteraction(
-        createCommentDto.replyToId,
-        InteractionType.COMMENT,
-      );
-    }
-
-    if (comment && createCommentDto.mentions) {
-      await this.mentionService.createMany({
-        mentions: createCommentDto.mentions,
-        commentId: comment.id,
-      });
-    }
-
-    const owner =
-      savedComment.targetType === CommentTargetType.POST
-        ? await this.contentClient.getPostOwner(savedComment.targetId)
-        : await this.contentClient.getShortOwner(savedComment.targetId);
+    const content =
+      createCommentDto.targetType === CommentTargetType.POST
+        ? await this.contentClient.getPost(createCommentDto.targetId)
+        : await this.contentClient.getShort(createCommentDto.targetId);
 
     let repliedUser: UserDto | null = null;
     if (createCommentDto.replyToId) {
@@ -105,32 +82,83 @@ export class CommentService {
       }
     }
 
-    this.kafkaClient.emit('content.commented', {
-      contentId: savedComment.targetId,
-      contentType: savedComment.targetType,
-      commentId: savedComment.id,
-      authorId: userId,
-      timestamp: new Date().toISOString(),
-      userId: savedComment.userId,
-      avatarUrl: savedComment.avatarUrl,
-    });
-
     const receiverMap = new Map<
       string,
       { username: string; avatarUrl?: string }
     >();
 
-    if (owner && owner.userId !== userId) {
-      receiverMap.set(owner.userId, {
-        username: owner.username,
-        avatarUrl: owner.avatarUrl,
+    if (content && content.userId !== userId) {
+      receiverMap.set(content.userId, {
+        username: content.username,
+        avatarUrl: content.avatarUrl,
       });
     }
 
     if (repliedUser && !receiverMap.has(repliedUser.userId)) {
       receiverMap.set(repliedUser.userId, {
         username: repliedUser.username,
-        avatarUrl: repliedUser.avatarUrl || undefined,
+        avatarUrl: repliedUser.avatarUrl ?? undefined,
+      });
+    }
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    let savedComment: Comment;
+
+    try {
+      savedComment = await queryRunner.manager.save(Comment, {
+        userId,
+        username,
+        avatarUrl,
+        targetId: createCommentDto.targetId,
+        targetType: createCommentDto.targetType,
+        content: createCommentDto.content,
+        ...(createCommentDto.replyToId && {
+          replyTo: { id: createCommentDto.replyToId },
+        }),
+      });
+
+      await this.outboxEventService.emitComment(queryRunner.manager, {
+        eventType: 'content.commented',
+        payload: {
+          senderId: userId,
+          username,
+          avatarUrl,
+          rootUserId: content?.userId,
+          contentId: savedComment.targetId,
+          contentType: savedComment.targetType,
+          commentId: savedComment.id,
+          timestamp: new Date().toISOString(),
+          receiverId: savedComment.replyTo?.userId,
+          likeCount: content.likeCount,
+          commentCount: content.commentCount,
+          saveCount: content.saveCount,
+          tags: content.tags,
+          caption: content.caption,
+        },
+      });
+
+      await queryRunner.commitTransaction();
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      await queryRunner.release();
+    }
+
+    if (createCommentDto.replyToId) {
+      await this.updateInteraction(
+        createCommentDto.replyToId,
+        InteractionType.COMMENT,
+      );
+    }
+
+    if (createCommentDto.mentions) {
+      await this.mentionService.createMany({
+        mentions: createCommentDto.mentions,
+        commentId: savedComment.id,
       });
     }
 
@@ -151,6 +179,7 @@ export class CommentService {
 
     return savedComment;
   }
+
   async findByTarget(
     targetId: number,
     type: CommentTargetType,
@@ -185,7 +214,7 @@ export class CommentService {
     return {
       content: comments.map((c) => ({
         ...c,
-        isLiked: likedCommentIds.has(c.id), // ✅
+        isLiked: likedCommentIds.has(c.id),
       })),
       page,
       size,
@@ -290,44 +319,64 @@ export class CommentService {
   }
 
   async remove(commentId: number) {
-    const rootComment = await this.commentRepo.findOne({
-      where: { id: commentId },
-    });
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    if (!rootComment) throw new NotFoundException('Comment not found');
-
-    const allIds: number[] = [];
-    const stack = [commentId];
-
-    while (stack.length) {
-      const currentId = stack.pop()!; 
-      allIds.push(currentId);
-
-      const children = await this.commentRepo.find({
-        where: { replyTo: { id: currentId } },
-        select: ['id'],
-        relations: ['replies'],
+    try {
+      const rootComment = await queryRunner.manager.findOne(Comment, {
+        where: { id: commentId },
       });
 
-      for (const child of children) stack.push(child.id);
+      if (!rootComment) {
+        throw new NotFoundException('Comment not found');
+      }
+
+      const allIds: number[] = [];
+      const stack = [commentId];
+
+      while (stack.length) {
+        const currentId = stack.pop()!;
+        allIds.push(currentId);
+
+        const children = await queryRunner.manager.find(Comment, {
+          where: { replyTo: { id: currentId } },
+          select: ['id'],
+        });
+
+        for (const child of children) {
+          stack.push(child.id);
+        }
+      }
+
+      await this.mentionService.updateMentions(commentId);
+
+      this.kafkaClient.emit('comment.likes.remove', {
+        targetIds: allIds,
+        targetType: LikeTargetType.COMMENT,
+      });
+
+      await this.outboxEventService.emitDeleteComment(queryRunner.manager, {
+        eventType: 'content.comment_deleted',
+        payload: {
+          contentId: rootComment.targetId,
+          contentType: rootComment.targetType,
+          deletedCount: allIds.length,
+          timestamp: new Date().toISOString(),
+        },
+      });
+
+      await queryRunner.manager.delete(Comment, allIds);
+
+      await queryRunner.commitTransaction();
+
+      return { deleted: allIds.length };
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      await queryRunner.release();
     }
-
-    await this.mentionService.updateMentions(commentId);
-
-    this.kafkaClient.emit('comment.likes.remove', {
-      targetIds: allIds,
-      targetType: LikeTargetType.COMMENT,
-    });
-    await this.commentRepo.delete(allIds);
-
-    this.kafkaClient.emit('content.comment_deleted', {
-      contentId: rootComment.targetId,
-      contentType: rootComment.targetType,
-      deletedCount: allIds.length,
-      timestamp: new Date().toISOString(),
-    });
-
-    return { deleted: allIds.length };
   }
 
   async getCommentedIds(

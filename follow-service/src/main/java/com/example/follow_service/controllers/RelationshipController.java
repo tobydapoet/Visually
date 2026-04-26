@@ -8,10 +8,7 @@ import com.example.follow_service.responses.RelationshipResponse;
 import com.example.follow_service.services.BlockService;
 import com.example.follow_service.services.FollowService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
@@ -27,24 +24,28 @@ public class RelationshipController {
 
     @GetMapping("/{followedId}")
     public RelationshipResponse getRelationship(
-            @PathVariable UUID followedId
+            @PathVariable UUID followedId,
+            @RequestHeader(value = "X-User-Id", required = false) String userId
     ) {
+        UUID currentUserId = null;
 
-        CurrentUser currentUser = AuthContext.get();
-
-        UUID currentUserId = currentUser != null ? currentUser.getUserId() : null;
+        if (userId != null && !userId.isBlank()) {
+            currentUserId = UUID.fromString(userId);
+        }
 
         FollowInfoResponse followInfoResponse =
                 followService.isFollowed(followedId, currentUserId);
 
-        BlockInfoResponse blockInfoResponse =
-                blockService.isBlocked(followedId, currentUserId);
+        boolean isBlock = false;
+        if (currentUserId != null) {
+            BlockInfoResponse blockInfoResponse =
+                    blockService.isBlocked(followedId, currentUserId);
+            isBlock = blockInfoResponse.isBlock();
+        }
 
         return new RelationshipResponse(
-                blockInfoResponse.isBlock(),
-                followInfoResponse.isFollow(),
-                followInfoResponse.followersCount(),
-                followInfoResponse.followingCount()
+                isBlock,
+                followInfoResponse.isFollow()
         );
     }
 

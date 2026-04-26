@@ -29,4 +29,12 @@ export class KafkaConsumerController {
     this.logger.log(`🔔 notification.created: ${JSON.stringify(event)}`);
     this.socketGateway.sendNotification(event);
   }
+
+  @EventPattern('ad.registered.result')
+  async handleAdResult(@Payload() data: { userId: string; success: boolean }) {
+    this.socketGateway.emitAdPayment(data.userId, {
+      success: data.success,
+      message: data.success ? 'Register ad success!' : 'Register failed',
+    });
+  }
 }

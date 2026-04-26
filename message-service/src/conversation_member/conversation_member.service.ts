@@ -92,6 +92,7 @@ export class ConversationMemberService {
       userId: member.userId,
       username: member.username,
       avatarUrl: member.avatarUrl,
+      lastSeen: member.lastSeen ?? null,
     }));
   }
 
@@ -115,6 +116,7 @@ export class ConversationMemberService {
       userId: member.userId,
       username: member.username,
       avatarUrl: member.avatarUrl,
+      lastSeen: member.lastSeen ?? null,
     }));
   }
 
@@ -174,5 +176,9 @@ export class ConversationMemberService {
 
       skip += BATCH_SIZE;
     }
+  }
+
+  async updateStatus(userId: string, lastSeen: Date | null) {
+    await this.memberRepo.update({ userId }, { lastSeen });
   }
 }

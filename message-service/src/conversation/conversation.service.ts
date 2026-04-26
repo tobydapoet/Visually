@@ -8,6 +8,7 @@ import { ContextService } from '../context/context.service';
 import { ConversationType } from '../enums/conversation.type';
 import { MediaClient } from '../client/media.client';
 import { UpdateConversationDto } from './dto/update-conversation.dto';
+import { FollowClient } from '../client/follow.client';
 
 @Injectable()
 export class ConversationService {
@@ -16,6 +17,7 @@ export class ConversationService {
     private conversationRepo: Repository<Conversation>,
     private memberService: ConversationMemberService,
     private mediaClient: MediaClient,
+    private followClient: FollowClient,
     private dataSource: DataSource,
     private context: ContextService,
   ) {}
@@ -119,20 +121,37 @@ export class ConversationService {
 
     const otherUsers =
       conversation.type === ConversationType.PRIVATE
-        ? otherMembers.map(({ userId, avatarUrl, username }) => ({
+        ? otherMembers.map(({ userId, avatarUrl, username, lastSeen }) => ({
             userId,
             avatarUrl,
             username,
+            lastSeen,
           }))
-        : otherMembers.slice(0, 3).map(({ userId, avatarUrl, username }) => ({
-            userId,
-            avatarUrl,
-            username,
-          }));
+        : otherMembers
+            .slice(0, 3)
+            .map(({ userId, avatarUrl, username, lastSeen }) => ({
+              userId,
+              avatarUrl,
+              username,
+              lastSeen,
+            }));
+
+    let isBlocked = false;
+    if (
+      conversation.type === ConversationType.PRIVATE &&
+      otherMembers.length > 0
+    ) {
+      const otherUserId = otherMembers[0].userId;
+      const blockResult = await this.followClient.isBlocked(
+        userId,
+        otherUserId,
+      );
+      isBlocked = blockResult.isBlocked;
+    }
 
     const { members, ...conversationWithoutMembers } = conversation;
 
-    return { ...conversationWithoutMembers, otherUsers };
+    return { ...conversationWithoutMembers, otherUsers, isBlocked };
   }
 
   async getOrCreatePrivateConversation(userBId: string) {
@@ -147,7 +166,13 @@ export class ConversationService {
     const newConversation = await this.create({
       memberIds: [userAId, userBId],
     });
-    return await this.findOne(newConversation.id);
+
+    const res = await this.findOne(newConversation.id);
+    const block = await this.followClient.isBlocked(userAId, userBId);
+    return {
+      ...res,
+      isBlocked: block.isBlocked,
+    };
   }
 
   async findAll(page = 1, limit = 20) {
@@ -194,10 +219,11 @@ export class ConversationService {
           c.type === ConversationType.PRIVATE
             ? otherMembers.slice(0, 1)
             : otherMembers.slice(0, 3)
-        ).map(({ userId, avatarUrl, username }) => ({
+        ).map(({ userId, avatarUrl, username, lastSeen }) => ({
           userId,
           avatarUrl,
           username,
+          lastSeen,
         }));
 
         const currentMember = c.members.find((m) => m.userId === userId);

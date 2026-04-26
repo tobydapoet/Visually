@@ -1,11 +1,20 @@
 import {
   ForbiddenException,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { CreateStoryDto } from './dto/create-story.dto';
-import { DataSource, In, IsNull, Not, Repository } from 'typeorm';
+import {
+  DataSource,
+  In,
+  IsNull,
+  LessThan,
+  MoreThan,
+  Not,
+  Repository,
+} from 'typeorm';
 import { MediaClient } from 'src/client/media.client';
 import { Story } from './entities/story.entity';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -14,11 +23,14 @@ import { ContextService } from 'src/context/context.service';
 import { MusicResponse } from 'src/client/dto/MusicResponse.dto';
 import { StoryInteractionType } from 'src/enums/interaction.type';
 import { OutboxEventsService } from 'src/outbox_events/outbox_events.service';
-import { StoryResponsePageDto } from './dto/response-story-page.dto';
+import {
+  StoryResponsePageDto,
+  StorySummaryResponsePageDto,
+} from './dto/response-story-page.dto';
 import { StoryStorageService } from 'src/story_storage/story_storage.service';
-import { plainToInstance } from 'class-transformer';
 import { InteractionClient } from 'src/client/interaction.client';
 import { ContentServiceType } from 'src/enums/content.type';
+import { FollowClient } from 'src/client/follow.client';
 
 @Injectable()
 export class StoryService {
@@ -31,6 +43,7 @@ export class StoryService {
     private outboxEventService: OutboxEventsService,
     private storageService: StoryStorageService,
     private interactionClient: InteractionClient,
+    private followClient: FollowClient,
   ) {}
 
   private readonly logger = new Logger(StoryService.name);
@@ -42,6 +55,7 @@ export class StoryService {
     const userId = this.context.getUserId();
     const avatarUrl = this.context.getAvatarUrl();
     const username = this.context.getUsername();
+    const role = this.context.getRole();
 
     const files: Express.Multer.File[] = [file];
     const mediaResponses = await this.mediaClient.upload(
@@ -55,6 +69,7 @@ export class StoryService {
     if (createStoryDto.musicId) {
       musicResponse = await this.mediaClient.getMusic(
         userId,
+        role,
         createStoryDto.musicId,
       );
       startMusicTime = createStoryDto.startMusicTime ?? null;
@@ -90,13 +105,22 @@ export class StoryService {
         eventType: 'content.created',
         payload: {
           contentId: savedStory.id,
-          authorId: savedStory.userId,
+          senderId: savedStory.userId,
           username,
-          type: 'STORY',
+          contentType: 'STORY',
           avatarUrl,
           createdAt: savedStory.createdAt,
         },
       });
+
+      // this.kafkaClient.emit(`content.created`, {
+      //   senderId: userId,
+      //   username,
+      //   avatarUrl,
+      //   contentId: story.id,
+      //   contentType: 'STORY',
+      //   timestamp: new Date().toISOString(),
+      // });
 
       await queryRunner.commitTransaction();
 
@@ -147,6 +171,129 @@ export class StoryService {
     }
   }
 
+  async haveNonExpiredStory(userId: string): Promise<boolean> {
+    const stories = await this.storyRepo.find({
+      where: {
+        userId,
+        expiredAt: MoreThan(new Date()),
+        isDeleted: false,
+      },
+    });
+    if (stories.length > 0) {
+      return true;
+    }
+    return false;
+  }
+
+  async getUserWithNonExpiredStory(userIds: string[]): Promise<string[]> {
+    const stories = await this.storyRepo
+      .createQueryBuilder('story')
+      .select('DISTINCT story.userId', 'userId')
+      .where('story.userId IN (:...userIds)', { userIds })
+      .andWhere('story.expiredAt > :now', { now: new Date() })
+      .andWhere('story.isDeleted = false')
+      .getRawMany();
+
+    return stories.map((s) => s.userId);
+  }
+
+  async getNonExpiredStoriesByUser(
+    username: string,
+  ): Promise<StoryResponseDto[]> {
+    const currentUserId = this.context.getUserId();
+    const stories = await this.storyRepo.find({
+      where: {
+        username: username,
+        expiredAt: MoreThan(new Date()),
+        isDeleted: false,
+      },
+      relations: ['storage'],
+    });
+
+    const interactions = await this.interactionClient.getCurrentInteraction(
+      currentUserId,
+      stories.map((story) => story.id),
+      ContentServiceType.STORY,
+    );
+
+    const interactionMap = new Map(interactions.map((i) => [i.targetId, i]));
+
+    return stories.map((story): StoryResponseDto => {
+      const interaction = interactionMap.get(story.id);
+      return {
+        id: story.id,
+        userId: story.userId,
+        username: story.username,
+        avatarUrl: story.avatarUrl,
+        mediaUrl: story.mediaUrl,
+        musicUrl: story.musicUrl,
+        expiredAt: story.expiredAt,
+        createdAt: story.createdAt,
+        likeCount: story.likeCount,
+        startMusicTime: story.startMusicTime,
+        storageId: story?.storage?.id ?? null,
+        isLiked: interaction?.isLiked ?? false,
+        isCommented: interaction?.isCommented ?? false,
+        isSaved: interaction?.isSaved ?? false,
+      };
+    });
+  }
+
+  async getNonExpiredStories(
+    page: number,
+    size: number,
+  ): Promise<StorySummaryResponsePageDto> {
+    const userId = this.context.getUserId();
+
+    const fetchFollows = await this.followClient.getCurrentFollowed(
+      userId,
+      page - 1,
+      size,
+    );
+
+    const followIds = fetchFollows.content.map((follow) => follow.id);
+    const allUserIds = page === 1 ? [userId, ...followIds] : followIds;
+
+    const stories = await this.storyRepo.query(
+      `
+      SELECT s.id, s.userId, s.username, s.avatarUrl, s.createdAt
+      FROM stories s
+      INNER JOIN (
+        SELECT userId, MAX(createdAt) as maxCreatedAt
+        FROM stories
+        WHERE userId IN (?)
+          AND expiredAt > NOW()
+          AND isDeleted = false
+        GROUP BY userId
+      ) latest ON s.userId = latest.userId AND s.createdAt = latest.maxCreatedAt
+      ORDER BY CASE WHEN s.userId = ? THEN 0 ELSE 1 END ASC, latest.maxCreatedAt DESC
+      LIMIT ? OFFSET ?
+      `,
+      [allUserIds, userId, size, (page - 1) * size],
+    );
+    if (!stories.length) return { content: [], page, size, total: 0 };
+
+    const isViewStories = await this.interactionClient.getStoriesView(
+      stories.map((s: Story) => s.id),
+      userId,
+    );
+
+    const viewMap = new Map(isViewStories.map((v) => [v.storyId, v.isViewed]));
+
+    return {
+      content: stories.map((story: Story) => ({
+        id: story.id,
+        userId: story.userId,
+        username: story.username,
+        avatarUrl: story.avatarUrl,
+        isViewed: viewMap.get(story.id) ?? false,
+      })),
+      page,
+      size,
+      total: stories.length,
+    };
+  }
+
   async findOneWithUrl(storyId: number): Promise<StoryResponseDto> {
     const userId = this.context.getUserId();
 
@@ -194,7 +341,7 @@ export class StoryService {
         story.likeCount += 1;
         break;
 
-      case StoryInteractionType.UNLIKE:
+      case StoryInteractionType.DISLIKE:
         if (story.likeCount > 0) {
           story.likeCount -= 1;
         }
@@ -225,9 +372,11 @@ export class StoryService {
       ? {
           userId,
           storage: IsNull(),
+          isDeleted: false,
         }
       : {
           userId,
+          isDeleted: false,
         };
 
     const [stories, total] = await this.storyRepo.findAndCount({
@@ -283,26 +432,15 @@ export class StoryService {
     return await this.findByUser(userId, page, size, false);
   }
 
-  async getStoryInStorage(
-    storageId: number,
-    page = 1,
-  ): Promise<{
-    content: StoryResponseDto[];
-    page: number;
-    total: number;
-  }> {
+  async getStoryInStorage(storageId: number): Promise<StoryResponseDto[]> {
     const userId = this.context.getUserId();
-    const [stories, total] = await this.storyRepo.findAndCount({
+    const stories = await this.storyRepo.find({
       where: {
         storage: { id: storageId },
         isDeleted: false,
       },
-
-      skip: page - 1,
-      take: 1,
-      order: {
-        createdAt: 'DESC',
-      },
+      order: { createdAt: 'DESC' },
+      relations: ['storage'],
     });
 
     const interactions = await this.interactionClient.getCurrentInteraction(
@@ -313,29 +451,25 @@ export class StoryService {
 
     const interactionMap = new Map(interactions.map((i) => [i.targetId, i]));
 
-    return {
-      content: stories.map((story): StoryResponseDto => {
-        const interaction = interactionMap.get(story.id);
-
-        return {
-          id: story.id,
-          userId: story.userId,
-          username: story.username,
-          avatarUrl: story.avatarUrl,
-          mediaUrl: story.mediaUrl,
-          musicUrl: story.musicUrl,
-          expiredAt: story.expiredAt,
-          createdAt: story.createdAt,
-          likeCount: story.likeCount,
-          startMusicTime: story.startMusicTime,
-          isLiked: interaction?.isLiked ?? false,
-          isCommented: interaction?.isCommented ?? false,
-          isSaved: interaction?.isSaved ?? false,
-        };
-      }),
-      page,
-      total,
-    };
+    return stories.map((story): StoryResponseDto => {
+      const interaction = interactionMap.get(story.id);
+      return {
+        id: story.id,
+        userId: story.userId,
+        username: story.username,
+        avatarUrl: story.avatarUrl,
+        mediaUrl: story.mediaUrl,
+        musicUrl: story.musicUrl,
+        expiredAt: story.expiredAt,
+        createdAt: story.createdAt,
+        storageId: story?.storage?.id ?? null,
+        likeCount: story.likeCount,
+        startMusicTime: story.startMusicTime,
+        isLiked: interaction?.isLiked ?? false,
+        isCommented: interaction?.isCommented ?? false,
+        isSaved: interaction?.isSaved ?? false,
+      };
+    });
   }
 
   async delete(id: number) {

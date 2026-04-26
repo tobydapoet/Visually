@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { CreateTagDto } from './dto/create-tag.dto';
 import { Tag } from './entities/tag.entity';
-import { EntityManager, In, Repository } from 'typeorm';
+import { EntityManager, ILike, In, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ContentType } from 'src/enums/content.type';
 
@@ -32,6 +32,28 @@ export class TagService {
     return this.tagRepo.find({
       where: { targetId: In(targetIds), type: type },
     });
+  }
+
+  async findTag(keyword: string, page = 1, size = 20) {
+    const skip = (page - 1) * size;
+
+    const [content, total] = await this.tagRepo.findAndCount({
+      where: {
+        name: ILike(`%${keyword}%`),
+      },
+      take: size,
+      skip,
+      order: {
+        createdAt: 'DESC',
+      },
+    });
+
+    return {
+      content,
+      total,
+      page,
+      size,
+    };
   }
 
   async createMany(

@@ -26,7 +26,7 @@ public class AuthFilter extends OncePerRequestFilter {
 
         String userId = request.getHeader("X-User-Id");
         String sessionId = request.getHeader("X-Session-Id");
-        String roles = request.getHeader("X-User-Roles");
+        String role = request.getHeader("X-User-Role");
         String avatarUrl = request.getHeader("X-User-Avatar");
         String username = request.getHeader("X-User-Username");
 
@@ -37,8 +37,8 @@ public class AuthFilter extends OncePerRequestFilter {
 
         CurrentUser currentUser = new CurrentUser(
                 UUID.fromString(userId),
-                Long.parseLong(sessionId),
-                roles != null ? List.of(roles.split(",")) : List.of(),
+                sessionId != null ? Long.parseLong(sessionId) : null,
+                role,
                 avatarUrl,
                 username
         );

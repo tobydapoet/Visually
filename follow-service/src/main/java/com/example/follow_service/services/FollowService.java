@@ -1,6 +1,7 @@
 package com.example.follow_service.services;
 
 import com.example.follow_service.clients.UserClient;
+import com.example.follow_service.entities.Block;
 import com.example.follow_service.entities.Follow;
 import com.example.follow_service.enums.FollowType;
 import com.example.follow_service.exceptions.ConflictException;
@@ -80,6 +81,10 @@ public class FollowService {
         return new FollowInfoResponse(isFollow, followers, following);
     }
 
+    public Long countByUserId(UUID userId) {
+        return followRepository.countByUserId(userId);
+    }
+
     public boolean isFollowedBool(UUID userId, UUID targetUserId) {
         return followRepository
                 .findByUserIdAndFollowerId(targetUserId, userId)
@@ -135,13 +140,15 @@ public class FollowService {
             return Page.empty(pageable);
         }
 
-        String followerIds = follows.getContent()
+        String ids = follows.getContent()
                 .stream()
-                .map(f -> f.getFollowerId().toString())
+                .map(f -> type == FollowType.FOLLOWER
+                        ? f.getFollowerId().toString()
+                        : f.getUserId().toString())
                 .collect(Collectors.joining(","));
 
         List<UserResponse> users =
-                userClient.getUsers(followerIds, userId);
+                userClient.getUsers(ids, userId);
 
         return new PageImpl<>(
                 users,
@@ -292,6 +299,25 @@ public class FollowService {
                 search,
                 idPage.getTotalElements()
         );
+    }
+
+    @Transactional
+    public Block blockUser(UUID userId, UUID blockerId) {
+        if (isFollowedBool(blockerId, userId)) {
+            delete(userId, blockerId);
+        }
+        if (isFollowedBool(userId, blockerId)) {
+            delete(blockerId, userId);
+        }
+
+        return blockService.save(userId, blockerId);
+    }
+
+    public Page<UUID> getFollowerIdByUserId(
+            UUID userId, Integer page, Integer size
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
+        return followRepository.findFollowingIds(userId, pageable);
     }
 
     public Page<FollowResponse> findBothByFollowerId(

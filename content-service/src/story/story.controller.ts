@@ -98,16 +98,26 @@ export class StoryController {
     return this.storyService.findByUser(userId, page, size, filterStorage);
   }
 
+  @Get('user-valid/:username')
+  @ApiBearerAuth()
+  async getNonExpiredStoriesByUser(@Param('username') username: string) {
+    return this.storyService.getNonExpiredStoriesByUser(username);
+  }
+
+  @Get('valid')
+  @ApiBearerAuth()
+  async getNonExpiredStories(
+    @Query('page', new ParseIntPipe({ optional: true })) page = 1,
+    @Query('size', new ParseIntPipe({ optional: true })) size = 10,
+  ) {
+    return this.storyService.getNonExpiredStories(page, size);
+  }
+
   @Get('storage/:storageId')
   async findByStorage(
     @Param('storageId', ParseIntPipe) storageId: number,
-    @Query('page', new ParseIntPipe({ optional: true })) page = 1,
-  ): Promise<{
-    content: StoryResponseDto[];
-    page: number;
-    total: number;
-  }> {
-    return this.storyService.getStoryInStorage(storageId, page);
+  ): Promise<StoryResponseDto[]> {
+    return this.storyService.getStoryInStorage(storageId);
   }
 
   @Get('me')
@@ -133,7 +143,7 @@ export class StoryController {
   }
 
   @EventPattern('story.liked')
-  async handlestoryLiked(@Payload() data: { storyId: number; userId: string }) {
+  async handlestoryLiked(@Payload() data: { storyId: number }) {
     console.log('📨 story liked:', data);
     await this.storyService.updateInteraction(
       data.storyId,
@@ -141,14 +151,12 @@ export class StoryController {
     );
   }
 
-  @EventPattern('story.unliked')
-  async handlestoryUnliked(
-    @Payload() data: { storyId: number; userId: string },
-  ) {
-    console.log('📨 story unliked:', data);
+  @EventPattern('story.disliked')
+  async handlestoryUnliked(@Payload() data: { storyId: number }) {
+    console.log('📨 story disliked:', data);
     await this.storyService.updateInteraction(
       data.storyId,
-      StoryInteractionType.UNLIKE,
+      StoryInteractionType.DISLIKE,
     );
   }
 

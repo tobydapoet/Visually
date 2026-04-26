@@ -76,16 +76,19 @@ services:
       USERNAME: ${USERNAME}
       PASSWORD: ${SQL_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
-      CLOUDINARY_NAME: ${CLOUDINARY_NAME}
-      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
-      CLOUDINARY_SECRET: ${CLOUDINARY_SECRET}
       EUREKA_URL: ${EUREKA_URL}
+      REDIS_DB_OTP: ${REDIS_DB_OTP}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
       GOOGLE_CLIENT: ${GOOGLE_CLIENT}
       GOOGLE_SECRET: ${GOOGLE_SECRET}
       REDIRECT_URI: ${REDIRECT_URI}
       EUREKA_INSTANCE_PREFER_IP_ADDRESS: "false"
       EUREKA_INSTANCE_HOSTNAME: user-service
       KAFKA_URL: ${KAFKA_URL}
+      EMAIL_PORT: ${EMAIL_PORT}
+      EMAIL_USERNAME: ${EMAIL_USERNAME}
+      EMAIL_PASSWORD: ${EMAIL_PASSWORD}
       JAVA_OPTS: "-Xms128m -Xmx256m"
     deploy:
       resources:
@@ -109,12 +112,13 @@ services:
       USERNAME: ${USERNAME}
       PASSWORD: ${SQL_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
-      CLOUDINARY_NAME: ${CLOUDINARY_NAME}
-      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
-      CLOUDINARY_SECRET: ${CLOUDINARY_SECRET}
       EUREKA_URL: ${EUREKA_URL}
       EUREKA_INSTANCE_PREFER_IP_ADDRESS: "false"
       EUREKA_INSTANCE_HOSTNAME: media-service
+      GCS_BUCKET_NAME: ${GCS_BUCKET_NAME}
+      GCS_PROJECT_ID: ${GCS_PROJECT_ID}
+      GCS_CLIENT_EMAIL: ${GCS_CLIENT_EMAIL}
+      GCS_PRIVATE_KEY: ${GCS_PRIVATE_KEY}
       KAFKA_URL: ${KAFKA_URL}
       JAVA_OPTS: "-Xms128m -Xmx256m"
     deploy:
@@ -178,10 +182,11 @@ services:
       MEDIA_SERVICE_URL: ${MEDIA_SERVICE_URL}
       USER_SERVICE_URL: ${USER_SERVICE_URL}
       INTERACTION_SERVICE_URL: ${INTERACTION_SERVICE_URL}
+      FOLLOW_SERVICE_URL: ${FOLLOW_SERVICE_URL}
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 512M
     depends_on:
       discover-server:
         condition: service_healthy
@@ -242,13 +247,14 @@ services:
       EUREKA_PORT: ${EUREKA_PORT}
       SERVICE_NAME: ${MESSAGE_SERVICE_NAME}
       MEDIA_SERVICE_URL: ${MEDIA_SERVICE_URL}
+      FOLLOW_SERVICE_URL: ${FOLLOW_SERVICE_URL}
       USER_SERVICE_URL: ${USER_SERVICE_URL}
       CONTENT_SERVICE_URL: ${CONTENT_SERVICE_URL}
       KAFKA_URL: ${KAFKA_URL}
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 512M
     depends_on:
       discover-server:
         condition: service_healthy
@@ -282,7 +288,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 512M
     depends_on:
       discover-server:
         condition: service_healthy
@@ -311,11 +317,17 @@ services:
       EUREKA_PORT: ${EUREKA_PORT}
       SERVICE_NAME: ${FEED_SERVICE_NAME}
       KAFKA_URL: ${KAFKA_URL}
-      ADS_SERVICE_URL: ${ADS_SERVICE_URL}
+      AD_SERVICE_URL: ${AD_SERVICE_URL}
+      REDIS_DB_CELEBRITY: ${REDIS_DB_CELEBRITY}
+      CONTENT_SERVICE_URL: ${CONTENT_SERVICE_URL}
+      USER_SERVICE_URL: ${USER_SERVICE_URL}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      REDIS_DB_INTEREST: ${REDIS_DB_INTEREST}
+      NODE_OPTIONS: "--max-old-space-size=1536"
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 512M
     depends_on:
       discover-server:
         condition: service_healthy
@@ -324,9 +336,9 @@ services:
     networks:
       - app-network
 
-  ads-service:
-    build: ./ads-service
-    container_name: visually-ads-service
+  ad-service:
+    build: ./ad-service
+    container_name: visually-ad-service
     restart: always
     environment:
       SERVER_PORT: 8088
@@ -336,8 +348,11 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_URL}
       EUREKA_INSTANCE_PREFER_IP_ADDRESS: "false"
-      EUREKA_INSTANCE_HOSTNAME: ads-service
+      EUREKA_INSTANCE_HOSTNAME: ad-service
       KAFKA_URL: ${KAFKA_URL}
+      REDIS_DB_AD: ${REDIS_DB_AD}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
       JAVA_OPTS: "-Xms128m -Xmx256m"
     deploy:
       resources:

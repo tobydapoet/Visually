@@ -8,12 +8,12 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { ClientModule } from 'src/client/client.module';
 import { BullModule } from '@nestjs/bullmq';
 import { KafkaModule } from 'src/kafka/kafka.module';
+import { NotificationProcessor } from './notification.processor';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Notification]),
     ContextModule,
-    ClientModule,
     ClientModule,
     KafkaModule,
     ScheduleModule.forRoot(),
@@ -22,7 +22,7 @@ import { KafkaModule } from 'src/kafka/kafka.module';
     }),
   ],
   controllers: [NotificationController],
-  providers: [NotificationService],
+  providers: [NotificationService, NotificationProcessor],
   exports: [NotificationService],
 })
 export class NotificationModule {}

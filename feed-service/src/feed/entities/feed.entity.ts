@@ -9,10 +9,10 @@ import {
 } from 'typeorm';
 
 @Entity('feeds')
-@Index(['userId', 'contentId', 'contentType'], { unique: true })
-@Index(['userId', 'createdAt'])
-@Index(['userId', 'contentId'])
+@Index(['userId', 'score', 'createdAt'])
+@Index(['userId', 'isSeen'])
 @Index(['userId', 'source'])
+@Index(['userId', 'contentId', 'contentType'], { unique: true })
 export class Feed {
   @PrimaryGeneratedColumn('increment')
   id!: number;
@@ -20,22 +20,22 @@ export class Feed {
   @Column({ type: 'uuid' })
   userId!: string;
 
-  @Column({ type: 'enum', enum: ContentType })
-  contentType!: ContentType;
-
   @Column({ type: 'bigint' })
   contentId!: number;
+
+  @Column({ type: 'enum', enum: ContentType })
+  contentType!: ContentType;
 
   @Column({ type: 'enum', enum: FeedSource })
   source!: FeedSource;
 
-  @Column({ type: 'float', nullable: true })
-  score!: number | null;
+  @Column({ type: 'decimal', precision: 20, scale: 10 })
+  score!: number;
 
   @Column({ default: false })
   isSeen!: boolean;
 
-  @Column({ nullable: true })
+  @Column({ type: 'timestamp', nullable: true })
   seenAt!: Date;
 
   @CreateDateColumn()

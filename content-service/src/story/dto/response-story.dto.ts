@@ -14,3 +14,11 @@ export class StoryResponseDto {
   isCommented!: boolean;
   isSaved!: boolean;
 }
+
+export class StorySummaryReponseDto {
+  id!: number;
+  userId!: string;
+  username!: string;
+  avatarUrl?: string;
+  isViewed!: boolean;
+}

@@ -1,5 +1,6 @@
 import {
   ForbiddenException,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
@@ -8,7 +9,7 @@ import {
 import { CreatePostDto } from './dto/create-post.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Post } from './entities/post.entity';
-import { DataSource, In, Repository } from 'typeorm';
+import { DataSource, ILike, In, Repository } from 'typeorm';
 import { PostMediaService } from 'src/post_media/post_media.service';
 import { ContentStatus } from 'src/enums/content_status.type';
 import { UserRole } from 'src/enums/user_role.type';
@@ -16,11 +17,7 @@ import { TagService } from 'src/tag/tag.service';
 import { ContentServiceType, ContentType } from 'src/enums/content.type';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { PostResponseDto } from './dto/response-post.dto';
-import { CollabService } from 'src/collab/collab.service';
-import {
-  PostResponsePageDto,
-  PostSinglePageDto,
-} from './dto/response-page-post.dto';
+import { PostResponsePageDto } from './dto/response-page-post.dto';
 import { MediaClient } from 'src/client/media.client';
 import { ContextService } from 'src/context/context.service';
 import { InteractionType } from 'src/enums/interaction.type';
@@ -29,7 +26,10 @@ import { Tag } from 'src/tag/entities/tag.entity';
 import { MentionsService } from 'src/mention/mention.service';
 import { InteractionClient } from 'src/client/interaction.client';
 import { MentionResponse } from 'src/mention/dto/response-mentions.dto';
-import { DefaultReponseDto } from 'src/repost/dto/respose-default.dto';
+import {
+  ContentManagePageReponse,
+  DefaultReponseDto,
+} from 'src/repost/dto/respose-default.dto';
 import { Repost } from 'src/repost/entities/repost.entity';
 
 @Injectable()
@@ -45,7 +45,6 @@ export class PostService {
     private readonly mediaClient: MediaClient,
     private context: ContextService,
     private tagService: TagService,
-    private collabService: CollabService,
     private dataSource: DataSource,
     private outboxEventService: OutboxEventsService,
     private mentionService: MentionsService,
@@ -100,14 +99,6 @@ export class PostService {
         });
       }
 
-      if (createPostDto.collabUserId) {
-        await this.collabService.createMany({
-          userIds: createPostDto.collabUserId,
-          targetId: savedPost.id,
-          type: ContentType.POST,
-        });
-      }
-
       if (createPostDto.mentions) {
         await this.mentionService.createMany(
           createPostDto.mentions.map((m) => ({
@@ -122,14 +113,23 @@ export class PostService {
         eventType: 'content.created',
         payload: {
           contentId: savedPost.id,
-          authorId: savedPost.userId,
-          type: 'POST',
+          senderId: savedPost.userId,
+          contentType: 'POST',
           username,
           avatarUrl,
           createdAt: savedPost.createdAt,
           tags: tags.map((tag) => tag.name),
         },
       });
+
+      // this.kafkaClient.emit(`content.created`, {
+      //   senderId: userId,
+      //   username,
+      //   avatarUrl,
+      //   contentId: post.id,
+      //   contentType: 'POST',
+      //   timestamp: new Date().toISOString(),
+      // });
 
       await queryRunner.commitTransaction();
 
@@ -175,11 +175,11 @@ export class PostService {
         throw new NotFoundException(`Post not found!`);
       }
 
-      const roles = this.context.getRoles();
+      const role = this.context.getRole();
       const userId = this.context.getUserId();
 
-      const isAdmin = roles.includes(UserRole.ADMIN);
-      const isModerator = roles.includes(UserRole.MODERATOR);
+      const isAdmin = role === UserRole.ADMIN;
+      const isModerator = role === UserRole.MODERATOR;
       const isOwner = userId === currentPost.userId;
 
       if (!isAdmin && !isModerator && status === ContentStatus.BANNED) {
@@ -234,7 +234,7 @@ export class PostService {
       case InteractionType.SAVE:
         post.saveCount += 1;
         break;
-      case InteractionType.UNLIKE:
+      case InteractionType.DISLIKE:
         if (post.likeCount > 0) {
           post.likeCount -= 1;
         }
@@ -245,12 +245,10 @@ export class PostService {
         }
         break;
       case InteractionType.REPOST:
-        if (post.saveCount > 0) {
-          post.repostCount += 1;
-        }
+        post.repostCount += 1;
         break;
       case InteractionType.UNREPOST:
-        if (post.saveCount > 0) {
+        if (post.repostCount > 0) {
           post.repostCount -= 1;
         }
         break;
@@ -338,6 +336,67 @@ export class PostService {
       };
     });
   }
+
+  async getByStatus(
+    status: ContentStatus,
+    page = 1,
+    size = 10,
+    keyword?: string,
+  ): Promise<ContentManagePageReponse> {
+    const whereCondition = keyword
+      ? [
+          { status, username: ILike(`%${keyword}%`) },
+          { status, caption: ILike(`%${keyword}%`) },
+        ]
+      : { status };
+
+    const [posts, total] = await this.postRepo.findAndCount({
+      where: whereCondition,
+      skip: (page - 1) * size,
+      take: size,
+      order: {
+        createdAt: 'DESC',
+      },
+      relations: ['medias'],
+    });
+
+    const mentions = await this.mentionService.findManyByTargetIds(
+      posts.map((post) => post.id),
+      ContentType.POST,
+    );
+
+    const mentionMap = new Map<number, MentionResponse[]>();
+
+    mentions.forEach((m) => {
+      if (!mentionMap.has(m.targetId)) {
+        mentionMap.set(m.targetId, []);
+      }
+      mentionMap.get(m.targetId)!.push(m);
+    });
+
+    return {
+      content: posts.map((post) => {
+        return {
+          id: post.id,
+          userId: post.userId,
+          avatarUrl: post.avatarUrl,
+          username: post.username,
+          caption: post.caption,
+          thumbnailUrl: post.medias?.[0]?.mediaUrl,
+          createdAt: post.createdAt,
+          updatedAt: post.updatedAt,
+          mentions: (mentionMap.get(post.id) || []).map((m) => ({
+            userId: m.userId,
+            username: m.username,
+          })),
+        };
+      }),
+      total,
+      page,
+      size,
+    };
+  }
+
   async findByUser(
     userId: string,
     page = 1,
@@ -450,6 +509,7 @@ export class PostService {
       isCommented: interaction[0]?.isCommented ?? false,
       isSaved: interaction[0]?.isSaved ?? false,
       isReposted: !!repost,
+      status: post.status,
     };
   }
 
@@ -533,8 +593,8 @@ export class PostService {
           eventType: 'content.updated',
           payload: {
             contentId: savedPost.id,
-            authorId: savedPost.userId,
-            type: 'POST',
+            senderId: savedPost.userId,
+            contentType: 'POST',
             createdAt: savedPost.createdAt,
           },
         });
@@ -648,7 +708,16 @@ export class PostService {
         eventType: 'content.deleted',
         payload: {
           contentId: post.id,
-          type: 'POST',
+          contentType: 'POST',
+        },
+      });
+
+      await this.outboxEventService.delete(queryRunner.manager, {
+        eventType: 'content.created',
+        payload: {
+          contentId: post.id,
+          contentType: 'POST',
+          timestamp: new Date().toISOString(),
         },
       });
 

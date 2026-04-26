@@ -3,12 +3,8 @@ import {
   Get,
   Post,
   Body,
-  Patch,
   Param,
-  Delete,
   ParseIntPipe,
-  HttpCode,
-  HttpStatus,
   Put,
   Query,
 } from '@nestjs/common';
@@ -79,6 +75,14 @@ export class ConversationMemberController {
     return this.conversationMemberService.updateAvatarUrl(
       data.id,
       data.avatarUrl,
+    );
+  }
+
+  @EventPattern('user.status.changed')
+  updateStatus(@Payload() data: { userId: string; lastSeen: Date | null }) {
+    return this.conversationMemberService.updateStatus(
+      data.userId,
+      data.lastSeen,
     );
   }
 }

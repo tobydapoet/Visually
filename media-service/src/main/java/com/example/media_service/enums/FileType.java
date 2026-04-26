@@ -5,14 +5,14 @@ public enum FileType {
     VIDEO("video"),
     AUDIO("video");
 
-    private final String cloudinaryType;
+    private final String fileType;
 
-    FileType(String cloudinaryType) {
-        this.cloudinaryType = cloudinaryType;
+    FileType(String fileType) {
+        this.fileType = fileType;
     }
 
-    public String cloudinary() {
-        return cloudinaryType;
+    public String fileType() {
+        return fileType;
     }
 }
 

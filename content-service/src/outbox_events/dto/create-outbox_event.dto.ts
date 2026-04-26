@@ -1,18 +1,16 @@
 import { ContentStatus } from 'src/enums/content_status.type';
 
-export interface PostCreatedPayload {
-  contentId?: number;
-  authorId?: string;
-  username?: string;
-  avatarUrl?: string;
-  type: 'POST' | 'SHORT' | 'STORY';
-  tags?: string[];
-  createdAt?: Date;
-}
-
 export interface CreateOutboxEventDto {
   eventType: string;
-  payload: PostCreatedPayload;
+  payload: {
+    contentId?: number;
+    senderId?: string;
+    username?: string;
+    avatarUrl?: string;
+    contentType: 'POST' | 'SHORT' | 'STORY';
+    tags?: string[];
+    createdAt?: Date;
+  };
 }
 
 export interface UpdateStatusOutboxEventDto {
@@ -21,5 +19,14 @@ export interface UpdateStatusOutboxEventDto {
     contentId?: number;
     type: 'POST' | 'SHORT';
     status: ContentStatus;
+  };
+}
+
+export interface DeleteOutboxEventDto {
+  eventType: string;
+  payload: {
+    contentId: number;
+    contentType: 'POST' | 'SHORT';
+    timestamp: string;
   };
 }

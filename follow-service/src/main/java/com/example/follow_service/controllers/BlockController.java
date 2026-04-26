@@ -5,12 +5,14 @@ import com.example.follow_service.entities.Block;
 import com.example.follow_service.requests.CurrentUser;
 import com.example.follow_service.responses.BlockInfoResponse;
 import com.example.follow_service.services.BlockService;
+import com.example.follow_service.services.FollowService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -20,6 +22,43 @@ import java.util.UUID;
 public class BlockController {
     @Autowired
     private BlockService blockService;
+
+    @Autowired
+    private FollowService followService;
+
+    @PostMapping("/users/check-block")
+    public Map<UUID, Boolean> checkBlockedUsers(
+            @RequestBody List<UUID> targetUserIds
+    ) {
+        CurrentUser currentUser = AuthContext.get();
+
+        return blockService.getBlockedUsers(
+                currentUser.getUserId(),
+                targetUserIds
+        );
+    }
+
+    @GetMapping("/current")
+    public List<UUID> getCurrentBlockers(
+            @PathVariable UUID userId
+    ) {
+        CurrentUser currentUser = AuthContext.get();
+        return blockService.getCurrentBlockers(
+                currentUser.getUserId()
+        );
+    }
+
+    @GetMapping("/user/check-block/{userId}")
+    public Map<String, Boolean> checkBlockedUser(
+            @PathVariable UUID userId
+    ) {
+        CurrentUser currentUser = AuthContext.get();
+
+        return blockService.getBlockedUser(
+                currentUser.getUserId(),
+                userId
+        );
+    }
 
     @GetMapping("/{id}")
     public BlockInfoResponse isBlocked(
@@ -35,7 +74,7 @@ public class BlockController {
     ) {
         try {
             CurrentUser currentUser = AuthContext.get();
-            Block block = blockService.save(currentUser.getUserId(), id);
+            Block block = followService.blockUser(currentUser.getUserId(), id);
 
             Map<String, String> response = new HashMap<>();
             if (block != null) {

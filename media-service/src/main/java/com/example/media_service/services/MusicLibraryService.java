@@ -88,8 +88,7 @@ public class MusicLibraryService {
         String kw = (keyword == null || keyword.isBlank()) ? null : keyword.trim();
         CurrentUser currentUser = AuthContext.get();
 
-        boolean isClient = currentUser.getRoles().stream()
-                .anyMatch(role -> role.equals("CLIENT"));
+        boolean isClient = currentUser.getRole().equals("CLIENT");
 
         if (isClient && status != null && status != MusicStatus.ACTIVE) {
             throw new ConflictException("CLIENT only can view ACTIVE music");
@@ -106,10 +105,8 @@ public class MusicLibraryService {
 
         CurrentUser currentUser = AuthContext.get();
 
-        boolean isClient = currentUser.getRoles().stream()
-                .anyMatch(role -> role.equals("CLIENT"));
 
-        if (isClient && music.getStatus() != MusicStatus.ACTIVE) {
+        if (currentUser.getRole().equals("CLIENT") && music.getStatus() != MusicStatus.ACTIVE) {
             throw new ConflictException("can't find this music in system");
         }
 

@@ -7,6 +7,8 @@ import {
   Param,
   Delete,
   Query,
+  DefaultValuePipe,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { ReportService } from './report.service';
 import { CreateReportDto } from './dto/create-report.dto';
@@ -16,7 +18,7 @@ import { ContentServiceType } from 'src/enums/ContentType';
 export class ReportController {
   constructor(private readonly reportService: ReportService) {}
 
-  @Post()
+  @Post('target')
   async create(@Body() createReportDto: CreateReportDto) {
     const res = await this.reportService.create(createReportDto);
     return {
@@ -25,18 +27,31 @@ export class ReportController {
     };
   }
 
-  @Get()
-  findByTarget(
+  @Get('target')
+  getReportList(
     @Query('targetId') targetId: string,
     @Query('targetType') targetType: ContentServiceType,
-    @Query('page') page = '1',
-    @Query('size') size = '10',
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page = 1,
+    @Query('size', new DefaultValuePipe(10), ParseIntPipe) size = 10,
   ) {
     return this.reportService.findByTarget(
       Number(targetId),
       targetType,
       Number(page),
       Number(size),
+    );
+  }
+
+  @Get()
+  findByTarget(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page = 1,
+    @Query('size', new DefaultValuePipe(10), ParseIntPipe) size = 10,
+    @Query('keyword') keyword?: string,
+  ) {
+    return this.reportService.getReportList(
+      Number(page),
+      Number(size),
+      keyword,
     );
   }
 

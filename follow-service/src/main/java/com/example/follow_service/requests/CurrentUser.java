@@ -11,7 +11,7 @@ import java.util.UUID;
 public class CurrentUser {
     private UUID userId;
     private Long sessionId;
-    private List<String> roles;
+    private String role;
     private String avatarUrl;
     private String username;
 }

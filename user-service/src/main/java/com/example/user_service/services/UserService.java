@@ -4,11 +4,11 @@ import com.example.user_service.clients.ContentClient;
 import com.example.user_service.clients.FollowClient;
 import com.example.user_service.enums.Gender;
 import com.example.user_service.exceptions.ConflictException;
+import com.example.user_service.exceptions.ForbiddenException;
 import com.example.user_service.exceptions.NotFoundException;
 import com.example.user_service.exceptions.ValidatorException;
 import com.example.user_service.producers.UserEventProducer;
 import com.example.user_service.requests.*;
-import com.example.user_service.entities.Role;
 import com.example.user_service.entities.Session;
 import com.example.user_service.entities.User;
 import com.example.user_service.enums.RoleType;
@@ -21,10 +21,7 @@ import com.example.user_service.responses.UserResponseExtend;
 import io.jsonwebtoken.Claims;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,15 +31,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
 public class UserService {
     @Autowired
     UserRepository userRepository;
-
-    @Autowired
-    RoleService roleService;
 
     @Autowired
     FollowClient followClient;
@@ -94,11 +89,6 @@ public class UserService {
         user.setGender(req.getGender());
         User savedUser =  userRepository.save(user);
 
-        Role role = new Role();
-        role.setUser(savedUser);
-        role.setName(RoleType.CLIENT);
-        roleService.create(role);
-
         UserProfileUpdatedEvent userEvent = new UserProfileUpdatedEvent();
         userEvent.setId(savedUser.getId());
         userEvent.setDob(savedUser.getDob());
@@ -112,6 +102,33 @@ public class UserService {
     public User findById(UUID id) {
         return userRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("User not found"));
+    }
+
+    public User resetPassword(ResetPasswordReq req) {
+
+        if (!req.getPassword().equals(req.getConfirmPassword())) {
+            throw new RuntimeException("Passwords do not match");
+        }
+
+        Claims claims = jwtService.parseToken(req.getResetToken());
+
+        String type = claims.get("type", String.class);
+
+        if (!"RESET_PASSWORD".equals(type)) {
+            throw new RuntimeException("Invalid token type");
+        }
+
+        String email = claims.getSubject();
+
+        User user = userRepository.findByEmail(email);
+
+        if (user == null) {
+            throw new NotFoundException("User not found");
+        }
+
+        user.setPassword(passwordEncoder.encode(req.getPassword()));
+
+        return userRepository.save(user);
     }
 
     public List<User> findManyUser(List<UUID> ids) {
@@ -214,8 +231,9 @@ public class UserService {
 
         boolean isFollowed = false;
         boolean isBlocked = false;
-        long followersCount = 0;
-        long followingCount = 0;
+        long followersCount = user.getFollowers();
+        long followingCount = user.getFollowing();
+        boolean hasNewStoryEvent = false;
         long postCount = 0;
         long shortCount = 0;
 
@@ -225,12 +243,11 @@ public class UserService {
                             currentUserId != null ? currentUserId.toString() : null);
 
             ContentCountResponse contentCountResponse = contentClient.getContentCount(user.getId());
-            System.out.println("🔍🔍🔍 RELATIONSHIP STATUS: " + relationshipStatus);
+
 
             isBlocked = relationshipStatus.isBlock();
             isFollowed = relationshipStatus.isFollow();
-            followersCount = relationshipStatus.followersCount();
-            followingCount = relationshipStatus.followingCount();
+            hasNewStoryEvent = contentCountResponse.hasNewStory();
             postCount = contentCountResponse.postCount();
             shortCount = contentCountResponse.shortCount();
 
@@ -245,14 +262,38 @@ public class UserService {
                 followersCount,
                 followingCount,
                 postCount,
-                shortCount
+                shortCount,
+                hasNewStoryEvent
         );
     }
 
 
-    public Page<User> findUserByName(String keyword, UUID userId,int page, int size) {
+    public Page<User> findUserByName(String keyword, UUID userId, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<User> users = userRepository.searchUser(keyword, userId, pageable);
+
+        if (users.isEmpty() || userId == null) {
+            return users;
+        }
+
+        List<UUID> targetUserIds = users.getContent()
+                .stream()
+                .map(User::getId)
+                .collect(Collectors.toList());
+
+        Map<UUID, Boolean> blockedMap = followClient.checkBlockedUsers(targetUserIds, userId.toString());
+
+        List<User> filteredUsers = users.getContent()
+                .stream()
+                .filter(user -> !blockedMap.getOrDefault(user.getId(), false))
+                .collect(Collectors.toList());
+
+        return new PageImpl<>(filteredUsers, pageable, users.getTotalElements());
+    }
+
+    public Page<User> findUserByRole(String keyword,  RoleType role,int page, int size) {
         Pageable pageable = PageRequest.of(page,size, Sort.by(Sort.Direction.DESC,"createdAt"));
-        return userRepository.searchUser(keyword, userId ,pageable);
+        return userRepository.searchUserWithRole(keyword,  role ,pageable);
     }
 
     @Transactional
@@ -270,6 +311,28 @@ public class UserService {
         return savedUser;
     }
 
+    @Transactional
+    public User updateUserRole(UUID id, RoleType newRole) {
+        User user = this.findById(id);
+
+        if (user.getStatus() == StatusType.BANNED
+                || user.getStatus() == StatusType.DELETED) {
+            throw new RuntimeException("User is not eligible for role update");
+        }
+
+        if (user.getRole() == RoleType.ADMIN) {
+            throw new RuntimeException("Admin cannot be modified");
+        }
+
+        if (user.getRole() == newRole) {
+            return user;
+        }
+
+        user.setRole(newRole);
+
+        return userRepository.save(user);
+    }
+
 
     public UserResponseExtend getUserById(UUID currentUserId, UUID userId) {
 
@@ -278,8 +341,9 @@ public class UserService {
 
         boolean isFollowed = false;
         boolean isBlocked = false;
-        long followersCount = 0;
-        long followingCount = 0;
+        boolean hasNewStory = false;
+        long followersCount = user.getFollowers();
+        long followingCount = user.getFollowing();
         long postCount = 0;
         long shotCount = 0;
 
@@ -292,8 +356,7 @@ public class UserService {
 
             isBlocked = relationShipStatus.isBlock();
             isFollowed = relationShipStatus.isFollow();
-            followersCount = relationShipStatus.followersCount();
-            followingCount = relationShipStatus.followingCount();
+            hasNewStory = contentCountResponse.hasNewStory();
             postCount =  contentCountResponse.postCount();
             shotCount = contentCountResponse.shortCount();
 
@@ -308,7 +371,8 @@ public class UserService {
                 followersCount,
                 followingCount,
                 postCount,
-                shotCount
+                shotCount,
+                hasNewStory
         );
     }
 
@@ -354,11 +418,6 @@ public class UserService {
             user.setGender(Gender.OTHER);
 
             User savedUser = userRepository.save(user);
-
-            Role role = new Role();
-            role.setUser(savedUser);
-            role.setName(RoleType.CLIENT);
-            roleService.create(role);
 
             UserProfileUpdatedEvent userEvent = new UserProfileUpdatedEvent();
             userEvent.setId(savedUser.getId());

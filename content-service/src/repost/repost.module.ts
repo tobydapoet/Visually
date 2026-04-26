@@ -16,5 +16,6 @@ import { ContextModule } from 'src/context/context.module';
   ],
   controllers: [RepostController],
   providers: [RepostService],
+  exports: [RepostService],
 })
 export class RepostModule {}

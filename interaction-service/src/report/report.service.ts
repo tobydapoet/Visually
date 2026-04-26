@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { CreateReportDto } from './dto/create-report.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Like, Repository } from 'typeorm';
 import { Report } from './entities/report.entity';
 import { ContextService } from 'src/context/context.service';
 import { ContentServiceType } from 'src/enums/ContentType';
@@ -48,12 +48,33 @@ export class ReportService {
 
     return {
       content: reports,
-      meta: {
-        page,
-        size,
-        total,
-        totalPages: Math.ceil(total / size),
+      page,
+      size,
+      total,
+      totalPages: Math.ceil(total / size),
+    };
+  }
+
+  async getReportList(page = 1, size = 10, keyword?: string) {
+    const where = keyword
+      ? [{ username: Like(`%${keyword}%`) }, { reason: Like(`%${keyword}%`) }]
+      : {};
+
+    const [reports, total] = await this.reportRepo.findAndCount({
+      where,
+      order: {
+        createdAt: 'DESC',
       },
+      skip: (page - 1) * size,
+      take: size,
+    });
+
+    return {
+      content: reports,
+      page,
+      size,
+      total,
+      totalPages: Math.ceil(total / size),
     };
   }
 

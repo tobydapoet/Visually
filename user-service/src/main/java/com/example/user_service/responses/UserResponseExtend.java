@@ -15,8 +15,9 @@ public class UserResponseExtend extends UserResponse {
     private long followingCount;
     private long postCount;
     private long shortCount;
+    private Boolean hasNewStory;
 
-    public UserResponseExtend(User user, Boolean isFollowed, Boolean isBlocked, long followersCount, long followingCount, long postCount, long shortCount) {
+    public UserResponseExtend(User user, Boolean isFollowed, Boolean isBlocked, long followersCount, long followingCount, long postCount, long shortCount, Boolean hasNewStory) {
         super(
                 user.getId(),
                 user.getEmail(),
@@ -29,7 +30,8 @@ public class UserResponseExtend extends UserResponse {
                 user.getBio(),
                 user.getGender(),
                 user.getCreatedAt(),
-                user.getUpdatedAt()
+                user.getUpdatedAt(),
+                user.getRole()
         );
         this.isFollowed = isFollowed;
         this.isBlocked = isBlocked;
@@ -37,9 +39,10 @@ public class UserResponseExtend extends UserResponse {
         this.followingCount = followingCount;
         this.postCount = postCount;
         this.shortCount = shortCount;
+        this.hasNewStory = hasNewStory;
     }
 
-    public static UserResponseExtend from(User user, Boolean isFollowed, Boolean isBlocked, long followersCount, long followingCount, long postCount, long shortCount) {
-        return new UserResponseExtend(user, isFollowed, isBlocked, followersCount, followingCount, postCount, shortCount);
+    public static UserResponseExtend from(User user, Boolean isFollowed, Boolean isBlocked, long followersCount, long followingCount, long postCount, long shortCount, Boolean hasNewStory) {
+        return new UserResponseExtend(user, isFollowed, isBlocked, followersCount, followingCount, postCount, shortCount,  hasNewStory);
     }
 }

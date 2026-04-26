@@ -7,6 +7,7 @@ import { ClientModule } from 'src/client/client.module';
 import { ContextModule } from 'src/context/context.module';
 import { CommentModule } from 'src/comment/comment.module';
 import { KafkaModule } from 'src/kafka/kafka.module';
+import { OutboxEventsModule } from 'src/outbox_events/outbox_events.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { KafkaModule } from 'src/kafka/kafka.module';
     ClientModule,
     ContextModule,
     KafkaModule,
+    OutboxEventsModule,
     forwardRef(() => CommentModule),
   ],
   controllers: [LikeController],

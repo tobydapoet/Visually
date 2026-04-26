@@ -21,4 +21,5 @@ export class ShortResponseDto {
   isCommented!: boolean;
   isSaved!: boolean;
   isReposted!: boolean;
+  status!: ContentStatus;
 }

@@ -2,29 +2,24 @@ import { Injectable } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { AdFeedResponse } from './dtos/adFeedReponse';
-import { ContentType } from 'src/enums/ContentType';
+import { Gender } from 'src/enmum/Gender.enum';
 
 @Injectable()
 export class AdClient {
   constructor(private readonly http: HttpService) {}
 
   async getAdFeeds(
-    userId: string,
-    size: number,
-    type: ContentType,
+    age: number = 12,
+    gender: Gender = 'MALE' as Gender,
   ): Promise<AdFeedResponse[]> {
     const res = await firstValueFrom(
-      this.http.get(`${process.env.ADS_SERVICE_URL}/ads/feed`, {
-        headers: {
-          'X-User-Id': userId.toString(),
-        },
+      this.http.get(`${process.env.AD_SERVICE_URL}/ad/feed`, {
         params: {
-          size,
-          type,
+          age,
+          gender,
         },
       }),
     );
-
     return res.data;
   }
 }

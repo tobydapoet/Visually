@@ -1,12 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import {
-  IsArray,
-  IsNumber,
-  IsOptional,
-  IsString,
-  IsUUID,
-} from 'class-validator';
+import { IsArray, IsOptional, IsString, IsUUID } from 'class-validator';
 import { CreateMentionContentDto } from 'src/mention/dto/create-mention.dto';
 
 export class CreatePostDto {
@@ -22,12 +16,6 @@ export class CreatePostDto {
   @IsArray()
   @IsString({ each: true, message: 'Each tag must be a string' })
   tagsName?: string[];
-
-  @ApiProperty()
-  @IsOptional()
-  @IsArray()
-  @IsUUID('4', { each: true })
-  collabUserId?: string[];
 
   @ApiProperty()
   @IsOptional()

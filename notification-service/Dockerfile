@@ -1,41 +1,46 @@
-# FROM node:21-bullseye
+# # syntax=docker/dockerfile:1
 
-# WORKDIR /usr/src/app
+# # ===== Stage 1: Build =====
+# FROM node:20-alpine AS build
+
+# WORKDIR /app
 
 # COPY package*.json ./
-
-# RUN npm install --legacy-peer-deps
+# RUN --mount=type=cache,target=/root/.npm \
+#     npm ci --legacy-peer-deps
 
 # COPY . .
+# RUN npm run build
+
+# # ===== Stage 2: Production =====
+# FROM node:20-alpine
+
+# WORKDIR /app
+
+# COPY package*.json ./
+# RUN --mount=type=cache,target=/root/.npm \
+#     npm ci --omit=dev --legacy-peer-deps
+
+# COPY --from=build /app/dist ./dist
 
 # EXPOSE 8087
 
-# CMD ["npm", "run", "start:dev"]
+# RUN apk add --no-cache tini
+# ENTRYPOINT ["/sbin/tini", "--"]
+# CMD ["node", "dist/main.js"]
 
 
-FROM node:20-alpine AS build
+FROM node:21-bullseye
 
-WORKDIR /app
+WORKDIR /usr/src/app
 
 COPY package*.json ./
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci --legacy-peer-deps
+
+RUN npm install --legacy-peer-deps
 
 COPY . .
-RUN npm run build
-
-# ===== Production =====
-FROM node:20-alpine
-
-WORKDIR /app
-
-COPY --from=build /app /app
-
-RUN npm prune --omit=dev
 
 EXPOSE 8087
 
-RUN apk add --no-cache tini
-ENTRYPOINT ["/sbin/tini", "--"]
+CMD ["npm", "run", "start:dev"]
 
-CMD ["node", "dist/main.js"]

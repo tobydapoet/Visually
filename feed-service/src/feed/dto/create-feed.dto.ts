@@ -19,5 +19,5 @@ export class CreateFeedDto {
   @IsEnum(FeedSource)
   source!: FeedSource;
 
-  score!: number | null;
+  score!: number;
 }

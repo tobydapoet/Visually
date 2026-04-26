@@ -9,6 +9,7 @@ import { LikeModule } from 'src/like/like.module';
 import { KafkaModule } from 'src/kafka/kafka.module';
 import { MentionModule } from 'src/mention/mention.module';
 import { Like } from 'src/like/entities/like.entity';
+import { OutboxEventsModule } from 'src/outbox_events/outbox_events.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { Like } from 'src/like/entities/like.entity';
     forwardRef(() => LikeModule),
     ContextModule,
     MentionModule,
+    OutboxEventsModule,
   ],
   controllers: [CommentController],
   providers: [CommentService],

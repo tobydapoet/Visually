@@ -11,6 +11,5 @@ import java.util.UUID;
 @NoArgsConstructor
 public class FollowEvent {
     private UUID followerId;
-    private UUID followedId;
-    private String type;
+    private UUID userId;
 }

@@ -110,7 +110,7 @@ public class Routes {
 
     @Bean
     public RouterFunction<ServerResponse> adServiceDocsRoute() {
-        return proxy("ad_service_docs", "/ads-service/v3/api-docs", "/ads-service", "ADS-SERVICE");
+        return proxy("ad_service_docs", "/ads-service/v3/api-docs", "/ad-service", "AD-SERVICE");
     }
 
     @Bean

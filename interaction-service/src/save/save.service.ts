@@ -7,10 +7,11 @@ import {
 import { CreateSaveDto } from './dto/create-save.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Save } from './entities/save.entity';
-import { In, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { ContextService } from 'src/context/context.service';
 import { ClientKafka } from '@nestjs/microservices';
 import { ContentType } from 'src/enums/ContentType';
+import { OutboxEventsService } from 'src/outbox_events/outbox_events.service';
 
 @Injectable()
 export class SaveService {
@@ -18,45 +19,60 @@ export class SaveService {
     @InjectRepository(Save) private saveRepo: Repository<Save>,
     private context: ContextService,
     @Inject('KAFKA_SERVICE') private kafkaClient: ClientKafka,
+    private dataSource: DataSource,
+    private outboxEventService: OutboxEventsService,
   ) {}
+
   async create(createSaveDto: CreateSaveDto) {
     const userId = this.context.getUserId();
+    const username = this.context.getUsername();
+    const avatarUrl = this.context.getAvatarUrl();
 
     const existingSave = await this.saveRepo.findOne({
       where: {
-        userId: userId,
+        userId,
         targetId: createSaveDto.targetId,
         targetType: createSaveDto.targetType,
       },
     });
+
     if (existingSave) {
       return { saved: true };
     }
 
-    const newSave = this.saveRepo.create({
-      userId,
-      username: this.context.getUsername(),
-      avatarUrl: this.context.getAvatarUrl(),
-      targetId: createSaveDto.targetId,
-      targetType: createSaveDto.targetType,
-    });
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    const savedSave = await this.saveRepo.save(newSave);
-    this.kafkaClient.emit(`content.saved`, {
-      contentId: createSaveDto.targetId,
-      userId: this.context.getUserId(),
-      contentType: savedSave.targetType,
-    });
+    try {
+      const newSave = queryRunner.manager.create(Save, {
+        userId,
+        username,
+        avatarUrl,
+        targetId: createSaveDto.targetId,
+        targetType: createSaveDto.targetType,
+      });
 
-    this.kafkaClient.emit(`content.notification.saved`, {
-      contentId: createSaveDto.targetId,
-      actorId: this.context.getUserId(),
-      actorName: this.context.getUsername(),
-      actorAvatarUrl: this.context.getAvatarUrl(),
-      contentType: savedSave.targetType,
-      timestamp: new Date().toISOString(),
-    });
-    return { saved: true };
+      const savedSave = await queryRunner.manager.save(Save, newSave);
+
+      await this.outboxEventService.emitSave(queryRunner.manager, {
+        eventType: 'content.saved',
+        payload: {
+          contentId: savedSave.targetId,
+          contentType: savedSave.targetType,
+          userId,
+        },
+      });
+
+      await queryRunner.commitTransaction();
+
+      return { saved: true };
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   async findByUser(userId: string, page = 1, size = 10) {
@@ -104,24 +120,48 @@ export class SaveService {
 
   async remove(targetId: number, targetType: ContentType) {
     const userId = this.context.getUserId();
+
     const existSave = await this.saveRepo.findOne({
       where: { targetId, targetType, userId },
     });
-    if (existSave?.userId !== userId) {
+
+    if (!existSave) {
+      throw new NotFoundException('Save not found!');
+    }
+
+    if (existSave.userId !== userId) {
       throw new ForbiddenException(
         "You don't have permission to do this action",
       );
     }
-    if (!existSave) {
-      throw new NotFoundException('Save not found!');
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const timestamp = new Date().toISOString();
+
+      await this.outboxEventService.emitUnSave(queryRunner.manager, {
+        eventType: 'content.unsaved',
+        payload: {
+          contentId: existSave.targetId,
+          contentType: existSave.targetType,
+          userId,
+        },
+      });
+
+      await queryRunner.manager.delete(Save, { id: existSave.id });
+
+      await queryRunner.commitTransaction();
+
+      return { saved: false };
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      await queryRunner.release();
     }
-    const eventName = `content.unsaved`;
-    this.kafkaClient.emit(eventName, {
-      contentId: existSave.targetId,
-      userId: this.context.getUserId(),
-      contentType: existSave.targetType,
-    });
-    return this.saveRepo.delete(existSave.id);
   }
 
   async getSavedIds(

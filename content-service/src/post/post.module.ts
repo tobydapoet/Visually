@@ -7,11 +7,11 @@ import { ClientModule } from 'src/client/client.module';
 import { PostMediaModule } from 'src/post_media/post_media.module';
 import { ContextModule } from 'src/context/context.module';
 import { TagModule } from 'src/tag/tag.module';
-import { CollabModule } from 'src/collab/collab.module';
 import { OutboxEventsModule } from 'src/outbox_events/outbox_events.module';
 import { ShortModule } from 'src/short/short.module';
 import { MentionModule } from 'src/mention/mention.module';
 import { Repost } from 'src/repost/entities/repost.entity';
+import { KafkaModule } from 'src/kafka/kafka.module';
 
 @Module({
   imports: [
@@ -20,10 +20,10 @@ import { Repost } from 'src/repost/entities/repost.entity';
     PostMediaModule,
     ContextModule,
     TagModule,
-    CollabModule,
     OutboxEventsModule,
     ShortModule,
     MentionModule,
+    KafkaModule,
   ],
   controllers: [PostController],
   providers: [PostService],

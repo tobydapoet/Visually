@@ -1,6 +1,7 @@
 import {
   ConflictException,
   Controller,
+  DefaultValuePipe,
   Get,
   Param,
   ParseIntPipe,
@@ -13,9 +14,14 @@ import {
   StoryInteractionType,
 } from 'src/enums/interaction.type';
 import { PostService } from 'src/post/post.service';
-import { DefaultReponseDto } from 'src/repost/dto/respose-default.dto';
+import {
+  DefaultReponseDto,
+  FeedReponseDto,
+} from 'src/repost/dto/respose-default.dto';
 import { ShortService } from 'src/short/short.service';
 import { StoryService } from 'src/story/story.service';
+import { ContentService } from './content.service';
+import { FeedContentPageResponse } from './dto/response-feed.dto';
 
 @Controller('content')
 export class ContentController {
@@ -23,6 +29,7 @@ export class ContentController {
     private readonly postService: PostService,
     private readonly shortService: ShortService,
     private readonly storyService: StoryService,
+    private readonly contentService: ContentService,
   ) {}
 
   @Get('/target')
@@ -39,13 +46,62 @@ export class ContentController {
     }
   }
 
+  @Get('feed')
+  async searchFeedContent(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page = 1,
+    @Query('size', new DefaultValuePipe(20), ParseIntPipe) size = 20,
+    @Query('tags') tags: string[],
+  ): Promise<FeedReponseDto[]> {
+    console.log('TAGS : ', tags);
+    try {
+      const res = await this.contentService.searchFeedContent(size, page, tags);
+      console.log('RES: ', res);
+      return res;
+    } catch (err) {
+      console.error('ERROR: ', err);
+      throw err;
+    }
+  }
+
+  @Get('search')
+  searchContent(
+    @Query('size', new DefaultValuePipe(20), ParseIntPipe) size = 20,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page = 1,
+    @Query('tag') tag?: string,
+    @Query('caption') caption?: string,
+  ) {
+    return this.contentService.searchContent(size, page, tag, caption);
+  }
+
+  @Get('recent/:userId')
+  async getRecentContentByUserId(
+    @Param('userId') userId: string,
+  ): Promise<FeedReponseDto[]> {
+    return this.contentService.getRecentContentByUserId(userId);
+  }
+
+  @Get(':type/feed')
+  getFeedContent(
+    @Param('type') type: 'home' | 'reel',
+    @Query('cursor') cursor?: string,
+    @Query('take', new DefaultValuePipe(20), ParseIntPipe) take = 20,
+  ): Promise<FeedContentPageResponse> {
+    return this.contentService.getFeedContent(
+      type.toUpperCase() as 'HOME' | 'REEL',
+      cursor,
+      take,
+    );
+  }
+
   @Get(':userId')
   async getCount(@Param('userId') userId: string) {
     const postCount = await this.postService.countUserPost(userId);
     const shortCount = await this.shortService.countUserShort(userId);
+    const hasNewStory = await this.storyService.haveNonExpiredStory(userId);
     return {
       postCount,
       shortCount,
+      hasNewStory,
     };
   }
 
@@ -54,7 +110,6 @@ export class ContentController {
     @Payload()
     data: {
       contentId: number;
-      userId: string;
       contentType: ContentServiceType;
     },
   ) {
@@ -87,36 +142,35 @@ export class ContentController {
     }
   }
 
-  @EventPattern('content.unliked')
+  @EventPattern('content.disliked')
   async handleContentUnliked(
     @Payload()
     data: {
       contentId: number;
-      userId: string;
       contentType: ContentServiceType;
     },
   ) {
-    console.log('📨 Content unliked:', data);
+    console.log('📨 Content disliked:', data);
 
     try {
       switch (data.contentType) {
         case ContentServiceType.POST:
           await this.postService.updateInteraction(
             data.contentId,
-            InteractionType.UNLIKE,
+            InteractionType.DISLIKE,
           );
           break;
 
         case ContentServiceType.SHORT:
           await this.shortService.updateInteraction(
             data.contentId,
-            InteractionType.UNLIKE,
+            InteractionType.DISLIKE,
           );
           break;
         case ContentServiceType.STORY:
           await this.storyService.updateInteraction(
             data.contentId,
-            StoryInteractionType.UNLIKE,
+            StoryInteractionType.DISLIKE,
           );
           break;
         default:
@@ -167,7 +221,7 @@ export class ContentController {
     @Payload()
     data: {
       contentId: number;
-      num: number;
+      deletedCount: number;
       contentType: ContentType;
     },
   ) {
@@ -178,7 +232,7 @@ export class ContentController {
         case ContentType.POST:
           await this.postService.decreaseCommentInteraction(
             data.contentId,
-            data.num,
+            data.deletedCount,
           );
 
           break;
@@ -186,7 +240,7 @@ export class ContentController {
         case ContentType.SHORT:
           await this.shortService.decreaseCommentInteraction(
             data.contentId,
-            data.num,
+            data.deletedCount,
           );
           break;
 
@@ -205,7 +259,6 @@ export class ContentController {
     @Payload()
     data: {
       contentId: number;
-      userId: string;
       contentType: ContentType;
     },
   ) {

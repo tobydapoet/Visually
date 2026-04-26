@@ -3,4 +3,5 @@ export class MemberSummaryResponse {
   userId!: string;
   username!: string;
   avatarUrl?: string;
+  lastSeen!: Date | null;
 }

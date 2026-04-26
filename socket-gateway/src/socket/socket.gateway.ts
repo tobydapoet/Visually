@@ -1,4 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import { ClientKafka } from '@nestjs/microservices';
 import {
   OnGatewayConnection,
   OnGatewayDisconnect,
@@ -18,6 +19,10 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server!: Server;
 
+  constructor(
+    @Inject('KAFKA_SERVICE') private readonly kafkaClient: ClientKafka,
+  ) {}
+
   private readonly logger = new Logger(SocketGateway.name);
 
   async handleConnection(client: Socket) {
@@ -27,12 +32,17 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
     client.join(`user:${userId}`);
+    this.kafkaClient.emit('user.status.changed', { userId, lastSeen: null });
     this.logger.log(`User ${userId} connected`);
     client.emit('connected', { userId });
   }
 
   handleDisconnect(client: Socket) {
     const userId = client.handshake.query.userId as string;
+    this.kafkaClient.emit('user.status.changed', {
+      userId,
+      lastSeen: new Date(),
+    });
     this.logger.log(`User ${userId} disconnected`);
   }
 
@@ -74,5 +84,9 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server
       .in(`user:${userId}`)
       .socketsJoin(`conversation:${conversationId}`);
+  }
+
+  emitAdPayment(userId: string, event: any) {
+    this.server.to(`user:${userId}`).emit('ad_register', event);
   }
 }

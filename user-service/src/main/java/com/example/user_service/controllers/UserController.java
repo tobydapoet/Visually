@@ -2,9 +2,11 @@ package com.example.user_service.controllers;
 
 import com.example.user_service.contexts.AuthContext;
 import com.example.user_service.entities.User;
+import com.example.user_service.enums.RoleType;
 import com.example.user_service.enums.StatusType;
 import com.example.user_service.requests.CurrentUser;
 import com.example.user_service.requests.UpdateUserRequest;
+import com.example.user_service.requests.UserStatusSummaryResponse;
 import com.example.user_service.responses.UserResponse;
 import com.example.user_service.responses.UserResponseExtend;
 import com.example.user_service.responses.UserSummaryResponse;
@@ -14,7 +16,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -23,7 +24,6 @@ import org.springframework.web.multipart.MultipartHttpServletRequest;
 
 import java.io.InputStream;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Slf4j
 @RestController
@@ -48,7 +48,7 @@ public class UserController {
             @RequestParam(defaultValue = "false") boolean isExclude
     ){
         CurrentUser currentUser = AuthContext.get();
-
+        System.out.println("Current User: " + currentUser);
         UUID userId = (isExclude && currentUser.getUserId() != null)
                 ? currentUser.getUserId()
                 : null;
@@ -56,6 +56,17 @@ public class UserController {
         Page<User> userList = userService.findUserByName(keyword, userId, page, size);
 
         return userList.map(UserSummaryResponse::fromEntity);
+    }
+
+    @GetMapping("/role")
+    public Page<UserStatusSummaryResponse> searchWithRole(
+            @RequestParam(required = false) String keyword,
+            @RequestParam RoleType role,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ){
+        Page<User> userList = userService.findUserByRole(keyword, role , page, size);
+        return userList.map(UserStatusSummaryResponse::fromEntity);
     }
 
     @SecurityRequirement(name = "bearerAuth")
@@ -103,7 +114,6 @@ public class UserController {
         if (currentUser != null) {
             currentUserId = currentUser.getUserId();
         }
-
         return ResponseEntity.ok(userService.getUserByUsername(currentUserId, username));
     }
 
@@ -172,21 +182,30 @@ public class UserController {
 
         User user = userService.updateUser(req,
                 currentUser.getUserId(),
-                currentUser.getRoles().stream().collect(Collectors.joining(",")));
+                currentUser.getRole());
         return user != null
                 ? ResponseEntity.ok(Map.of("message", "Update success!"))
                 : ResponseEntity.badRequest().body(Map.of("message", "Update failed!"));
     }
 
     @SecurityRequirement(name = "bearerAuth")
-    @PatchMapping("/{id}/status")
+    @PutMapping("/{id}/status")
     public ResponseEntity<UserResponse> updateStatus(
             @PathVariable UUID id,
             @RequestParam StatusType status
     ) {
-
         User updatedUser = userService.updateUserStatus(status, id);
 
+        return ResponseEntity.ok(UserResponse.fromEntity(updatedUser));
+    }
+
+    @SecurityRequirement(name = "bearerAuth")
+    @PutMapping("/{id}/role")
+    public ResponseEntity<UserResponse> updateRole(
+            @PathVariable UUID id,
+            @RequestParam RoleType role
+    ) {
+        User updatedUser = userService.updateUserRole(id, role);
         return ResponseEntity.ok(UserResponse.fromEntity(updatedUser));
     }
 }

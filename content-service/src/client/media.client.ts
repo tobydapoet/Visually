@@ -3,6 +3,7 @@ import { HttpService } from '@nestjs/axios';
 import { firstValueFrom, lastValueFrom } from 'rxjs';
 import { MediaResponse } from './dto/MediaResponse.dto';
 import { MusicResponse } from './dto/MusicResponse.dto';
+import { UserRole } from 'src/enums/user_role.type';
 const FormData = require('form-data');
 
 @Injectable()
@@ -130,7 +131,11 @@ export class MediaClient {
     }
   }
 
-  async getMusic(userId: string, id: number): Promise<MusicResponse> {
+  async getMusic(
+    userId: string,
+    role: UserRole,
+    id: number,
+  ): Promise<MusicResponse> {
     const url = `${process.env.MEDIA_SERVICE_URL}/music_library/${id}`;
     this.logger.debug(`[getMusic] GET ${url}`);
     this.logger.debug(`[getMusic] userId: ${userId}, id: ${id}`);
@@ -138,7 +143,7 @@ export class MediaClient {
     try {
       const res = await firstValueFrom(
         this.http.get(url, {
-          headers: { 'X-User-Id': userId },
+          headers: { 'X-User-Id': userId, 'X-User-Role': role },
         }),
       );
       this.logger.debug(`[getMusic] Response: ${JSON.stringify(res.data)}`);

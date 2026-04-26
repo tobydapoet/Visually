@@ -2,6 +2,7 @@ package com.example.user_service.responses;
 
 import com.example.user_service.entities.User;
 import com.example.user_service.enums.Gender;
+import com.example.user_service.enums.RoleType;
 import com.example.user_service.enums.StatusType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -10,6 +11,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Data
@@ -40,6 +42,8 @@ public class UserResponse {
 
     private LocalDateTime updatedAt;
 
+    private RoleType role;
+
     public static UserResponse fromEntity(User user) {
         return new UserResponse(
                 user.getId(),
@@ -53,7 +57,8 @@ public class UserResponse {
                 user.getBio(),
                 user.getGender(),
                 user.getCreatedAt(),
-                user.getUpdatedAt()
+                user.getUpdatedAt(),
+                user.getRole()
         );
     }
 }

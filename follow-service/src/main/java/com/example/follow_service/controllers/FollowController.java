@@ -4,7 +4,6 @@ import com.example.follow_service.contexts.AuthContext;
 import com.example.follow_service.entities.Follow;
 import com.example.follow_service.enums.FollowType;
 import com.example.follow_service.requests.CurrentUser;
-import com.example.follow_service.requests.FollowEvent;
 import com.example.follow_service.requests.FollowNotificationEvent;
 import com.example.follow_service.responses.FollowInfoResponse;
 import com.example.follow_service.responses.FollowResponse;
@@ -50,6 +49,7 @@ public class FollowController {
         Map<String, Boolean> result = followService.isFollowedNoBlock(userId, targetUserId);
         return ResponseEntity.ok(result);
     }
+
 
     @GetMapping("/followers")
     public Page<FollowResponse> getFollowers(

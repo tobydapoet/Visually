@@ -7,6 +7,7 @@ import { ClientModule } from 'src/client/client.module';
 import { ContextModule } from 'src/context/context.module';
 import { OutboxEventsModule } from 'src/outbox_events/outbox_events.module';
 import { StoryStorageModule } from 'src/story_storage/story_storage.module';
+import { KafkaModule } from 'src/kafka/kafka.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { StoryStorageModule } from 'src/story_storage/story_storage.module';
     ContextModule,
     OutboxEventsModule,
     StoryStorageModule,
+    KafkaModule,
   ],
   controllers: [StoryController],
   providers: [StoryService],

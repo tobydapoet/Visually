@@ -29,7 +29,10 @@ import {
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
-import { DefaultReponseDto } from 'src/repost/dto/respose-default.dto';
+import {
+  ContentManagePageReponse,
+  DefaultReponseDto,
+} from 'src/repost/dto/respose-default.dto';
 
 @ApiTags('Post')
 @Controller('post')
@@ -89,9 +92,9 @@ export class PostController {
   })
   async changeStatus(
     @Param('id') postId: number,
-    @Body() status: ContentStatus,
+    @Body() body: { status: ContentStatus },
   ) {
-    const savedPost = await this.postService.updateStatus(postId, status);
+    const savedPost = await this.postService.updateStatus(postId, body.status);
     if (savedPost) {
       return {
         message: 'Update post success!',
@@ -131,6 +134,18 @@ export class PostController {
   ): Promise<PostResponsePageDto> {
     const res = await this.postService.search(caption, page, size);
     return res;
+  }
+
+  @Get('status/:status')
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'size', required: false, example: 10 })
+  async searchPostWithStatus(
+    @Param('status') status: ContentStatus,
+    @Query('keyword') keyword?: string,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
+    @Query('size', new DefaultValuePipe(10), ParseIntPipe) size?: number,
+  ): Promise<ContentManagePageReponse> {
+    return this.postService.getByStatus(status, page, size, keyword);
   }
 
   @Get('batch')

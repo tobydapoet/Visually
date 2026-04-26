@@ -22,15 +22,7 @@ export class ContextService {
     return this.req.headers['x-user-username'];
   }
 
-  getRoles(): UserRole[] {
-    const rolesHeader = this.req.headers['x-user-roles'];
-
-    if (!rolesHeader) return [];
-
-    if (Array.isArray(rolesHeader)) {
-      return rolesHeader.flatMap((r) => r.split(','));
-    }
-
-    return rolesHeader.split(',');
+  getRole(): UserRole {
+    return this.req.headers['x-user-role'];
   }
 }

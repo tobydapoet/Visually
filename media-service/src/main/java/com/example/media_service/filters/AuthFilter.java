@@ -30,7 +30,16 @@ public class AuthFilter extends OncePerRequestFilter {
 
         String userId = request.getHeader("X-User-Id");
         String sessionId = request.getHeader("X-Session-Id");
-        String roles = request.getHeader("X-User-Roles");
+        String role = request.getHeader("X-User-Role");
+
+        Long sessionIdLong = null;
+        if (sessionId != null && !sessionId.isBlank()) {
+            try {
+                sessionIdLong = Long.parseLong(sessionId);
+            } catch (NumberFormatException e) {
+                System.out.println("Invalid sessionId: " + sessionId);
+            }
+        }
 
         if (userId == null) {
             response.setStatus(HttpStatus.UNAUTHORIZED.value());
@@ -39,26 +48,16 @@ public class AuthFilter extends OncePerRequestFilter {
 
         CurrentUser currentUser = new CurrentUser(
                 UUID.fromString(userId),
-                sessionId != null ? Long.parseLong(sessionId) : null,
-                roles != null ? List.of(roles.split(",")) : List.of()
+                sessionIdLong,
+                role
         );
 
         AuthContext.set(currentUser);
-
-        List<SimpleGrantedAuthority> authorities = currentUser.getRoles().stream()
-                .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
-                .collect(Collectors.toList());
-
-        UsernamePasswordAuthenticationToken authentication =
-                new UsernamePasswordAuthenticationToken(userId, null, authorities);
-
-        SecurityContextHolder.getContext().setAuthentication(authentication);
 
         try {
             filterChain.doFilter(request, response);
         } finally {
             AuthContext.clear();
-            SecurityContextHolder.clearContext();
         }
     }
 

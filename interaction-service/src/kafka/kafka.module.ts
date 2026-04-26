@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { Partitioners } from 'kafkajs';
+import { KafkaService } from './kafka.service';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { Partitioners } from 'kafkajs';
       },
     ]),
   ],
-  exports: [ClientsModule],
+  providers: [KafkaService],
+  exports: [ClientsModule, KafkaService],
 })
 export class KafkaModule {}

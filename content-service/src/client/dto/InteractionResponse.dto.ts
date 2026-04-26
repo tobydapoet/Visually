@@ -4,3 +4,8 @@ export class InteractionResponse {
   isCommented!: boolean;
   isSaved!: boolean;
 }
+
+export class ViewResponse {
+  storyId!: number;
+  isViewed!: boolean;
+}

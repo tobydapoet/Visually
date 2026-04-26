@@ -33,6 +33,9 @@ export class ConversationMember {
   @Column({ type: 'int', nullable: true })
   lastSeenMessageId?: number;
 
+  @Column({ type: 'datetime', nullable: true })
+  lastSeen?: Date | null;
+
   @DeleteDateColumn({ type: 'datetime', nullable: true })
   deletedAt?: Date | null;
 

@@ -15,13 +15,12 @@ export class ActivityJobData {
 
   actorId!: string;
   activityType!: InteractionContentType;
-
-  source!: FeedSource;
 }
 
 export class DeleteContentJobData {
   contentId!: number;
   type!: ContentType;
+  followerId!: string;
 }
 
 export class DeleteContentWithSourceJobData {

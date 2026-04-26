@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ForbiddenException,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
@@ -10,14 +11,13 @@ import { CreateShortDto } from './dto/create-short.dto';
 import { UpdateShortDto } from './dto/update-short.dto';
 import { Short } from './entities/short.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { CollabService } from 'src/collab/collab.service';
 import { TagService } from 'src/tag/tag.service';
 import { MediaClient } from 'src/client/media.client';
-import { DataSource, In, Repository } from 'typeorm';
+import { DataSource, ILike, In, Repository } from 'typeorm';
 import { UserRole } from 'src/enums/user_role.type';
 import { ContentStatus } from 'src/enums/content_status.type';
 import { ContentServiceType, ContentType } from 'src/enums/content.type';
-import { ShortResponseDto } from './dto/response-short.dto';
+
 import { ShortResponsePageDto } from './dto/response-page-short';
 import { ContextService } from 'src/context/context.service';
 import { InteractionType } from 'src/enums/interaction.type';
@@ -26,8 +26,13 @@ import { Tag } from 'src/tag/entities/tag.entity';
 import { MentionsService } from 'src/mention/mention.service';
 import { InteractionClient } from 'src/client/interaction.client';
 import { MentionResponse } from 'src/mention/dto/response-mentions.dto';
-import { DefaultReponseDto } from 'src/repost/dto/respose-default.dto';
+import {
+  ContentManagePageReponse,
+  DefaultReponseDto,
+} from 'src/repost/dto/respose-default.dto';
 import { Repost } from 'src/repost/entities/repost.entity';
+import { ShortResponseDto } from './dto/response-short.dto';
+import { ClientKafka } from '@nestjs/microservices';
 
 @Injectable()
 export class ShortService {
@@ -41,11 +46,11 @@ export class ShortService {
     private readonly mediaClient: MediaClient,
     private context: ContextService,
     private tagService: TagService,
-    private collabService: CollabService,
     private dataSource: DataSource,
     private outboxEventService: OutboxEventsService,
     private mentionService: MentionsService,
     private interactionClient: InteractionClient,
+    @Inject('KAFKA_SERVICE') private kafkaClient: ClientKafka,
   ) {}
 
   async create(
@@ -100,14 +105,6 @@ export class ShortService {
         });
       }
 
-      if (createShortDto.collabUserId) {
-        await this.collabService.createMany({
-          userIds: createShortDto.collabUserId,
-          targetId: savedShort.id,
-          type: ContentType.SHORT,
-        });
-      }
-
       if (createShortDto.mentions) {
         await this.mentionService.createMany(
           createShortDto.mentions.map((m) => ({
@@ -122,14 +119,23 @@ export class ShortService {
         eventType: 'content.created',
         payload: {
           contentId: savedShort.id,
-          authorId: savedShort.userId,
+          senderId: savedShort.userId,
           username,
-          type: 'SHORT',
+          contentType: 'SHORT',
           avatarUrl,
           createdAt: savedShort.createdAt,
           tags: tags.map((tag) => tag.name),
         },
       });
+
+      // this.kafkaClient.emit(`content.created`, {
+      //   senderId: userId,
+      //   username,
+      //   avatarUrl,
+      //   contentId: short.id,
+      //   contentType: 'SHORT',
+      //   timestamp: new Date().toISOString(),
+      // });
 
       await queryRunner.commitTransaction();
 
@@ -177,7 +183,7 @@ export class ShortService {
       case InteractionType.SAVE:
         short.saveCount += 1;
         break;
-      case InteractionType.UNLIKE:
+      case InteractionType.DISLIKE:
         if (short.likeCount > 0) {
           short.likeCount -= 1;
         }
@@ -188,14 +194,13 @@ export class ShortService {
         }
         break;
       case InteractionType.REPOST:
-        if (short.saveCount > 0) {
-          short.repostCount += 1;
-        }
+        short.repostCount += 1;
         break;
       case InteractionType.UNREPOST:
-        if (short.saveCount > 0) {
+        if (short.repostCount > 0) {
           short.repostCount -= 1;
         }
+
       default:
         break;
     }
@@ -214,6 +219,65 @@ export class ShortService {
     }
   }
 
+  async getByStatus(
+    status: ContentStatus,
+    page = 1,
+    size = 10,
+    keyword?: string,
+  ): Promise<ContentManagePageReponse> {
+    const whereCondition = keyword
+      ? [
+          { status, username: ILike(`%${keyword}%`) },
+          { status, caption: ILike(`%${keyword}%`) },
+        ]
+      : { status };
+
+    const [shorts, total] = await this.shortRepo.findAndCount({
+      where: whereCondition,
+      skip: (page - 1) * size,
+      take: size,
+      order: {
+        createdAt: 'DESC',
+      },
+    });
+
+    const mentions = await this.mentionService.findManyByTargetIds(
+      shorts.map((short) => short.id),
+      ContentType.SHORT,
+    );
+
+    const mentionMap = new Map<number, MentionResponse[]>();
+
+    mentions.forEach((m) => {
+      if (!mentionMap.has(m.targetId)) {
+        mentionMap.set(m.targetId, []);
+      }
+      mentionMap.get(m.targetId)!.push(m);
+    });
+
+    return {
+      content: shorts.map((short) => {
+        return {
+          id: short.id,
+          userId: short.userId,
+          avatarUrl: short.avatarUrl,
+          username: short.username,
+          caption: short.caption,
+          thumbnailUrl: short.thumbnailUrl,
+          createdAt: short.createdAt,
+          updatedAt: short.updatedAt,
+          mentions: (mentionMap.get(short.id) || []).map((m) => ({
+            userId: m.userId,
+            username: m.username,
+          })),
+        };
+      }),
+      total,
+      page,
+      size,
+    };
+  }
+
   async updateStatus(shortId: number, status: ContentStatus): Promise<Short> {
     const queryRunner = this.dataSource.createQueryRunner();
 
@@ -229,11 +293,11 @@ export class ShortService {
         throw new NotFoundException(`Short not found!`);
       }
 
-      const roles = this.context.getRoles();
+      const role = this.context.getRole();
       const userId = this.context.getUserId();
 
-      const isAdmin = roles.includes(UserRole.ADMIN);
-      const isModerator = roles.includes(UserRole.MODERATOR);
+      const isAdmin = role === UserRole.ADMIN;
+      const isModerator = role === UserRole.MODERATOR;
       const isOwner = userId === currentShort.userId;
 
       if (!isAdmin && !isModerator && status === ContentStatus.BANNED) {
@@ -457,6 +521,7 @@ export class ShortService {
       isCommented: interaction[0]?.isCommented ?? false,
       isSaved: interaction[0]?.isSaved ?? false,
       isReposted: !!repost,
+      status: short.status,
     };
   }
 
@@ -543,8 +608,8 @@ export class ShortService {
           eventType: 'content.updated',
           payload: {
             contentId: savedShort.id,
-            authorId: savedShort.userId,
-            type: 'SHORT',
+            senderId: savedShort.userId,
+            contentType: 'SHORT',
             createdAt: savedShort.createdAt,
           },
         });
@@ -665,7 +730,16 @@ export class ShortService {
         eventType: 'content.deleted',
         payload: {
           contentId: short.id,
-          type: 'SHORT',
+          contentType: 'SHORT',
+        },
+      });
+
+      await this.outboxEventService.delete(queryRunner.manager, {
+        eventType: 'content.created',
+        payload: {
+          contentId: short.id,
+          contentType: 'SHORT',
+          timestamp: new Date().toISOString(),
         },
       });
 

@@ -39,9 +39,9 @@ public class JwtUtils {
         return claimsResolver.apply(claims);
     }
 
-    public List<String> extractRoles(String token) {
+    public String extractRole(String token) {
         Claims claims = extractAllClaims(token);
-        return (List<String>) claims.get("roles");
+        return (String) claims.get("role");
     }
 
     public String extractSubject(String token) {

@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repost } from './entities/repost.entity';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { PostService } from 'src/post/post.service';
 import { ShortService } from 'src/short/short.service';
 import { ContextService } from 'src/context/context.service';
@@ -58,10 +58,6 @@ export class RepostService {
     return { reposted: true };
   }
 
-  findAll() {
-    return `This action returns all repost`;
-  }
-
   async findOne(id: number) {
     const existing = await this.repostRepo.findOne({ where: { id } });
     if (!existing) {
@@ -89,6 +85,17 @@ export class RepostService {
         avatarUrl: existing.avatarUrl,
       },
     };
+  }
+
+  async findRepostByTargetIds(ids: number[], type: ContentType) {
+    const userId = this.context.getUserId();
+    return this.repostRepo.find({
+      where: {
+        userId,
+        originalId: In(ids),
+        originalType: type,
+      },
+    });
   }
 
   async findByUser(userId: string, page = 1, size = 10) {

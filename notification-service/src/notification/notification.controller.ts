@@ -16,11 +16,10 @@ import {
   LikePayloadEvent,
 } from './dto/payload-content.dto';
 import { Queue } from 'bullmq';
-import { NotificationJob } from './dto/job-notification.dto';
 import { InjectQueue } from '@nestjs/bullmq';
 import { ContentType } from 'src/enum/content.type';
 
-@Controller('notifications')
+@Controller('notification')
 export class NotificationController {
   constructor(
     private readonly notificationService: NotificationService,
@@ -42,62 +41,66 @@ export class NotificationController {
     return await this.notificationService.readAll();
   }
 
-  @EventPattern('content.created')
+  @EventPattern('content.notification.created')
   async handleCreateContent(@Payload() event: ContentPayloadEvent) {
-    const jobData: NotificationJob = {
-      userId: event.authorId,
-      username: event.username,
-      snapshotUrl: event.avatarUrl,
-      type: NotificationType.CREATE,
-      contentType: event.type,
-      contentId: event.contentId,
-    };
-
-    await this.notificationQueue.add('notification-queue', jobData, {
-      attempts: 3,
-      backoff: {
-        type: 'exponential',
-        delay: 2000,
+    console.log('EVENT: ', event);
+    const jobs = event.followerIds.map((userId) => ({
+      name: 'notification-queue',
+      data: {
+        userId,
+        authorId: event.senderId,
+        username: event.username,
+        snapshotUrl: event.avatarUrl,
+        type: NotificationType.CREATE,
+        contentType: event.contentType,
+        contentId: event.contentId,
       },
-    });
+      opts: {
+        attempts: 3,
+        backoff: {
+          type: 'exponential',
+          delay: 2000,
+        },
+        removeOnComplete: true,
+        removeOnFail: false,
+      },
+    }));
+
+    await this.notificationQueue.addBulk(jobs);
   }
 
-  @EventPattern('content.notification.commented')
+  @EventPattern('content.commented')
   async handleCreateComment(@Payload() event: CommentPayloadEvent) {
-    if (!event.receiverIds?.length) return;
-
     await this.notificationService.create({
       contentId: event.contentId,
       type: NotificationType.COMMENT,
-      userId: event.receiverIds[0],
-      username: event.actorName,
+      userId: event.rootUserId,
+      username: event.username,
       contentType: event.contentType,
-      snapshotUrl: event.actorAvatarUrl,
+      snapshotUrl: event.avatarUrl,
     });
 
-    if (event.receiverIds.length > 1) {
-      const remainingReceiverIds = event.receiverIds.slice(1);
-
-      await this.notificationService.createBulk({
+    if (event.receiverId) {
+      await this.notificationService.create({
         contentId: event.contentId,
         type: NotificationType.COMMENT,
-        userId: remainingReceiverIds,
-        username: event.actorName,
-        snapshotUrl: event.actorAvatarUrl,
-        contentType: event.contentType,
+        userId: event.receiverId,
+        username: event.username,
+        contentType: ContentType.COMMENT,
+        snapshotUrl: event.avatarUrl,
       });
     }
   }
 
-  @EventPattern('content.notification.liked')
+  @EventPattern('content.liked')
   async handleCreateLike(@Payload() event: LikePayloadEvent) {
     await this.notificationService.create({
       contentId: event.contentId,
       type: NotificationType.LIKE,
       userId: event.receiverId,
-      username: event.actorName,
+      username: event.username,
       contentType: event.contentType,
-      snapshotUrl: event.actorAvatarUrl,
+      snapshotUrl: event.avatarUrl,
     });
   }
 

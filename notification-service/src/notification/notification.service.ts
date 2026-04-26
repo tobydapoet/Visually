@@ -46,39 +46,6 @@ export class NotificationService {
     }
   }
 
-  async createBulk(dto: CreateMultipleNotificationDto) {
-    const content = this.buildContent(dto.username, dto.type, dto.contentType);
-
-    const values = dto.userId.map((receiverId) => ({
-      userId: receiverId,
-      snapshotUrl: dto.snapshotUrl ?? undefined,
-      type: dto.type,
-      content,
-    }));
-
-    await this.notificationRepo
-      .createQueryBuilder()
-      .insert()
-      .into(Notification)
-      .values(values)
-      .execute();
-
-    for (const receiverId of dto.userId) {
-      this.kafkaClient.emit('notification.created', {
-        key: receiverId.toString(),
-        value: {
-          userId: receiverId,
-          type: dto.type,
-          content,
-          snapshotUrl: dto.snapshotUrl,
-          contentId: dto.contentId,
-          contentType: dto.contentType,
-          createdAt: new Date(),
-        },
-      });
-    }
-  }
-
   async create(dto: CreateNotificationDto) {
     const content = this.buildContent(dto.username, dto.type, dto.contentType);
     const nofiication = this.notificationRepo.create({ ...dto, content });
@@ -121,13 +88,10 @@ export class NotificationService {
       take: size,
     });
     return {
-      data: notifications,
-      meta: {
-        total,
-        page,
-        size,
-        totalPages: Math.ceil(total / size),
-      },
+      content: notifications,
+      total,
+      page,
+      size,
     };
   }
 

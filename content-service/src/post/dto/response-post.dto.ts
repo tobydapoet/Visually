@@ -23,4 +23,5 @@ export class PostResponseDto {
   isCommented!: boolean;
   isSaved!: boolean;
   isReposted!: boolean;
+  status!: ContentStatus;
 }

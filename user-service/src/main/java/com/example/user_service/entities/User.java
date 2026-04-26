@@ -1,6 +1,7 @@
 package com.example.user_service.entities;
 
 import com.example.user_service.enums.Gender;
+import com.example.user_service.enums.RoleType;
 import com.example.user_service.enums.StatusType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -48,6 +49,9 @@ public class User {
     @Column()
     private LocalDate dob;
 
+    @Column(nullable = true)
+    private LocalDateTime lastSeen = null;
+
     @Column(unique = true)
     private String phone;
 
@@ -80,6 +84,7 @@ public class User {
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "user")
     private List<Session> sessions = new ArrayList<>();
 
-    @OneToMany(cascade = CascadeType.ALL, mappedBy = "user")
-    private List<Role> roles = new ArrayList<>();
+    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    private RoleType role =  RoleType.CLIENT;
 }

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
   CreateOutboxEventDto,
+  DeleteOutboxEventDto,
   UpdateStatusOutboxEventDto,
 } from './dto/create-outbox_event.dto';
 import { OutboxEvent } from './entities/outbox_event.entity';
@@ -31,6 +32,16 @@ export class OutboxEventsService {
   async updateStatus(
     manager: EntityManager,
     dto: UpdateStatusOutboxEventDto,
+  ): Promise<void> {
+    await manager.save(OutboxEvent, {
+      eventType: dto.eventType,
+      payload: dto.payload,
+    });
+  }
+
+  async delete(
+    manager: EntityManager,
+    dto: DeleteOutboxEventDto,
   ): Promise<void> {
     await manager.save(OutboxEvent, {
       eventType: dto.eventType,
@@ -107,5 +118,15 @@ export class OutboxEventsService {
         retryCount,
       });
     }
+  }
+
+  async cleanOldEvents() {
+    await this.outboxRepo
+      .createQueryBuilder()
+      .delete()
+      .from(OutboxEvent)
+      .where('status = :status', { status: EventStatus.PROCESSED })
+      .andWhere('createdAt < NOW() - INTERVAL 3 DAY')
+      .execute();
   }
 }

@@ -24,16 +24,18 @@ import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { ShortResponsePageDto } from './dto/response-page-short';
 import { ShortResponseDto } from './dto/response-short.dto';
 import { EventPattern, Payload } from '@nestjs/microservices';
-import { ContentType } from 'src/enums/content.type';
-import { InteractionType } from 'src/enums/interaction.type';
 import {
   ApiBearerAuth,
   ApiBody,
   ApiConsumes,
   ApiOperation,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
-import { DefaultReponseDto } from 'src/repost/dto/respose-default.dto';
+import {
+  ContentManagePageReponse,
+  DefaultReponseDto,
+} from 'src/repost/dto/respose-default.dto';
 
 @ApiTags('Short')
 @Controller('short')
@@ -87,9 +89,12 @@ export class ShortController {
   })
   async changeStatus(
     @Param('id') shortId: number,
-    @Body() status: ContentStatus,
+    @Body() body: { status: ContentStatus },
   ) {
-    const savedShort = await this.shortService.updateStatus(shortId, status);
+    const savedShort = await this.shortService.updateStatus(
+      shortId,
+      body.status,
+    );
     if (savedShort) {
       return {
         message: 'Update short success!',
@@ -124,6 +129,18 @@ export class ShortController {
   ): Promise<ShortResponsePageDto> {
     const res = await this.shortService.search(caption, page, size);
     return res;
+  }
+
+  @Get('status/:status')
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'size', required: false, example: 10 })
+  async searchPostWithStatus(
+    @Param('status') status: ContentStatus,
+    @Query('keyword') keyword?: string,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
+    @Query('size', new DefaultValuePipe(10), ParseIntPipe) size?: number,
+  ): Promise<ContentManagePageReponse> {
+    return this.shortService.getByStatus(status, page, size, keyword);
   }
 
   @Get('batch')

@@ -33,24 +33,29 @@ public class AuthFilter extends OncePerRequestFilter {
             new ExcludeRule("*",   "/api/users/auth/login"),
             new ExcludeRule("*",   "/api/users/auth/refresh"),
             new ExcludeRule("*",   "/api/users/auth/register"),
+            new ExcludeRule("*",   "/api/users/auth/verify-otp"),
+            new ExcludeRule("*",   "/api/users/auth/reset-password"),
+            new ExcludeRule("*",   "/api/users/auth/resend-otp"),
+
             new ExcludeRule("*",   "/api/users/google/**"),
             new ExcludeRule("*",   "/oauth2/**"),
             new ExcludeRule("*",   "/login/oauth2/**"),
             new ExcludeRule("*",   "/actuator/health"),
             new ExcludeRule("*",   "/swagger-ui/index.html"),
 
-            //User
-            new ExcludeRule("GET", "/api/users/account/username/**"),
-
-            //Follow
-            new ExcludeRule("GET", "/api/follows/relationship/*")
-
+             new ExcludeRule("GET", "/api/contents/content/recent/*")
     );
 
     private static final List<ExcludeRule> OPTIONAL_AUTH_RULES = List.of(
             // Post
             new ExcludeRule("GET", "/api/contents/post/**"),
             new ExcludeRule("GET", "/api/contents/content/*"),
+
+            //User
+            new ExcludeRule("GET", "/api/users/account/username/**"),
+
+            //Follow
+            new ExcludeRule("GET", "/api/follows/relationship/*"),
 
             // Short
             new ExcludeRule("GET", "/api/contents/short/**"),
@@ -64,6 +69,7 @@ public class AuthFilter extends OncePerRequestFilter {
             //Story storage
             new ExcludeRule("GET",  "/api/contents/story-storage/user/*"),
             new ExcludeRule("GET",  "/api/contents/story/story-storage/*")
+
     );
 
     @Override
@@ -137,7 +143,7 @@ public class AuthFilter extends OncePerRequestFilter {
             String userId = jwtUtils.extractUserId(token);
             String avatarUrl = jwtUtils.extractAvatarUrl(token);
             String username  = jwtUtils.extractUsername(token);
-            List<String> roles = jwtUtils.extractRoles(token);
+            String role = jwtUtils.extractRole(token);
 
             System.out.println("✓ AUTHENTICATED - Sub: " + sub + ", ID: " + userId);
 
@@ -148,7 +154,7 @@ public class AuthFilter extends OncePerRequestFilter {
             wrappedRequest.addHeader("X-User-Avatar", avatarUrl);
             wrappedRequest.addHeader("X-User-Username", username);
             wrappedRequest.addHeader("X-Session-Id", sub);
-            wrappedRequest.addHeader("X-User-Roles", String.join(",", roles != null ? roles : List.of()));
+            wrappedRequest.addHeader("X-User-Role", role);
             chain.doFilter(wrappedRequest, response);
 
         } catch (Exception e) {

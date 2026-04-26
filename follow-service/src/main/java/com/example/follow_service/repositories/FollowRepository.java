@@ -35,6 +35,7 @@ public interface FollowRepository extends JpaRepository<Follow,Long> {
             @Param("userId") UUID userId,
             Pageable pageable
     );
+
     List<Follow> findByFollowerIdAndUserIdIn(UUID followerId, List<UUID> userIds);
 
     @Query("""

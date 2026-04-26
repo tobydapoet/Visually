@@ -1,27 +1,27 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
 import { firstValueFrom } from 'rxjs';
-import { UserDto } from './dto/user-response.dto';
+import { ContentDto } from './dto/user-response.dto';
 
 @Injectable()
 export class ContentClient {
   constructor(private readonly http: HttpService) {}
 
-  async getPostOwner(postId: number): Promise<UserDto> {
+  async getPost(postId: number): Promise<ContentDto> {
     const url = `${process.env.CONTENT_SERVICE_URL}/post/${postId}`;
-    const res = await firstValueFrom(this.http.get<UserDto>(url));
+    const res = await firstValueFrom(this.http.get<ContentDto>(url));
     return res.data;
   }
 
-  async getShortOwner(shortId: number): Promise<UserDto> {
+  async getShort(shortId: number): Promise<ContentDto> {
     const url = `${process.env.CONTENT_SERVICE_URL}/short/${shortId}`;
-    const res = await firstValueFrom(this.http.get<UserDto>(url));
+    const res = await firstValueFrom(this.http.get<ContentDto>(url));
     return res.data;
   }
 
-  async getStoryOwner(storyId: number): Promise<UserDto> {
+  async getStory(storyId: number): Promise<ContentDto> {
     const url = `${process.env.CONTENT_SERVICE_URL}/story/${storyId}`;
-    const res = await firstValueFrom(this.http.get<UserDto>(url));
+    const res = await firstValueFrom(this.http.get<ContentDto>(url));
     return res.data;
   }
 }

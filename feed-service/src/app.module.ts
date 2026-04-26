@@ -3,11 +3,11 @@ import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
 import { FeedModule } from './feed/feed.module';
-import { FeedRecommendModule } from './feed-recommend/feed-recommend.module';
 import { ClientModule } from './client/client.module';
-import { FollowEdgeModule } from './follow_edge/follow_edge.module';
-import { ContentEdgeModule } from './content_edge/content_edge.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { UserInterestModule } from './user_interest/user_interest.module';
+import { ContextModule } from './context/context.module';
+import { FeedSeenModule } from './feed-seen/feed-seen.module';
 
 @Module({
   imports: [
@@ -26,10 +26,10 @@ import { ScheduleModule } from '@nestjs/schedule';
       synchronize: true,
     }),
     FeedModule,
-    FeedRecommendModule,
     ClientModule,
-    FollowEdgeModule,
-    ContentEdgeModule,
+    UserInterestModule,
+    ContextModule,
+    FeedSeenModule,
   ],
   providers: [AppService],
 })

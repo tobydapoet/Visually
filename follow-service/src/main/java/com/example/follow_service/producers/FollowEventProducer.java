@@ -23,7 +23,7 @@ public class FollowEventProducer {
                 "follow.created",
                 followerId.toString(),
                 new FollowEvent(followerId, followedId)
-        ).whenComplete((result, ex) -> {  // ← 3. THÊM error handling
+        ).whenComplete((result, ex) -> {
             if (ex == null) {
                 log.info("Follow event sent: {} -> {} (partition: {}, offset: {})",
                         followerId, followedId,
@@ -41,7 +41,7 @@ public class FollowEventProducer {
                 "follow.notification.created",
                 event.getFollowerId().toString(),
                 event
-        ).whenComplete((result, ex) -> {  // ← 3. THÊM error handling
+        ).whenComplete((result, ex) -> {
             if (ex == null) {
                 log.info("Follow event sent: {} -> {} (partition: {}, offset: {})",
                         event.getFollowerId(), event.getFollowedId(),
@@ -50,24 +50,6 @@ public class FollowEventProducer {
             } else {
                 log.error("Failed to send follow event: {} -> {}",
                         event.getFollowerId(), event.getFollowedId(), ex);
-            }
-        });
-    }
-
-    public void emitNotificationFollow(UUID followerId, UUID followedId) {
-        kafkaTemplate.send(
-                "follow.created",
-                followerId.toString(),
-                new FollowEvent(followerId, followedId)
-        ).whenComplete((result, ex) -> {  // ← 3. THÊM error handling
-            if (ex == null) {
-                log.info("Follow event sent: {} -> {} (partition: {}, offset: {})",
-                        followerId, followedId,
-                        result.getRecordMetadata().partition(),
-                        result.getRecordMetadata().offset());
-            } else {
-                log.error("Failed to send follow event: {} -> {}",
-                        followerId, followedId, ex);
             }
         });
     }
@@ -88,5 +70,7 @@ public class FollowEventProducer {
                 });
         ;
     }
+
+
 }
 

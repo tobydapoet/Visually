@@ -4,7 +4,6 @@ import { PostModule } from './post/post.module';
 import { ShortModule } from './short/short.module';
 import { StoryModule } from './story/story.module';
 import { TagModule } from './tag/tag.module';
-import { CollabModule } from './collab/collab.module';
 import { PostMediaModule } from './post_media/post_media.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
@@ -37,7 +36,6 @@ import { RepostModule } from './repost/repost.module';
     ShortModule,
     StoryModule,
     TagModule,
-    CollabModule,
     PostMediaModule,
     ContextModule,
     ClientModule,

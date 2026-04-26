@@ -1,7 +1,6 @@
 import {
   BadRequestException,
   ForbiddenException,
-  Inject,
   Injectable,
   NotFoundException,
   Scope,
@@ -12,19 +11,21 @@ import { Like } from './entities/like.entity';
 import { In, Repository } from 'typeorm';
 import { LikeTargetType } from 'src/enums/ContentType';
 import { ContextService } from 'src/context/context.service';
-import { ClientKafka } from '@nestjs/microservices';
 import { CommentService } from 'src/comment/comment.service';
 import { InteractionType } from 'src/enums/InteractionType';
 import { ContentClient } from 'src/client/content.client';
+import { OutboxEventsService } from 'src/outbox_events/outbox_events.service';
+import { DataSource } from 'typeorm';
 
 @Injectable({ scope: Scope.REQUEST })
 export class LikeService {
   constructor(
     @InjectRepository(Like) private likeRepo: Repository<Like>,
     private context: ContextService,
-    @Inject('KAFKA_SERVICE') private kafkaClient: ClientKafka,
     private commentService: CommentService,
     private contentClient: ContentClient,
+    private outboxEventService: OutboxEventsService,
+    private dataSource: DataSource,
   ) {}
   async create(createLikeDto: CreateLikeDto) {
     const currentUserId = this.context.getUserId();
@@ -38,80 +39,118 @@ export class LikeService {
         targetType: createLikeDto.targetType,
       },
     });
-    if (existingLike) {
-      return {
-        liked: true,
-      };
-    }
+    if (existingLike) return { liked: true };
 
-    const newLike = this.likeRepo.create({
-      userId: currentUserId,
-      username: currentUsername,
-      avatarUrl: currentUserAvatarUrl,
-      targetId: createLikeDto.targetId,
-      targetType: createLikeDto.targetType,
-    });
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    const savedLike = await this.likeRepo.save(newLike);
+    let savedLike: Like;
 
-    let ownerId: string | undefined;
-
-    if (
-      createLikeDto.targetType === LikeTargetType.POST ||
-      createLikeDto.targetType === LikeTargetType.SHORT
-    ) {
-      const owner =
-        createLikeDto.targetType === LikeTargetType.POST
-          ? await this.contentClient.getPostOwner(createLikeDto.targetId)
-          : await this.contentClient.getShortOwner(createLikeDto.targetId);
-
-      ownerId = owner?.userId;
-    } else if (createLikeDto.targetType === LikeTargetType.STORY) {
-      const owner = await this.contentClient.getStoryOwner(
-        createLikeDto.targetId,
-      );
-      ownerId = owner?.userId;
-    } else if (createLikeDto.targetType === LikeTargetType.COMMENT) {
-      const existingComment = await this.commentService.findOne(
-        createLikeDto.targetId,
-      );
-
-      if (!existingComment) return savedLike;
-
-      ownerId = existingComment.userId;
-
-      await this.commentService.updateInteraction(
-        createLikeDto.targetId,
-        InteractionType.LIKE,
-      );
-    }
-
-    if (ownerId && createLikeDto.targetType !== LikeTargetType.COMMENT) {
-      this.kafkaClient.emit(`content.liked`, {
-        contentId: createLikeDto.targetId,
-        contentType: createLikeDto.targetType,
+    try {
+      savedLike = await queryRunner.manager.save(Like, {
         userId: currentUserId,
-        authorId: ownerId,
-        likeId: savedLike.id,
-        timestamp: new Date().toISOString(),
+        username: currentUsername,
+        avatarUrl: currentUserAvatarUrl,
+        targetId: createLikeDto.targetId,
+        targetType: createLikeDto.targetType,
       });
+
+      const content = await this.resolveContentId(createLikeDto);
+
+      if (!content) {
+        throw new Error('Content not found');
+      }
+
+      await this.outboxEventService.emitLike(queryRunner.manager, {
+        eventType: 'content.liked',
+        payload: {
+          contentId: savedLike.targetId,
+          senderId: currentUserId,
+          contentType: createLikeDto.targetType,
+          username: currentUsername,
+          avatarUrl: currentUserAvatarUrl,
+          likeId: savedLike.id,
+          receiverId: content.userId,
+          timestamp: new Date().toISOString(),
+          likeCount: content.likeCount,
+          commentCount: content.commentCount,
+          saveCount: content.saveCount,
+          tags: content.tags,
+          caption: content.caption,
+        },
+      });
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      await queryRunner.release();
     }
 
-    if (ownerId && ownerId !== currentUserId) {
-      this.kafkaClient.emit(`content.notification.liked`, {
-        contentId: createLikeDto.targetId,
-        contentType: createLikeDto.targetType,
-        actorName: currentUsername,
-        actorAvatarUrl: currentUserAvatarUrl,
-        receiverId: ownerId,
-        likeId: savedLike.id,
-        timestamp: new Date().toISOString(),
-      });
-    }
+    return { liked: true };
+  }
 
-    return {
-      liked: true,
-    };
+  private async resolveContentId(dto: CreateLikeDto): Promise<
+    | {
+        userId: string;
+        likeCount: number;
+        commentCount?: number;
+        saveCount?: number;
+        caption?: string;
+        tags?: {
+          id: number;
+          name: string;
+        }[];
+      }
+    | undefined
+  > {
+    switch (dto.targetType) {
+      case LikeTargetType.POST:
+        const postRes = await this.contentClient.getPost(dto.targetId);
+        return {
+          commentCount: postRes.commentCount,
+          likeCount: postRes.likeCount,
+          userId: postRes.userId,
+          saveCount: postRes.saveCount,
+          tags: postRes.tags,
+          caption: postRes.caption,
+        };
+
+      case LikeTargetType.SHORT:
+        const shortRes = await this.contentClient.getShort(dto.targetId);
+        return {
+          commentCount: shortRes.commentCount,
+          likeCount: shortRes.likeCount,
+          userId: shortRes.userId,
+          saveCount: shortRes.saveCount,
+          tags: shortRes.tags,
+          caption: shortRes.caption,
+        };
+
+      case LikeTargetType.STORY:
+        const storyRes = await this.contentClient.getStory(dto.targetId);
+        return {
+          userId: storyRes.userId,
+          likeCount: storyRes.likeCount,
+        };
+
+      case LikeTargetType.COMMENT: {
+        const comment = await this.commentService.findOne(dto.targetId);
+        if (!comment) return undefined;
+
+        await this.commentService.updateInteraction(
+          dto.targetId,
+          InteractionType.LIKE,
+        );
+        return {
+          userId: comment.userId,
+          likeCount: comment.likeCount,
+        };
+      }
+
+      default:
+        return undefined;
+    }
   }
 
   async updateAvatarUrl(userId: string, avatarUrl: string) {
@@ -168,9 +207,11 @@ export class LikeService {
 
   async remove(targetId: number, targetType: LikeTargetType) {
     const userId = this.context.getUserId();
+
     const existLike = await this.likeRepo.findOne({
       where: { targetId, targetType, userId },
     });
+
     if (!existLike) {
       throw new NotFoundException('Like not found!');
     }
@@ -180,19 +221,41 @@ export class LikeService {
         "You don't have permission to do this action",
       );
     }
+
     if (existLike.targetType === LikeTargetType.COMMENT) {
-      this.commentService.updateInteraction(
+      await this.commentService.updateInteraction(
         existLike.targetId,
         InteractionType.UNLIKE,
       );
     } else {
-      this.kafkaClient.emit(`content.unliked`, {
-        contentId: targetId,
-        contentType: targetType,
-        userId,
-        timestamp: new Date().toISOString(),
-      });
+      const queryRunner = this.dataSource.createQueryRunner();
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
+      try {
+        await this.outboxEventService.emitDislike(queryRunner.manager, {
+          eventType: 'content.disliked',
+          payload: {
+            contentId: existLike.targetId,
+            contentType: existLike.targetType,
+            userId: userId,
+            timestamp: new Date().toISOString(),
+          },
+        });
+
+        await queryRunner.manager.delete(Like, { id: existLike.id });
+
+        await queryRunner.commitTransaction();
+      } catch (err) {
+        await queryRunner.rollbackTransaction();
+        throw err;
+      } finally {
+        await queryRunner.release();
+      }
+
+      return;
     }
+
     await this.likeRepo.delete({ id: existLike.id });
   }
 

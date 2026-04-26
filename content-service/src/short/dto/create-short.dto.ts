@@ -26,12 +26,6 @@ export class CreateShortDto {
   @ApiProperty()
   @IsOptional()
   @IsArray()
-  @IsUUID('4', { each: true })
-  collabUserId?: string[];
-
-  @ApiProperty()
-  @IsOptional()
-  @IsArray()
   @Transform(({ value }) => {
     if (typeof value === 'string') return JSON.parse(value);
     return value;

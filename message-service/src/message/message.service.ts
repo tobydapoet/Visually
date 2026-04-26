@@ -1,4 +1,9 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Message } from './entities/message.entity';
@@ -11,6 +16,9 @@ import { MediaResponse } from '../client/dto/MediaResponse.dto';
 import { ConversationMember } from '../conversation_member/entities/conversation_member.entity';
 import { UpdateMessageDto } from './dto/update-message.dto';
 import { MentionService } from '../mention/mention.service';
+import { FollowClient } from '../client/follow.client';
+import { Conversation } from '../conversation/entities/conversation.entity';
+import { ConversationType } from '../enums/conversation.type';
 
 @Injectable()
 export class MessageService {
@@ -21,6 +29,7 @@ export class MessageService {
     private context: ContextService,
     private dataSource: DataSource,
     private mentionService: MentionService,
+    private followClient: FollowClient,
     @Inject('KAFKA_SERVICE') private kafkaClient: ClientKafka,
   ) {}
 
@@ -33,8 +42,6 @@ export class MessageService {
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
-    console.log('DTO: ', createMessageDto);
-
     const member = await queryRunner.manager.findOne(ConversationMember, {
       where: {
         userId: createMessageDto.senderId,
@@ -44,6 +51,28 @@ export class MessageService {
 
     if (!member) {
       throw new Error('Sender is not a member of this conversation');
+    }
+
+    const conversation = await queryRunner.manager.findOne(Conversation, {
+      where: { id: createMessageDto.conversationId },
+      relations: ['members'],
+    });
+
+    if (conversation?.type === ConversationType.PRIVATE) {
+      const otherMember = conversation.members.find(
+        (m) => m.userId !== createMessageDto.senderId,
+      );
+
+      if (otherMember) {
+        const { isBlocked } = await this.followClient.isBlocked(
+          createMessageDto.senderId,
+          otherMember.userId,
+        );
+
+        if (isBlocked) {
+          throw new ForbiddenException('Cannot send message to a blocked user');
+        }
+      }
     }
 
     try {

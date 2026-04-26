@@ -1,32 +1,36 @@
 import { ContentType } from 'src/enum/content.type';
 
 export class ContentPayloadEvent {
+  followerIds!: string[];
   contentId!: number;
-  authorId!: string;
+  senderId!: string;
   username!: string;
-  type!: ContentType;
+  contentType!: ContentType;
   avatarUrl?: string;
-  createdAt!: Date;
+  timestamp!: Date;
 }
 
 export class CommentPayloadEvent {
-  receiverIds!: string[];
-  usernames!: string[];
-  snapshotAvatarUrls!: string[];
-  actorName!: string;
-  actorAvatarUrl!: string;
+  senderId!: string;
+  username!: string;
+  avatarUrl?: string;
+  rootUserId!: string;
+  receiverId?: string;
   contentId!: number;
   contentType!: ContentType;
-  commentId!: string;
+  commentId!: number;
+  timestamp!: Date;
 }
 
 export class LikePayloadEvent {
   contentId!: number;
   contentType!: ContentType;
-  actorName!: string;
-  actorAvatarUrl?: string;
+  senderId!: string;
   receiverId!: string;
+  username!: string;
+  avatarUrl?: string;
   likeId!: number;
+  timestamp!: string;
 }
 
 export class FollowPayloadEvent {

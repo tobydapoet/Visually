@@ -1,32 +1,42 @@
 import { Injectable } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
+import { FollowResponse } from './dto/FollowResponse.dto';
 
 @Injectable()
 export class FollowClient {
   constructor(private readonly http: HttpService) {}
 
-  async validateBlock(
+  async getCurrentFollowed(
     userId: string,
-    sessionId: number,
-    blockerId: string,
-  ): Promise<boolean> {
+    page: number = 1,
+    size: number = 20,
+  ): Promise<FollowResponse> {
     const res = await firstValueFrom(
-      this.http.get<{ isFollowedNoBlock: boolean }>(
-        `${process.env.FOLLOW_SERVICE_URL}/follow/check-follow-no-block`,
-        {
-          headers: {
-            'X-User-Id': userId.toString(),
-            'X-Session-Id': sessionId.toString(),
-          },
-          params: {
-            userId: userId.toString(),
-            targetUserId: blockerId.toString(),
-          },
+      this.http.get(`${process.env.FOLLOW_SERVICE_URL}/follow/current`, {
+        headers: {
+          'x-user-id': userId.toString(),
         },
-      ),
+        params: {
+          page,
+          size,
+          type: 'FOLLOWED',
+        },
+      }),
     );
 
-    return res.data.isFollowedNoBlock;
+    return res.data;
+  }
+
+  async getCurrentBlockers(userId: string): Promise<string[]> {
+    const res = await firstValueFrom(
+      this.http.get(`${process.env.FOLLOW_SERVICE_URL}/block/current`, {
+        headers: {
+          'x-user-id': userId.toString(),
+        },
+      }),
+    );
+
+    return res.data;
   }
 }
