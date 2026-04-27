@@ -5,12 +5,14 @@ import com.example.service.requests.PendingAdData;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+@Log4j2
 @Service
 @RequiredArgsConstructor
 public class PendingAdService {
@@ -30,11 +32,15 @@ public class PendingAdService {
 
     public PendingAdData get(UUID userId) {
         Object raw = redisTemplate.opsForValue().get(PENDING_AD_KEY + userId);
+        log.info("Raw from Redis type: {}", raw.getClass().getName());
+        log.info("Raw from Redis value: {}", raw);
         if (raw == null) return null;
 
         ObjectMapper mapper = new ObjectMapper();
         mapper.registerModule(new JavaTimeModule());
-        return mapper.convertValue(raw, PendingAdData.class);
+        PendingAdData data = mapper.convertValue(raw, PendingAdData.class);
+        log.info("Converted dto: {}", data.getDto());
+        return data;
     }
 
     public void delete(UUID userId) {
