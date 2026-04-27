@@ -6,6 +6,7 @@ import com.example.service.requests.PendingAdData;
 import com.example.service.requests.SepayWebhookDto;
 import com.example.service.services.AdService;
 import com.example.service.services.PendingAdService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.http.ResponseEntity;
@@ -29,6 +30,7 @@ public class PaymentWebhookController {
     private final PendingAdService pendingAdService;
     private final AdService adService;
     private final KafkaTemplate<String, Object> kafkaTemplate;
+    private final ObjectMapper objectMapper;
 
     @PostMapping("/webhook/sepay")
     public ResponseEntity<?> handleSepayWebhook(@RequestBody SepayWebhookDto body) {
@@ -71,10 +73,11 @@ public class PaymentWebhookController {
             Ad ad = adService.createAd(dto, UUID.fromString(userId));
             pendingAdService.delete(UUID.fromString(userId));
 
-            kafkaTemplate.send("ad.registered.result", Map.of(
+            String payload = objectMapper.writeValueAsString(Map.of(
                     "userId", userId,
                     "success", ad != null
             ));
+            kafkaTemplate.send("ad.registered.result", payload);
         } catch (Exception e) {
             kafkaTemplate.send("ad.registered.result", Map.of(
                     "userId", userId,
