@@ -2,7 +2,6 @@ package com.example.service.repositories;
 
 import com.example.service.entities.Ad;
 import com.example.service.enums.AdType;
-import com.example.service.enums.Gender;
 import com.example.service.enums.GenderOption;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

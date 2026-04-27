@@ -2,7 +2,6 @@ package com.example.service.responses;
 
 
 import com.example.service.enums.Gender;
-import com.example.service.enums.GenderOption;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;

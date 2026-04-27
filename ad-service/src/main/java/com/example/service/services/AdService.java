@@ -1,7 +1,7 @@
 package com.example.service.services;
 
 import com.example.service.clients.ContentClient;
-import com.example.service.contexts.AuthContext;
+import com.example.service.clients.UserClient;
 import com.example.service.entities.Ad;
 import com.example.service.enums.AdStatus;
 import com.example.service.enums.AdType;
@@ -11,7 +11,6 @@ import com.example.service.enums.GenderOption;
 import com.example.service.exceptions.NotFoundException;
 import com.example.service.repositories.AdRepository;
 import com.example.service.requests.CreateAdDto;
-import com.example.service.requests.CurrentUser;
 import com.example.service.responses.AdResponse;
 import com.example.service.responses.ContentDeletedEvent;
 import com.example.service.responses.ContentResponse;
@@ -34,6 +33,9 @@ public class AdService {
 
     @Autowired
     private ContentClient contentClient;
+
+    @Autowired
+    private UserClient userClient;
 
 
     public void handleContentDeleted(ContentDeletedEvent event) {
@@ -109,7 +111,7 @@ public class AdService {
         return ads;
     }
 
-    public Ad createAd(CreateAdDto dto , UUID userId, String username) {
+    public Ad createAd(CreateAdDto dto , UUID userId) {
         LocalDateTime now = LocalDateTime.now();
 
         Optional<Ad> optionalExisting = adRepository.findByContentIdAndContentType(
@@ -142,6 +144,8 @@ public class AdService {
 
             return adRepository.save(existing);
         }
+
+        String username = userClient.getUser(userId).getUsername();
 
         Ad ad = new Ad();
         ad.setUserId(userId);

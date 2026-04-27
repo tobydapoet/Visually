@@ -33,7 +33,7 @@ public class PaymentWebhookController {
             return ResponseEntity.ok(Map.of("success", true));
         }
 
-        Pattern pattern = Pattern.compile("ADPAY_([^:]+):([^:]+)");
+        Pattern pattern = Pattern.compile("USER (\\d+) PAY FOR BOOSTED POST");
         Matcher matcher = pattern.matcher(body.getContent());
 
         if (!matcher.find()) {
@@ -41,7 +41,6 @@ public class PaymentWebhookController {
         }
 
         String userId   = matcher.group(1);
-        String username = matcher.group(2);
 
         CreateAdDto dto = pendingAdService.get(UUID.fromString(userId));
 
@@ -54,7 +53,7 @@ public class PaymentWebhookController {
         }
 
         try {
-            Ad ad = adService.createAd(dto, UUID.fromString(userId), username);
+            Ad ad = adService.createAd(dto, UUID.fromString(userId));
             pendingAdService.delete(UUID.fromString(userId));
 
             kafkaTemplate.send("ad.registered.result", Map.of(
