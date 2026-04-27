@@ -398,6 +398,7 @@ services:
       SPRING_CLOUD_GATEWAY_MVC_ROUTES_0_URI: lb://USER-SERVICE
       SPRING_CLOUD_GATEWAY_MVC_ROUTES_0_PREDICATES_0: Path=/api/users/**
       REDIRECT_FE: ${REDIRECT_FE}
+      REDIRECT_URI: ${REDIRECT_URI}
     deploy:
       resources:
         limits:
