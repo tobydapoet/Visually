@@ -5,13 +5,17 @@ import com.example.service.enums.GenderOption;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.validation.constraints.*;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 
 @Data
 @EqualsAndHashCode(callSuper = false)
+@NoArgsConstructor
+@AllArgsConstructor
 public class CreateAdDto {
     @NotNull(message = "Budget is required")
     @Min(value = 1000, message = "Budget must be at least 1000")
