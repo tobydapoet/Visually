@@ -32,30 +32,34 @@ public class PaymentWebhookController {
 
     @PostMapping("/webhook/sepay")
     public ResponseEntity<?> handleSepayWebhook(@RequestBody SepayWebhookDto body) {
-        log.debug("transferType: [{}]", body.getTransferType());
-        log.debug("content: [{}]", body.getContent());
+        log.info("transferType: [{}]", body.getTransferType());
+        log.info("content: [{}]", body.getContent());
 
         if (!"in".equals(body.getTransferType())) {
-            log.debug("SKIP: transferType not 'in'");
+            log.info("SKIP: transferType not 'in'");
             return ResponseEntity.ok(Map.of("success", true));
         }
 
-        Pattern pattern = Pattern.compile("USER (\\d+) PAY FOR BOOSTED POST");
+        Pattern pattern = Pattern.compile("USER ([a-zA-Z0-9]+) PAY FOR BOOSTED POST");
         Matcher matcher = pattern.matcher(body.getContent());
 
         if (!matcher.find()) {
-            log.debug("SKIP: pattern not matched");
+            log.info("SKIP: pattern not matched");
             return ResponseEntity.ok(Map.of("success", true));
         }
 
-        String userId = matcher.group(1);
-        log.debug("userId: [{}]", userId);
+        String rawId = matcher.group(1);
+        String userId = rawId.replaceAll(
+                "([a-f0-9]{8})([a-f0-9]{4})([a-f0-9]{4})([a-f0-9]{4})([a-f0-9]{12})",
+                "$1-$2-$3-$4-$5"
+        );
+        log.info("userId: [{}]", userId);
 
         PendingAdData dto = pendingAdService.get(UUID.fromString(userId));
-        log.debug("pendingData: [{}]", dto);
+        log.info("pendingData: [{}]", dto);
 
         if (dto == null) {
-            log.debug("SKIP: no pending ad in Redis");
+            log.info("SKIP: no pending ad in Redis");
             kafkaTemplate.send("ad.registered.result", Map.of(
                     "userId", userId,
                     "success", false
