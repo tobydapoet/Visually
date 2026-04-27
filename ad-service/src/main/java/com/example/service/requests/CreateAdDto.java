@@ -25,7 +25,7 @@ public class CreateAdDto {
     @NotNull(message = "Time duration is required")
     @Min(value = 1, message = "Time must be at least 1 hour")
     @Max(value = 720, message = "Time must not exceed 720 hours (30 days)")
-    private Integer time;
+    private Integer duration;
 
     @NotNull(message = "Minimum age is required")
     private Integer ageMin;

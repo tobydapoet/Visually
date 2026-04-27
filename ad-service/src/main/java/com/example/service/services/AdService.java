@@ -124,13 +124,13 @@ public class AdService {
             }
 
             if (existing.getEndDate().isAfter(now)) {
-                existing.setEndDate(existing.getEndDate().plusHours(dto.getTime()));
+                existing.setEndDate(existing.getEndDate().plusHours(dto.getDuration()));
                 existing.setDailyBudget(
                         existing.getDailyBudget().add(dto.getDailyBudget())
                 );
             } else {
                 existing.setStartDate(now);
-                existing.setEndDate(now.plusHours(dto.getTime()));
+                existing.setEndDate(now.plusHours(dto.getDuration()));
                 existing.setDailyBudget(dto.getDailyBudget());
                 existing.setSpentAmount(BigDecimal.ZERO);
                 existing.setStatus(AdStatus.ACTIVE);
@@ -158,7 +158,7 @@ public class AdService {
         ad.setDailySpend(BigDecimal.ZERO);
 
         ad.setStartDate(now);
-        ad.setEndDate(now.plusHours(dto.getTime()));
+        ad.setEndDate(now.plusHours(dto.getDuration()));
 
         ad.setStatus(AdStatus.ACTIVE);
 
