@@ -29,7 +29,7 @@ public class PaymentWebhookController {
 
     private final PendingAdService pendingAdService;
     private final AdService adService;
-    private final KafkaTemplate<String, Object> kafkaTemplate;
+    private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
 
     @PostMapping("/webhook/sepay")
@@ -62,29 +62,22 @@ public class PaymentWebhookController {
 
         if (dto == null) {
             log.info("SKIP: no pending ad in Redis");
-            kafkaTemplate.send("ad.registered.result", Map.of(
-                    "userId", userId,
-                    "success", false
-            ));
+            kafkaTemplate.send("ad.registered.result",
+                    String.format("{\"userId\":\"%s\",\"success\":false}", userId));
             return ResponseEntity.ok(Map.of("success", true));
         }
 
         try {
             Ad ad = adService.createAd(dto, UUID.fromString(userId));
             pendingAdService.delete(UUID.fromString(userId));
+            kafkaTemplate.send("ad.registered.result",
+                    String.format("{\"userId\":\"%s\",\"success\":%b}", userId, ad != null));
 
-            String payload = objectMapper.writeValueAsString(Map.of(
-                    "userId", userId,
-                    "success", ad != null
-            ));
-            kafkaTemplate.send("ad.registered.result", payload);
         } catch (Exception e) {
-            kafkaTemplate.send("ad.registered.result", Map.of(
-                    "userId", userId,
-                    "success", false
-            ));
+            log.error("Error creating ad: ", e);
+            kafkaTemplate.send("ad.registered.result",
+                    String.format("{\"userId\":\"%s\",\"success\":false}", userId));
         }
-
 
         return ResponseEntity.ok(Map.of("success", true));
     }
