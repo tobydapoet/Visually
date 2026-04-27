@@ -7,6 +7,7 @@ import com.example.service.requests.SepayWebhookDto;
 import com.example.service.services.AdService;
 import com.example.service.services.PendingAdService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
 import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,6 +20,7 @@ import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+@Log4j2
 @RestController
 @RequestMapping("/payment")
 @RequiredArgsConstructor
@@ -30,7 +32,11 @@ public class PaymentWebhookController {
 
     @PostMapping("/webhook/sepay")
     public ResponseEntity<?> handleSepayWebhook(@RequestBody SepayWebhookDto body) {
+        log.debug("transferType: [{}]", body.getTransferType());
+        log.debug("content: [{}]", body.getContent());
+
         if (!"in".equals(body.getTransferType())) {
+            log.debug("SKIP: transferType not 'in'");
             return ResponseEntity.ok(Map.of("success", true));
         }
 
@@ -38,14 +44,18 @@ public class PaymentWebhookController {
         Matcher matcher = pattern.matcher(body.getContent());
 
         if (!matcher.find()) {
+            log.debug("SKIP: pattern not matched");
             return ResponseEntity.ok(Map.of("success", true));
         }
 
-        String userId   = matcher.group(1);
+        String userId = matcher.group(1);
+        log.debug("userId: [{}]", userId);
 
         PendingAdData dto = pendingAdService.get(UUID.fromString(userId));
+        log.debug("pendingData: [{}]", dto);
 
         if (dto == null) {
+            log.debug("SKIP: no pending ad in Redis");
             kafkaTemplate.send("ad.registered.result", Map.of(
                     "userId", userId,
                     "success", false
