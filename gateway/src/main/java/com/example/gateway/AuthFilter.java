@@ -43,7 +43,8 @@ public class AuthFilter extends OncePerRequestFilter {
             new ExcludeRule("*",   "/actuator/health"),
             new ExcludeRule("*",   "/swagger-ui/index.html"),
 
-             new ExcludeRule("GET", "/api/contents/content/recent/*")
+            new ExcludeRule("GET", "/api/contents/content/recent/*"),
+            new ExcludeRule("POST", "/api/ads/payment/webhook/sepay*")
     );
 
     private static final List<ExcludeRule> OPTIONAL_AUTH_RULES = List.of(
