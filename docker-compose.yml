@@ -31,7 +31,7 @@ services:
     networks:
       - app-network
     healthcheck:
-      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${SQL_PASSWORD}" ]  # ✅ thêm password
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${SQL_PASSWORD}" ]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -183,6 +183,7 @@ services:
       USER_SERVICE_URL: ${USER_SERVICE_URL}
       INTERACTION_SERVICE_URL: ${INTERACTION_SERVICE_URL}
       FOLLOW_SERVICE_URL: ${FOLLOW_SERVICE_URL}
+      FEED_SERVICE_URL: ${FEED_SERVICE_URL}
     deploy:
       resources:
         limits:
