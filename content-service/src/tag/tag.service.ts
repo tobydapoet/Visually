@@ -25,6 +25,17 @@ export class TagService {
     return repo.find({ where: { targetId, type } });
   }
 
+  async getRandomTags(): Promise<string[]> {
+    const tags = await this.tagRepo
+      .createQueryBuilder('tag')
+      .select('tag.name')
+      .orderBy('RAND()')
+      .limit(5)
+      .getMany();
+
+    return tags.map((tag) => tag.name);
+  }
+
   async findByTargetIds(
     targetIds: number[],
     type: ContentType,

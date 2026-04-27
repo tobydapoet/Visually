@@ -175,6 +175,10 @@ export class ContentService {
     let postWhere = 'WHERE 1=1';
     let shortWhere = 'WHERE 1=1';
 
+    if (tags.length <= 0) {
+      tags = await this.tagService.getRandomTags();
+    }
+
     if (tags.length > 0) {
       const placeholders = tags.map(() => '?').join(', ');
       const captionConditions = tags.map(() => 'p.caption LIKE ?').join(' OR ');

@@ -50,7 +50,7 @@ export class ContentController {
   async searchFeedContent(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page = 1,
     @Query('size', new DefaultValuePipe(20), ParseIntPipe) size = 20,
-    @Query('tags') tags: string[],
+    @Query('tags') tags: string[] = [],
   ): Promise<FeedReponseDto[]> {
     console.log('TAGS : ', tags);
     try {
