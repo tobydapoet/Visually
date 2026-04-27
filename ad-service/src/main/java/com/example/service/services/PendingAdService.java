@@ -1,6 +1,7 @@
 package com.example.service.services;
 
 import com.example.service.requests.CreateAdDto;
+import com.example.service.requests.PendingAdData;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.RequiredArgsConstructor;
@@ -17,22 +18,23 @@ public class PendingAdService {
     private static final String PENDING_AD_KEY = "pending:ad:";
     private static final long EXPIRE_MINUTES = 30;
 
-    public void save(UUID userId, CreateAdDto dto) {
+    public void save(UUID userId, String username, CreateAdDto dto) {
+        PendingAdData data = new PendingAdData(username, dto);
         redisTemplate.opsForValue().set(
                 PENDING_AD_KEY + userId,
-                dto,
+                data,
                 EXPIRE_MINUTES,
                 TimeUnit.MINUTES
         );
     }
 
-    public CreateAdDto get(UUID userId) {
+    public PendingAdData get(UUID userId) {
         Object raw = redisTemplate.opsForValue().get(PENDING_AD_KEY + userId);
         if (raw == null) return null;
 
         ObjectMapper mapper = new ObjectMapper();
         mapper.registerModule(new JavaTimeModule());
-        return mapper.convertValue(raw, CreateAdDto.class);
+        return mapper.convertValue(raw, PendingAdData.class);
     }
 
     public void delete(UUID userId) {

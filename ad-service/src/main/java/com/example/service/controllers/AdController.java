@@ -46,7 +46,7 @@ public class AdController {
     @PostMapping("/pending")
     public ResponseEntity<?> savePendingAd(@RequestBody CreateAdDto dto) {
         CurrentUser currentUser = AuthContext.get();
-        pendingAdService.save(currentUser.getUserId(), dto);
+        pendingAdService.save(currentUser.getUserId(), currentUser.getUsername(),dto);
         return ResponseEntity.ok(Map.of("message", "OK"));
     }
 

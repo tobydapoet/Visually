@@ -11,6 +11,7 @@ import com.example.service.enums.GenderOption;
 import com.example.service.exceptions.NotFoundException;
 import com.example.service.repositories.AdRepository;
 import com.example.service.requests.CreateAdDto;
+import com.example.service.requests.PendingAdData;
 import com.example.service.responses.AdResponse;
 import com.example.service.responses.ContentDeletedEvent;
 import com.example.service.responses.ContentResponse;
@@ -111,8 +112,10 @@ public class AdService {
         return ads;
     }
 
-    public Ad createAd(CreateAdDto dto , UUID userId) {
+    public Ad createAd(PendingAdData data , UUID userId) {
         LocalDateTime now = LocalDateTime.now();
+
+        CreateAdDto dto = new CreateAdDto();
 
         Optional<Ad> optionalExisting = adRepository.findByContentIdAndContentType(
                 dto.getContentId(), dto.getContentType()
@@ -145,11 +148,9 @@ public class AdService {
             return adRepository.save(existing);
         }
 
-        String username = userClient.getUser(userId).getUsername();
-
         Ad ad = new Ad();
         ad.setUserId(userId);
-        ad.setUsername(username);
+        ad.setUsername(data.getUsername());
         ad.setContentType(dto.getContentType());
         ad.setContentId(dto.getContentId());
 

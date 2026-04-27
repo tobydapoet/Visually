@@ -2,6 +2,7 @@ package com.example.service.controllers;
 
 import com.example.service.entities.Ad;
 import com.example.service.requests.CreateAdDto;
+import com.example.service.requests.PendingAdData;
 import com.example.service.requests.SepayWebhookDto;
 import com.example.service.services.AdService;
 import com.example.service.services.PendingAdService;
@@ -42,7 +43,7 @@ public class PaymentWebhookController {
 
         String userId   = matcher.group(1);
 
-        CreateAdDto dto = pendingAdService.get(UUID.fromString(userId));
+        PendingAdData dto = pendingAdService.get(UUID.fromString(userId));
 
         if (dto == null) {
             kafkaTemplate.send("ad.registered.result", Map.of(
