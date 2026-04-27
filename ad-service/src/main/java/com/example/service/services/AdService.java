@@ -1,7 +1,6 @@
 package com.example.service.services;
 
 import com.example.service.clients.ContentClient;
-import com.example.service.clients.UserClient;
 import com.example.service.entities.Ad;
 import com.example.service.enums.AdStatus;
 import com.example.service.enums.AdType;
@@ -34,10 +33,6 @@ public class AdService {
 
     @Autowired
     private ContentClient contentClient;
-
-    @Autowired
-    private UserClient userClient;
-
 
     public void handleContentDeleted(ContentDeletedEvent event) {
         Optional<Ad> adOptional = adRepository.findByContentIdAndContentType(
