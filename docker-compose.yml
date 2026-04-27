@@ -93,7 +93,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 384M
+          memory: 512M
     depends_on:
       discover-server:
         condition: service_healthy
