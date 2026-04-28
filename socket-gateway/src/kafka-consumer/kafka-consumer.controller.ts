@@ -31,10 +31,19 @@ export class KafkaConsumerController {
   }
 
   @EventPattern('ad.registered.result')
-  async handleAdResult(@Payload() data: { userId: string; success: boolean }) {
-    this.socketGateway.emitAdPayment(data.userId, {
-      success: data.success,
-      message: data.success ? 'Register ad success!' : 'Register failed',
+  handleAdRegistered(@Payload() message: any) {
+    console.log('Kafka received:', message);
+    console.log('Type:', typeof message);
+
+    const parsed = typeof message === 'string' ? JSON.parse(message) : message;
+    console.log('Parsed:', parsed);
+    console.log('success:', parsed.success); // true hay false?
+
+    this.socketGateway.emitAdPayment(parsed.userId, {
+      success: parsed.success,
+      message: parsed.success
+        ? 'Payment successful! Your post is being boosted 🚀'
+        : 'Payment failed, please try again',
     });
   }
 }
