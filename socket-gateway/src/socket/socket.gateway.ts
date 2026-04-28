@@ -77,6 +77,7 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   sendNotification(event: any) {
+    if (event.senderId && event.senderId === event.userId) return;
     this.server.to(`user:${event.userId}`).emit('new_notification', event);
   }
 
