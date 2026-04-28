@@ -32,15 +32,11 @@ public class PendingAdService {
 
     public PendingAdData get(UUID userId) {
         Object raw = redisTemplate.opsForValue().get(PENDING_AD_KEY + userId);
-        log.info("Raw from Redis type: {}", raw.getClass().getName());
-        log.info("Raw from Redis value: {}", raw);
         if (raw == null) return null;
 
         ObjectMapper mapper = new ObjectMapper();
         mapper.registerModule(new JavaTimeModule());
-        PendingAdData data = mapper.convertValue(raw, PendingAdData.class);
-        log.info("Converted dto: {}", data.getDto());
-        return data;
+        return mapper.convertValue(raw, PendingAdData.class);
     }
 
     public void delete(UUID userId) {

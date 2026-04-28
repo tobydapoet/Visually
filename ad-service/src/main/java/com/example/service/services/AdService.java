@@ -110,7 +110,7 @@ public class AdService {
     public Ad createAd(PendingAdData data , UUID userId) {
         LocalDateTime now = LocalDateTime.now();
 
-        CreateAdDto dto = new CreateAdDto();
+        CreateAdDto dto = data.getDto();
 
         Optional<Ad> optionalExisting = adRepository.findByContentIdAndContentType(
                 dto.getContentId(), dto.getContentType()
