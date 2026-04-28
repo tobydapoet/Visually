@@ -13,4 +13,6 @@ export class NotificationJob {
   contentId!: number;
 
   username!: string;
+
+  senderId!: string;
 }

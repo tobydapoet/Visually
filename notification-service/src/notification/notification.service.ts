@@ -30,16 +30,16 @@ export class NotificationService {
         return `${username} started following you.`;
 
       case NotificationType.LIKE:
-        return `${username} liked your ${String(contentType!)}.`;
+        return `${username} liked your ${String(contentType!).toLowerCase()}.`;
 
       case NotificationType.COMMENT:
         if (contentType === ContentType.COMMENT) {
           return `${username} replied to your comment.`;
         }
-        return `${username} commented on your ${String(contentType!)}.`;
+        return `${username} commented on your ${String(contentType!).toLowerCase()}.`;
 
       case NotificationType.CREATE:
-        return `${username} created a new ${String(contentType!)}.`;
+        return `${username} created a new ${String(contentType!).toLowerCase()}.`;
 
       default:
         return `You have a new notification.`;
@@ -57,6 +57,7 @@ export class NotificationService {
         type: dto.type,
         content,
         snapshotUrl: dto.snapshotUrl,
+        senderId: dto.senderId,
         contentId: dto.contentId,
         contentType: dto.contentType,
         createdAt: new Date(),

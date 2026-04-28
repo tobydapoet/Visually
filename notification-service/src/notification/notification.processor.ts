@@ -20,6 +20,7 @@ export class NotificationProcessor extends WorkerHost {
         type: data.type,
         contentType: data.contentType,
         contentId: data.contentId,
+        senderId: data.senderId,
       });
     } catch (error: any) {
       console.error('Error stack:', error.stack);

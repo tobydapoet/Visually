@@ -39,6 +39,9 @@ export class CreateNotificationDto {
   @IsUUID('4', { each: true })
   userId!: string;
 
+  @IsUUID()
+  senderId!: string;
+
   @IsString()
   snapshotUrl?: string;
 

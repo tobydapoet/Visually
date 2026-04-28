@@ -54,6 +54,7 @@ export class NotificationController {
         type: NotificationType.CREATE,
         contentType: event.contentType,
         contentId: event.contentId,
+        senderId: event.senderId,
       },
       opts: {
         attempts: 3,
@@ -78,6 +79,7 @@ export class NotificationController {
       username: event.username,
       contentType: event.contentType,
       snapshotUrl: event.avatarUrl,
+      senderId: event.senderId,
     });
 
     if (event.receiverId) {
@@ -88,6 +90,7 @@ export class NotificationController {
         username: event.username,
         contentType: ContentType.COMMENT,
         snapshotUrl: event.avatarUrl,
+        senderId: event.senderId,
       });
     }
   }
@@ -101,6 +104,7 @@ export class NotificationController {
       username: event.username,
       contentType: event.contentType,
       snapshotUrl: event.avatarUrl,
+      senderId: event.senderId,
     });
   }
 
@@ -111,6 +115,7 @@ export class NotificationController {
       userId: event.followedId,
       username: event.followerUsername,
       snapshotUrl: event.followerAvatarUrl,
+      senderId: event.followerId,
     });
   }
 }
