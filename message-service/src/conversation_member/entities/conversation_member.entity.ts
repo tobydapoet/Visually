@@ -36,6 +36,12 @@ export class ConversationMember {
   @Column({ type: 'datetime', nullable: true })
   lastSeen?: Date | null;
 
+  @Column({ type: 'datetime', nullable: true })
+  isMutedAt!: Date | null;
+
+  @Column({ type: 'datetime', nullable: true })
+  mutedUntil!: Date | null;
+
   @DeleteDateColumn({ type: 'datetime', nullable: true })
   deletedAt?: Date | null;
 

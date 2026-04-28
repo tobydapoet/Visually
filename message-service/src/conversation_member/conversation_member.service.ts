@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateConversationMemberDto } from './dto/create-conversation_member.dto';
 import { UpdateConversationMemberDto } from './dto/update-conversation_member.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -16,6 +20,8 @@ import { UserClient } from '../client/user.client';
 import { MessageService } from '../message/message.service';
 import { ContextService } from '../context/context.service';
 import { MemberSummaryResponse } from './dto/response-conversation_member.dto';
+import { Message } from '../message/entities/message.entity';
+import { MuteOption } from '../enums/MuteOption';
 
 @Injectable()
 export class ConversationMemberService {
@@ -118,6 +124,70 @@ export class ConversationMemberService {
       avatarUrl: member.avatarUrl,
       lastSeen: member.lastSeen ?? null,
     }));
+  }
+
+  async getUnreadConversationCount(): Promise<number> {
+    const userId = this.context.getUserId();
+    const result = await this.dataSource
+      .createQueryBuilder()
+      .select('COUNT(DISTINCT cm.conversationId)', 'count')
+      .from(ConversationMember, 'cm')
+      .innerJoin(
+        Message,
+        'm',
+        'm.conversationId = cm.conversationId AND m.id > COALESCE(cm.lastSeenMessageId, 0)',
+      )
+      .where('cm.userId = :userId', { userId })
+      .andWhere('cm.deletedAt IS NULL')
+      .getRawOne();
+
+    return parseInt(result.count, 10);
+  }
+
+  private getMutedUntil(option: MuteOption): Date | null {
+    const now = new Date();
+    switch (option) {
+      case '15m':
+        return new Date(now.getTime() + 15 * 60 * 1000);
+      case '1h':
+        return new Date(now.getTime() + 60 * 60 * 1000);
+      case '8h':
+        return new Date(now.getTime() + 8 * 60 * 60 * 1000);
+      case '24h':
+        return new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      case 'forever':
+        return null;
+    }
+  }
+
+  async muteConversation(conversationId: number, option: MuteOption) {
+    const userId = this.context.getUserId();
+
+    const member = await this.memberRepo.findOne({
+      where: { userId, conversation: { id: conversationId } },
+    });
+
+    if (!member) throw new NotFoundException('Member not found');
+
+    await this.memberRepo.update(member.id, {
+      isMutedAt: new Date(),
+      mutedUntil: this.getMutedUntil(option),
+    });
+  }
+
+  async unmuteConversation(conversationId: number) {
+    const userId = this.context.getUserId();
+
+    const member = await this.memberRepo.findOne({
+      where: { userId, conversation: { id: conversationId } },
+    });
+
+    if (!member) throw new NotFoundException('Member not found');
+
+    await this.memberRepo.update(member.id, {
+      isMutedAt: null,
+      mutedUntil: null,
+    });
   }
 
   async invite(createConversationMemberDto: CreateConversationMemberDto) {

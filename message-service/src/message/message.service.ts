@@ -58,6 +58,10 @@ export class MessageService {
       relations: ['members'],
     });
 
+    if (!conversation) {
+      throw new NotFoundException("Can't find this notification");
+    }
+
     if (conversation?.type === ConversationType.PRIVATE) {
       const otherMember = conversation.members.find(
         (m) => m.userId !== createMessageDto.senderId,
@@ -149,6 +153,16 @@ export class MessageService {
         }
       }
 
+      const mutedUserIds = conversation.members
+        .filter((m) => {
+          return (
+            m.userId !== createMessageDto.senderId &&
+            m.isMutedAt &&
+            (!m.mutedUntil || m.mutedUntil > new Date())
+          );
+        })
+        .map((m) => m.userId);
+
       this.kafkaClient.emit('message.created', {
         key: createMessageDto.conversationId,
         value: {
@@ -165,6 +179,7 @@ export class MessageService {
           senderUsername: member.username,
           senderAvatar: member.avatarUrl,
           mediaUrls,
+          mutedUserIds,
         },
       });
 

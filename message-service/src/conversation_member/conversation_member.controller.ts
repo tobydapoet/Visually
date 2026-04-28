@@ -12,6 +12,7 @@ import { ConversationMemberService } from './conversation_member.service';
 import { EventPattern, Payload } from '@nestjs/microservices';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { CreateConversationMemberDto } from './dto/create-conversation_member.dto';
+import { MuteOption } from '../enums/MuteOption';
 
 @Controller('conversation-member')
 export class ConversationMemberController {
@@ -23,6 +24,12 @@ export class ConversationMemberController {
   @ApiBearerAuth()
   invite(@Body() createConversationMemberDto: CreateConversationMemberDto) {
     this.conversationMemberService.invite(createConversationMemberDto);
+  }
+
+  @Get('unread')
+  @ApiBearerAuth()
+  getUnreadConversationCount() {
+    return this.conversationMemberService.getUnreadConversationCount();
   }
 
   @Get('conversation/:conversationId/search')
@@ -59,6 +66,16 @@ export class ConversationMemberController {
     @Param('conversationId', ParseIntPipe) conversationId: number,
   ) {
     return this.conversationMemberService.updateLastSeen(conversationId);
+  }
+
+  @Put(':id/mute')
+  async mute(@Param('id') id: number, @Body('option') option: MuteOption) {
+    return this.conversationMemberService.muteConversation(id, option);
+  }
+
+  @Put(':id/unmute')
+  async unmute(@Param('id') id: number) {
+    return this.conversationMemberService.unmuteConversation(id);
   }
 
   @Put('remove/:id')
