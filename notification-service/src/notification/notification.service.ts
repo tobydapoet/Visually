@@ -1,14 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Notification } from './entities/notification.entity';
-import { LessThan, Repository } from 'typeorm';
+import { LessThan, Not, Repository } from 'typeorm';
 import { ContextService } from 'src/context/context.service';
 import { NotificationType } from 'src/enum/notification.type';
 import { ContentType } from 'src/enum/content.type';
-import {
-  CreateMultipleNotificationDto,
-  CreateNotificationDto,
-} from './dto/create-notification.dto';
+import { CreateNotificationDto } from './dto/create-notification.dto';
 import { ClientKafka } from '@nestjs/microservices';
 
 @Injectable()
@@ -47,6 +44,9 @@ export class NotificationService {
   }
 
   async create(dto: CreateNotificationDto) {
+    if (dto.senderId === dto.userId) {
+      return null;
+    }
     const content = this.buildContent(dto.username, dto.type, dto.contentType);
     const nofiication = this.notificationRepo.create({ ...dto, content });
     const savedNotification = await this.notificationRepo.save(nofiication);
@@ -69,7 +69,11 @@ export class NotificationService {
   async readAll() {
     const userId = this.context.getUserId();
     const notifications = await this.notificationRepo.find({
-      where: { userId: userId, isRead: false },
+      where: {
+        userId: userId,
+        isRead: false,
+        senderId: Not(userId),
+      },
     });
     notifications.map((notification) => {
       notification.isRead = true;
