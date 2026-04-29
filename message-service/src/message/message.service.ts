@@ -163,6 +163,8 @@ export class MessageService {
         })
         .map((m) => m.userId);
 
+      const memberIds = conversation.members.map((m) => m.userId);
+
       this.kafkaClient.emit('message.created', {
         key: createMessageDto.conversationId,
         value: {
@@ -179,6 +181,7 @@ export class MessageService {
           senderUsername: member.username,
           senderAvatar: member.avatarUrl,
           mediaUrls,
+          memberIds,
           mutedUserIds,
         },
       });
