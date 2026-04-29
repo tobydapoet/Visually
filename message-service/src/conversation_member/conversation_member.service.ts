@@ -99,6 +99,8 @@ export class ConversationMemberService {
       username: member.username,
       avatarUrl: member.avatarUrl,
       lastSeen: member.lastSeen ?? null,
+      isMutedAt: member.isMutedAt ?? null,
+      mutedUntil: member.mutedUntil ?? null,
     }));
   }
 
@@ -123,6 +125,8 @@ export class ConversationMemberService {
       username: member.username,
       avatarUrl: member.avatarUrl,
       lastSeen: member.lastSeen ?? null,
+      isMutedAt: member.isMutedAt ?? null,
+      mutedUntil: member.mutedUntil ?? null,
     }));
   }
 

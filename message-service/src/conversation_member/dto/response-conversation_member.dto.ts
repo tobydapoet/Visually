@@ -4,4 +4,6 @@ export class MemberSummaryResponse {
   username!: string;
   avatarUrl?: string;
   lastSeen!: Date | null;
+  isMutedAt!: Date | null;
+  mutedUntil!: Date | null;
 }
