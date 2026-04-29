@@ -39,9 +39,7 @@ public class BlockController {
     }
 
     @GetMapping("/current")
-    public List<UUID> getCurrentBlockers(
-            @PathVariable UUID userId
-    ) {
+    public List<UUID> getCurrentBlockers() {
         CurrentUser currentUser = AuthContext.get();
         return blockService.getCurrentBlockers(
                 currentUser.getUserId()
