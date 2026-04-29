@@ -59,20 +59,21 @@ public class UploadService {
     }
 
     private Double getDuration(MultipartFile file, FileType type) {
+        File tempFile = null;
         try {
-            File tempFile = File.createTempFile("duration-", ".tmp");
+            // ✅ Lấy extension từ file gốc
+            String originalFilename = file.getOriginalFilename();
+            String extension = (originalFilename != null && originalFilename.contains("."))
+                    ? originalFilename.substring(originalFilename.lastIndexOf("."))
+                    : ".tmp";
+
+            tempFile = File.createTempFile("duration-", extension);
             Files.write(tempFile.toPath(), file.getBytes());
 
             if (type == FileType.VIDEO) {
                 IsoFile isoFile = new IsoFile(tempFile.getAbsolutePath());
-                double duration = (double) isoFile
-                        .getMovieBox()
-                        .getMovieHeaderBox()
-                        .getDuration()
-                        /
-                        isoFile.getMovieBox()
-                                .getMovieHeaderBox()
-                                .getTimescale();
+                double duration = (double) isoFile.getMovieBox().getMovieHeaderBox().getDuration()
+                        / isoFile.getMovieBox().getMovieHeaderBox().getTimescale();
                 isoFile.close();
                 return duration;
             }
@@ -83,9 +84,11 @@ public class UploadService {
             }
 
             return null;
-
         } catch (Exception e) {
+            e.printStackTrace();
             return null;
+        } finally {
+            if (tempFile != null) tempFile.delete();
         }
     }
 
