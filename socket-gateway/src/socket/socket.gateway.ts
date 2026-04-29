@@ -66,8 +66,11 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     for (const memberId of memberIds) {
       if (actualMutedIds.includes(memberId)) continue;
+      if (memberId === event.senderId) continue;
       this.server.to(`user:${memberId}`).emit('new_message', event);
     }
+
+    this.server.to(`user:${event.senderId}`).emit('new_message', event);
   }
 
   updateMessage(event: any) {
