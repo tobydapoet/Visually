@@ -56,17 +56,9 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   sendMessage(event: any) {
-    const mutedUserIds: string[] = event.mutedUserIds ?? [];
-    const mentionedUserIds: string[] =
-      event.mentions?.map((m: any) => m.userId) ?? [];
-    const actualMutedIds = mutedUserIds.filter(
-      (id) => !mentionedUserIds.includes(id),
-    );
     const memberIds: string[] = event.memberIds ?? [];
 
     for (const memberId of memberIds) {
-      if (actualMutedIds.includes(memberId)) continue;
-      if (memberId === event.senderId) continue;
       this.server.to(`user:${memberId}`).emit('new_message', event);
     }
 
