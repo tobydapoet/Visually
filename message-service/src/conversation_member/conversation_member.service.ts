@@ -137,6 +137,12 @@ export class ConversationMemberService {
         'm',
         'm.conversationId = cm.conversationId AND m.id > COALESCE(cm.lastSeenMessageId, 0)',
       )
+      .innerJoin(
+        ConversationMember,
+        'sender',
+        'sender.id = m.senderId AND sender.userId != :userId',
+        { userId },
+      )
       .where('cm.userId = :userId', { userId })
       .andWhere('cm.deletedAt IS NULL')
       .getRawOne();
