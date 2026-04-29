@@ -122,15 +122,6 @@ export class PostService {
         },
       });
 
-      // this.kafkaClient.emit(`content.created`, {
-      //   senderId: userId,
-      //   username,
-      //   avatarUrl,
-      //   contentId: post.id,
-      //   contentType: 'POST',
-      //   timestamp: new Date().toISOString(),
-      // });
-
       await queryRunner.commitTransaction();
 
       return savedPost;

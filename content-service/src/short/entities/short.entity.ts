@@ -21,7 +21,7 @@ export class Short {
   @Column({ type: 'text', nullable: true })
   avatarUrl?: string;
 
-  @Column({ type: 'text', nullable: false })
+  @Column({ type: 'text', nullable: true })
   caption?: string;
 
   @Column({ type: 'int', nullable: false })

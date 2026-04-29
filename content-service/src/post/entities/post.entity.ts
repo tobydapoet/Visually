@@ -23,7 +23,7 @@ export class Post {
   @Column({ type: 'text', nullable: true })
   avatarUrl?: string;
 
-  @Column({ type: 'text' })
+  @Column({ type: 'text', nullable: true })
   caption?: string;
 
   @OneToMany(() => PostMedia, (media) => media.post)

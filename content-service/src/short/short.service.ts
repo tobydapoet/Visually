@@ -128,15 +128,6 @@ export class ShortService {
         },
       });
 
-      // this.kafkaClient.emit(`content.created`, {
-      //   senderId: userId,
-      //   username,
-      //   avatarUrl,
-      //   contentId: short.id,
-      //   contentType: 'SHORT',
-      //   timestamp: new Date().toISOString(),
-      // });
-
       await queryRunner.commitTransaction();
 
       return savedShort;
