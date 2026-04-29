@@ -1,7 +1,10 @@
 package com.example.media_service.controllers;
 
+import com.example.media_service.contexts.AuthContext;
 import com.example.media_service.entities.MusicLibrary;
 import com.example.media_service.enums.MusicStatus;
+import com.example.media_service.exceptions.UnauthorizedException;
+import com.example.media_service.requests.CurrentUser;
 import com.example.media_service.requests.MusicCreateRequest;
 import com.example.media_service.requests.MusicUpdateRequest;
 import com.example.media_service.services.MusicLibraryService;
@@ -22,10 +25,15 @@ public class MusicLibraryController {
     @Autowired
     MusicLibraryService musicLibraryService;
 
-    @PreAuthorize("hasRole('MODERATOR') or hasRole('ADMIN')")
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Map<String, String>> create(@ModelAttribute MusicCreateRequest req)
     {
+        CurrentUser currentUser = AuthContext.get();
+
+        if(currentUser.getRole().equals("CLIENT")){
+            throw new UnauthorizedException("You are not allowed to perform this operation");
+        }
+
         MusicLibrary savedMusic = musicLibraryService.create(req);
         if(savedMusic != null) {
             return ResponseEntity.ok(Map.of(
@@ -39,12 +47,18 @@ public class MusicLibraryController {
         }
     }
 
-    @PreAuthorize("hasRole('MODERATOR') or hasRole('ADMIN')")
     @PutMapping(value = "/{id}/status")
     public ResponseEntity<Map<String, String>> updateStatus(
             @PathVariable Long id,
             @RequestParam MusicStatus status)
     {
+
+        CurrentUser currentUser = AuthContext.get();
+
+        if(currentUser.getRole().equals("CLIENT")){
+            throw new UnauthorizedException("You are not allowed to perform this operation");
+        }
+
         MusicLibrary updatedMusic = musicLibraryService.updateStatus(id,status);
         if(updatedMusic != null) {
             return ResponseEntity.ok(Map.of(
@@ -58,12 +72,17 @@ public class MusicLibraryController {
         }
     }
 
-    @PreAuthorize("hasRole('MODERATOR') or hasRole('ADMIN')")
     @PutMapping(value = "/{id}",consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Map<String, String>> update(
             @PathVariable Long id,
             @ModelAttribute MusicUpdateRequest req)
     {
+        CurrentUser currentUser = AuthContext.get();
+
+        if(currentUser.getRole().equals("CLIENT")){
+            throw new UnauthorizedException("You are not allowed to perform this operation");
+        }
+
         MusicLibrary updatedMusic = musicLibraryService.update(id,req);
         if(updatedMusic != null) {
             return ResponseEntity.ok(Map.of(
@@ -78,10 +97,16 @@ public class MusicLibraryController {
     }
 
 
-    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping(value = "/{id}")
     public ResponseEntity<Map<String, String>> delete(@PathVariable Long id)
     {
+
+        CurrentUser currentUser = AuthContext.get();
+
+        if(currentUser.getRole().equals("CLIENT")){
+            throw new UnauthorizedException("You are not allowed to perform this operation");
+        }
+
         musicLibraryService.delete(id);
         return ResponseEntity.ok(Map.of(
                 "message", "Delete music success"
