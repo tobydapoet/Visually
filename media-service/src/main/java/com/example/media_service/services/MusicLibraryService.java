@@ -65,8 +65,8 @@ public class MusicLibraryService {
         }
 
         if(req.getImg() != null) {
-            UploadResult imageRes = uploadService.upload(req.getUrl(), "music_img");
-            musicLibrary.setUrl((String) imageRes.getUrl());
+            UploadResult imageRes = uploadService.upload(req.getImg(), "music_img");
+            musicLibrary.setImg(imageRes.getUrl());
         }
 
         return musicLibraryRepository.save(musicLibrary);

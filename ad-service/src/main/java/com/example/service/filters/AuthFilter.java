@@ -28,14 +28,14 @@ public class AuthFilter extends OncePerRequestFilter {
         String role = request.getHeader("X-User-Role");
         String username = request.getHeader("X-User-Username");
 
-        if (userId == null || sessionId == null) {
+        if (userId == null) {
             response.setStatus(HttpStatus.UNAUTHORIZED.value());
             return;
         }
 
         CurrentUser currentUser = new CurrentUser(
                 UUID.fromString(userId),
-                Long.parseLong(sessionId),
+                sessionId != null ? Long.parseLong(sessionId) : null,
                 role,
                 username
         );
