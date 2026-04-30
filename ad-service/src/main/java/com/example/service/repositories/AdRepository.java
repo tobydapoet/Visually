@@ -72,6 +72,7 @@ public interface AdRepository extends JpaRepository<Ad,Long> {
     @Query("""
         SELECT a.userId FROM Ad a
         WHERE a.deletedAt IS NULL
+        AND (:username IS NULL OR LOWER(a.userName) LIKE LOWER(CONCAT('%', :username, '%')))
         AND a.createdAt = (
             SELECT MAX(a2.createdAt) FROM Ad a2
             WHERE a2.userId = a.userId
@@ -79,7 +80,10 @@ public interface AdRepository extends JpaRepository<Ad,Long> {
         )
         ORDER BY a.createdAt DESC
     """)
-    Page<UUID> findDistinctUserIds(Pageable pageable);
+    Page<UUID> findDistinctUserIds(
+            @Param("username") String username,
+            Pageable pageable
+    );
 
     @Modifying
     @Query("UPDATE Ad a SET a.spentAmount = 0")

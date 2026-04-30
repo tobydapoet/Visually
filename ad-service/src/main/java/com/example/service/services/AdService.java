@@ -13,7 +13,6 @@ import com.example.service.repositories.AdRepository;
 import com.example.service.requests.CreateAdDto;
 import com.example.service.requests.PendingAdData;
 import com.example.service.responses.*;
-import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
@@ -23,7 +22,6 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
-@Log4j2
 @Service
 public class AdService {
     @Autowired
@@ -109,11 +107,16 @@ public class AdService {
         return ads;
     }
 
-    public Page<UserSummaryResponse> getUsers(UUID userId, Integer page, Integer size) {
+    public Page<UserSummaryResponse> getUsers(UUID userId, String username, Integer page, Integer size) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<UUID> userIdsPage = adRepository.findDistinctUserIds(pageable);
+
+        Page<UUID> userIdsPage = adRepository.findDistinctUserIds(username, pageable);
 
         List<UUID> ids = userIdsPage.getContent();
+
+        if (ids.isEmpty()) {
+            return new PageImpl<>(Collections.emptyList(), pageable, 0);
+        }
 
         String idsParam = ids.stream()
                 .map(UUID::toString)
@@ -203,26 +206,17 @@ public class AdService {
 
         if (!postIds.isEmpty()) {
             List<ContentResponse> posts = contentClient.getPostsByIds(postIds);
-            log.info("postIds sent: {}", postIds);
-            log.info("posts received: {}", posts);  // xem trả về gì
             posts.forEach(c -> contentMap.put(c.getId(), c));
 
         }
 
         if (!shortIds.isEmpty()) {
             List<ContentResponse> shorts = contentClient.getShortsByIds(shortIds);
-            log.info("shortIds sent: {}", shortIds);
-            log.info("shorts received: {}", shorts);
             shorts.forEach(c -> contentMap.put(c.getId(), c));
         }
 
-
-
         return ads.map(ad -> {
             ContentResponse content = contentMap.get(ad.getContentId());
-            log.info("ad.id={}, contentId={}, contentType={}, content={}",
-                    ad.getId(), ad.getContentId(), ad.getContentType(), content);
-
             return AdResponse.builder()
                     .id(ad.getId())
                     .contentType(ad.getContentType())
