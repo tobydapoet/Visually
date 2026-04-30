@@ -68,10 +68,10 @@ public class AdController {
 
     @GetMapping("/users")
     public Page<UserSummaryResponse> getUsers(
-            @PathVariable UUID userId,
             @RequestParam(defaultValue = "0") Integer page,
             @RequestParam(defaultValue = "10") Integer size) {
-        return adService.getUsers(userId, page, size);
+        CurrentUser currentUser = AuthContext.get();
+        return adService.getUsers(currentUser.getUserId(), page, size);
     }
 
     @GetMapping("/user/{userId}")
