@@ -216,22 +216,29 @@ public class AdService {
             shorts.forEach(c -> contentMap.put(c.getId(), c));
         }
 
-        return ads.map(ad -> AdResponse.builder()
-                .id(ad.getId())
-                .contentType(ad.getContentType())
-                .ageMin(ad.getAgeMin())
-                .ageMax(ad.getAgeMax())
-                .gender(ad.getGender())
-                .dailyBudget(ad.getDailyBudget())
-                .spentAmount(ad.getSpentAmount())
-                .startDate(ad.getStartDate())
-                .endDate(ad.getEndDate())
-                .views(ad.getViews())
-                .pausedAt(ad.getPausedAt())
-                .status(ad.getStatus())
-                .content(contentMap.get(ad.getContentId()))
-                .build()
-        );
+
+
+        return ads.map(ad -> {
+            ContentResponse content = contentMap.get(ad.getContentId());
+            log.info("ad.id={}, contentId={}, contentType={}, content={}",
+                    ad.getId(), ad.getContentId(), ad.getContentType(), content);
+
+            return AdResponse.builder()
+                    .id(ad.getId())
+                    .contentType(ad.getContentType())
+                    .ageMin(ad.getAgeMin())
+                    .ageMax(ad.getAgeMax())
+                    .gender(ad.getGender())
+                    .dailyBudget(ad.getDailyBudget())
+                    .spentAmount(ad.getSpentAmount())
+                    .startDate(ad.getStartDate())
+                    .endDate(ad.getEndDate())
+                    .views(ad.getViews())
+                    .pausedAt(ad.getPausedAt())
+                    .status(ad.getStatus())
+                    .content(content)
+                    .build();
+        });
     }
 
     public Page<Ad> FindByPage(Integer page, Integer size) {
