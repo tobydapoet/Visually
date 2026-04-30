@@ -90,18 +90,19 @@ public class AdService {
     }
 
     public List<Ad> getAdByGenderAndAge(Gender gender, Integer age) {
-        GenderOption genderOption = switch (gender) {
-            case MALE -> GenderOption.MALE;
-            case FEMALE -> GenderOption.FEMALE;
-            default -> null;
-        };
+        GenderOption genderOption = null;
+        if (gender != null) {
+            genderOption = switch (gender) {
+                case MALE -> GenderOption.MALE;
+                case FEMALE -> GenderOption.FEMALE;
+                default -> null;
+            };
+        }
 
         PageRequest page = PageRequest.of(0, 10);
-        List<Ad> ads = adRepository.findEligibleAds(genderOption, age, page).getContent();
+        List<Ad> ads = new ArrayList<>(adRepository.findEligibleAds(genderOption, age, page).getContent());
 
-        if (ads.isEmpty()) {
-            return Collections.emptyList();
-        }
+        if (ads.isEmpty()) return Collections.emptyList();
 
         Collections.shuffle(ads);
         return ads;

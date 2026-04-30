@@ -18,6 +18,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -71,18 +72,15 @@ public class AdController {
 
     @GetMapping("/feed")
     public List<AdFeedResponse> getAdsForFeed(
-            @RequestParam(defaultValue = "3") Integer age,
-            @RequestParam(defaultValue = "OTHER") Gender gender
+            @RequestParam(required = false) Integer age,
+            @RequestParam(required = false) Gender gender
     ) {
+        List<Ad> ads = adService.getAdByGenderAndAge(gender, age);
 
-        CurrentUser currentUser = AuthContext.get();
-
-        List<Ad> ads = adService.getAdByGenderAndAge(gender,age);
-
-        return ads.stream().map(ad -> new AdFeedResponse(
+        return new ArrayList<>(ads.stream().map(ad -> new AdFeedResponse(
                 ad.getContentId(),
                 ad.getContentType()
-        )).toList();
+        )).toList());
     }
 
     @GetMapping
