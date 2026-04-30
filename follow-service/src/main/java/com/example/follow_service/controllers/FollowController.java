@@ -59,7 +59,7 @@ public class FollowController {
         );
     }
 
-    @GetMapping("/followers/status")
+    @GetMapping("/following/online")
     public Page<UserSummaryStatusResponse> getFollowers(
             @RequestParam UUID followerId,
             @RequestParam(defaultValue = "0") int page,
