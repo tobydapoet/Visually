@@ -69,6 +69,12 @@ public interface AdRepository extends JpaRepository<Ad,Long> {
 
     Optional<Ad> findByContentIdAndContentType(Long contentId, AdType contentType);
 
+    @Query("""
+        SELECT DISTINCT a.userId
+        FROM Ad a
+        WHERE a.deletedAt IS NULL
+    """)
+    Page<UUID> findDistinctUserIds(Pageable pageable);
 
     @Modifying
     @Query("UPDATE Ad a SET a.spentAmount = 0")

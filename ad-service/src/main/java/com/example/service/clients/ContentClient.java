@@ -15,7 +15,7 @@ public interface ContentClient {
     ContentResponse getContent(
             @RequestParam("contentId") Long contentId,
             @RequestParam("contentType") AdType contentType,
-            @RequestHeader("x-user-Id") UUID userId
+            @RequestHeader("x-user-id") UUID userId
     );
 
     @GetMapping("/post/batch")

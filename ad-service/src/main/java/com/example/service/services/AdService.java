@@ -1,6 +1,7 @@
 package com.example.service.services;
 
 import com.example.service.clients.ContentClient;
+import com.example.service.clients.UserClient;
 import com.example.service.entities.Ad;
 import com.example.service.enums.AdStatus;
 import com.example.service.enums.AdType;
@@ -11,20 +12,15 @@ import com.example.service.exceptions.NotFoundException;
 import com.example.service.repositories.AdRepository;
 import com.example.service.requests.CreateAdDto;
 import com.example.service.requests.PendingAdData;
-import com.example.service.responses.AdResponse;
-import com.example.service.responses.ContentDeletedEvent;
-import com.example.service.responses.ContentResponse;
-import com.example.service.responses.ContentViewEvent;
+import com.example.service.responses.*;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class AdService {
@@ -33,6 +29,9 @@ public class AdService {
 
     @Autowired
     private ContentClient contentClient;
+
+    @Autowired
+    private UserClient userClient;
 
     public void handleContentDeleted(ContentDeletedEvent event) {
         Optional<Ad> adOptional = adRepository.findByContentIdAndContentType(
@@ -106,6 +105,21 @@ public class AdService {
 
         Collections.shuffle(ads);
         return ads;
+    }
+
+    public Page<UserSummaryResponse> getUsers(UUID userId, Integer page, Integer size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<UUID> userIdsPage = adRepository.findDistinctUserIds(pageable);
+
+        List<UUID> ids = userIdsPage.getContent();
+
+        String idsParam = ids.stream()
+                .map(UUID::toString)
+                .collect(Collectors.joining(","));
+
+        List<UserSummaryResponse> users = userClient.getUsers(idsParam, userId);
+
+        return new PageImpl<>(users, pageable, userIdsPage.getTotalElements());
     }
 
     public Ad createAd(PendingAdData data , UUID userId) {

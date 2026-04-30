@@ -7,14 +7,17 @@ import com.example.service.enums.AdType;
 import com.example.service.enums.Gender;
 import com.example.service.requests.CreateAdDto;
 import com.example.service.requests.CurrentUser;
+import com.example.service.requests.PendingAdData;
 import com.example.service.responses.AdFeedResponse;
 import com.example.service.responses.AdResponse;
 import com.example.service.responses.ApiResponse;
+import com.example.service.responses.UserSummaryResponse;
 import com.example.service.services.AdService;
 import com.example.service.services.PendingAdService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -33,15 +36,19 @@ public class AdController {
     @Autowired
     private PendingAdService pendingAdService;
 
-//    @PostMapping()
-//    public ResponseEntity<ApiResponse<Ad>> createAd(
-//            @RequestBody CreateAdDto createAdDto) {
-//        Ad ad = adService.createAd(createAdDto);
-//        ApiResponse<Ad> response = new ApiResponse<>();
-//        response.setMessage("Ad created successfully");
-//        response.setData(ad);
-//        return ResponseEntity.status(HttpStatus.CREATED).body(response);
-//    }
+    @PostMapping()
+    public ResponseEntity<ApiResponse<Ad>> createAd(
+            @RequestBody CreateAdDto createAdDto) {
+        CurrentUser currentUser = AuthContext.get();
+        PendingAdData data = new PendingAdData();
+        data.setDto(createAdDto);
+        data.setUsername(currentUser.getUsername());
+        Ad ad = adService.createAd(data,currentUser.getUserId());
+        ApiResponse<Ad> response = new ApiResponse<>();
+        response.setMessage("Ad created successfully");
+        response.setData(ad);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
 
     @PostMapping("/pending")
     public ResponseEntity<?> savePendingAd(@RequestBody CreateAdDto dto) {
@@ -49,7 +56,6 @@ public class AdController {
         pendingAdService.save(currentUser.getUserId(), currentUser.getUsername(),dto);
         return ResponseEntity.ok(Map.of("message", "OK"));
     }
-
 
     @GetMapping("/my-ads")
     public Page<AdResponse> getMyAds(
@@ -60,15 +66,21 @@ public class AdController {
         return res;
     }
 
+    @GetMapping("/users")
+    public Page<UserSummaryResponse> getUsers(
+            @PathVariable UUID userId,
+            @RequestParam(defaultValue = "0") Integer page,
+            @RequestParam(defaultValue = "10") Integer size) {
+        return adService.getUsers(userId, page, size);
+    }
+
     @GetMapping("/user/{userId}")
     public Page<AdResponse> getAdsByUserId(
             @PathVariable UUID userId,
             @RequestParam(defaultValue = "0") Integer page,
             @RequestParam(defaultValue = "10") Integer size) {
-        Page<AdResponse> res = adService.findByUserIdWithContent(userId, page, size);
-        return res;
+        return adService.findByUserIdWithContent(userId, page, size);
     }
-
 
     @GetMapping("/feed")
     public List<AdFeedResponse> getAdsForFeed(
