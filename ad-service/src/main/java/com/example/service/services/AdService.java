@@ -13,6 +13,7 @@ import com.example.service.repositories.AdRepository;
 import com.example.service.requests.CreateAdDto;
 import com.example.service.requests.PendingAdData;
 import com.example.service.responses.*;
+import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
@@ -22,6 +23,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Log4j2
 @Service
 public class AdService {
     @Autowired
@@ -200,13 +202,18 @@ public class AdService {
         Map<Long, ContentResponse> contentMap = new HashMap<>();
 
         if (!postIds.isEmpty()) {
-            contentClient.getPostsByIds(postIds)
-                    .forEach(c -> contentMap.put(c.getId(), c));
+            List<ContentResponse> posts = contentClient.getPostsByIds(postIds);
+            log.info("postIds sent: {}", postIds);
+            log.info("posts received: {}", posts);  // xem trả về gì
+            posts.forEach(c -> contentMap.put(c.getId(), c));
+
         }
 
         if (!shortIds.isEmpty()) {
-            contentClient.getShortsByIds(shortIds)
-                    .forEach(c -> contentMap.put(c.getId(), c));
+            List<ContentResponse> posts = contentClient.getShortsByIds(postIds);
+            log.info("postIds sent: {}", postIds);
+            log.info("posts received: {}", posts);  // xem trả về gì
+            posts.forEach(c -> contentMap.put(c.getId(), c));
         }
 
         return ads.map(ad -> AdResponse.builder()
