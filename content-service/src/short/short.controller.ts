@@ -12,6 +12,7 @@ import {
   HttpStatus,
   Put,
   Post,
+  ParseArrayPipe,
 } from '@nestjs/common';
 import { ShortService } from './short.service';
 import {
@@ -145,7 +146,8 @@ export class ShortController {
 
   @Get('batch')
   async getManyByIds(
-    @Query('ids') ids: number[],
+    @Query('ids', new ParseArrayPipe({ items: Number }))
+    ids: number[],
   ): Promise<DefaultReponseDto[]> {
     return await this.shortService.findManyByIds(ids);
   }

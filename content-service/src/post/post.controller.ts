@@ -13,6 +13,7 @@ import {
   DefaultValuePipe,
   ParseIntPipe,
   Delete,
+  ParseArrayPipe,
 } from '@nestjs/common';
 import { PostService } from './post.service';
 import { CreatePostDto, CreatePostMultipartDto } from './dto/create-post.dto';
@@ -150,7 +151,8 @@ export class PostController {
 
   @Get('batch')
   async getManyByIds(
-    @Query('ids') ids: number[],
+    @Query('ids', new ParseArrayPipe({ items: Number }))
+    ids: number[],
   ): Promise<DefaultReponseDto[]> {
     return await this.postService.findManyByIds(ids);
   }
