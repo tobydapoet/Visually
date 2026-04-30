@@ -70,17 +70,12 @@ public interface AdRepository extends JpaRepository<Ad,Long> {
     Optional<Ad> findByContentIdAndContentType(Long contentId, AdType contentType);
 
     @Query("""
-        SELECT a FROM Ad a
+        SELECT a.userId FROM Ad a
         WHERE a.deletedAt IS NULL
-        AND a.userId IN (
-            SELECT a2.userId FROM Ad a2
-            WHERE a2.deletedAt IS NULL
-            GROUP BY a2.userId
-        )
         AND a.createdAt = (
-            SELECT MAX(a3.createdAt) FROM Ad a3
-            WHERE a3.userId = a.userId
-            AND a3.deletedAt IS NULL
+            SELECT MAX(a2.createdAt) FROM Ad a2
+            WHERE a2.userId = a.userId
+            AND a2.deletedAt IS NULL
         )
         ORDER BY a.createdAt DESC
     """)
