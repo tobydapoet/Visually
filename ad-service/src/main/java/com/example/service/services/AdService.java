@@ -210,10 +210,10 @@ public class AdService {
         }
 
         if (!shortIds.isEmpty()) {
-            List<ContentResponse> posts = contentClient.getShortsByIds(postIds);
-            log.info("postIds sent: {}", postIds);
-            log.info("posts received: {}", posts);  // xem trả về gì
-            posts.forEach(c -> contentMap.put(c.getId(), c));
+            List<ContentResponse> shorts = contentClient.getShortsByIds(shortIds);
+            log.info("shortIds sent: {}", shortIds);
+            log.info("shorts received: {}", shorts);
+            shorts.forEach(c -> contentMap.put(c.getId(), c));
         }
 
         return ads.map(ad -> AdResponse.builder()
