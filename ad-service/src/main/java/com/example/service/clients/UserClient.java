@@ -13,9 +13,9 @@ import java.util.UUID;
 
 @FeignClient(name = "USER-SERVICE")
 public interface UserClient {
-    @GetMapping("/batch")
+    @GetMapping("/account/batch")
     List<UserSummaryResponse> getUsers(
-            @RequestParam String ids,
-            @RequestHeader("x-user-Id") UUID userId
+            @RequestParam("ids") String ids,
+            @RequestHeader("X-User-Id") UUID userId
     );
 }
