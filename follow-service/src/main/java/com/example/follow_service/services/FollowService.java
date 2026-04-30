@@ -9,10 +9,7 @@ import com.example.follow_service.producers.FollowEventProducer;
 import com.example.follow_service.repositories.FollowRepository;
 import com.example.follow_service.requests.FollowEvent;
 import com.example.follow_service.requests.FollowNotificationEvent;
-import com.example.follow_service.responses.FollowInfoResponse;
-import com.example.follow_service.responses.FollowResponse;
-import com.example.follow_service.responses.UserResponse;
-import com.example.follow_service.responses.UserWithFollowResponse;
+import com.example.follow_service.responses.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.*;
@@ -89,20 +86,6 @@ public class FollowService {
         return followRepository
                 .findByUserIdAndFollowerId(targetUserId, userId)
                 .isPresent();
-    }
-
-    public Map<String, Boolean> isFollowedNoBlock(UUID userId, UUID targetUserId) {
-        boolean isFollowed = isFollowedBool(userId, targetUserId);
-
-        boolean isUserBlockedTarget = blockService.isBlockedBool(userId, targetUserId);
-        boolean isTargetBlockedUser = blockService.isBlockedBool(targetUserId, userId);
-
-        boolean isFollowedNoBlock = isFollowed && !isUserBlockedTarget && !isTargetBlockedUser;
-
-        Map<String, Boolean> map = new HashMap<>();
-        map.put("isFollowedNoBlock", isFollowedNoBlock);
-
-        return map;
     }
 
     public Map<String, Long> getFollowCount(UUID userId) {
@@ -299,6 +282,41 @@ public class FollowService {
                 search,
                 idPage.getTotalElements()
         );
+    }
+
+    public Page<UserSummaryStatusResponse> findCurrentUserFollowing(
+            UUID currentUserId,
+            int page,
+            int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
+
+        Page<UUID> idPage = followRepository.findFollowingIds(currentUserId, pageable);
+        List<UUID> ids = idPage.getContent();
+
+        if (ids.isEmpty()) {
+            return new PageImpl<>(Collections.emptyList(), pageable, 0);
+        }
+
+        String idsParam = ids.stream()
+                .map(UUID::toString)
+                .collect(Collectors.joining(","));
+
+        List<UserSummaryStatusResponse> users =
+                userClient.getUsersWithStatus(idsParam, currentUserId);
+
+        Map<UUID, UserSummaryStatusResponse> map =
+                users.stream().collect(Collectors.toMap(
+                        UserSummaryStatusResponse::getId,
+                        u -> u
+                ));
+
+        List<UserSummaryStatusResponse> result = ids.stream()
+                .map(map::get)
+                .filter(Objects::nonNull)
+                .toList();
+
+        return new PageImpl<>(result, pageable, idPage.getTotalElements());
     }
 
     @Transactional

@@ -8,6 +8,7 @@ import com.example.follow_service.requests.FollowNotificationEvent;
 import com.example.follow_service.responses.FollowInfoResponse;
 import com.example.follow_service.responses.FollowResponse;
 import com.example.follow_service.responses.UserResponse;
+import com.example.follow_service.responses.UserSummaryStatusResponse;
 import com.example.follow_service.services.FollowService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,16 +42,6 @@ public class FollowController {
         );
     }
 
-    @GetMapping("/check-follow-no-block")
-    public ResponseEntity<Map<String, Boolean>> checkFollowNoBlock(
-            @RequestParam UUID userId,
-            @RequestParam UUID targetUserId) {
-
-        Map<String, Boolean> result = followService.isFollowedNoBlock(userId, targetUserId);
-        return ResponseEntity.ok(result);
-    }
-
-
     @GetMapping("/followers")
     public Page<FollowResponse> getFollowers(
             @RequestParam UUID followerId,
@@ -60,6 +51,37 @@ public class FollowController {
     ) {
         CurrentUser currentUser = AuthContext.get();
         return followService.findAllByFollowerId(
+                currentUser.getUserId(),
+                followerId,
+                page,
+                size,
+                search
+        );
+    }
+
+    @GetMapping("/followers/status")
+    public Page<UserSummaryStatusResponse> getFollowers(
+            @RequestParam UUID followerId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        CurrentUser currentUser = AuthContext.get();
+        return followService.findCurrentUserFollowing(
+                currentUser.getUserId(),
+                page,
+                size
+        );
+    }
+
+    @GetMapping("/following/status")
+    public Page<FollowResponse> getUserIdsWithStatus(
+            @RequestParam UUID followerId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search
+    ) {
+        CurrentUser currentUser = AuthContext.get();
+        return followService.findAllByUserId(
                 currentUser.getUserId(),
                 followerId,
                 page,

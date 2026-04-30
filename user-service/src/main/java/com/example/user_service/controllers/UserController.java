@@ -10,6 +10,7 @@ import com.example.user_service.requests.UserStatusSummaryResponse;
 import com.example.user_service.responses.UserResponse;
 import com.example.user_service.responses.UserResponseExtend;
 import com.example.user_service.responses.UserSummaryResponse;
+import com.example.user_service.responses.UserSummaryStatusResponse;
 import com.example.user_service.services.UserService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.servlet.http.HttpServletRequest;
@@ -95,6 +96,28 @@ public class UserController {
         return userService.findManyUser(idList)
                 .stream()
                 .map(UserSummaryResponse::fromEntity)
+                .toList();
+    }
+
+    @SecurityRequirement(name = "bearerAuth")
+    @GetMapping("/batch/status")
+    public List<UserSummaryStatusResponse> getUsersWithStatus(
+            @RequestParam String ids
+    ) {
+
+        if (ids == null || ids.isBlank()) {
+            return List.of();
+        }
+
+        List<UUID> idList = Arrays.stream(ids.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(UUID::fromString)
+                .toList();
+
+        return userService.findManyUser(idList)
+                .stream()
+                .map(UserSummaryStatusResponse::fromEntity)
                 .toList();
     }
 
