@@ -108,7 +108,7 @@ public class AdService {
     }
 
     public Page<UserSummaryResponse> getUsers(UUID userId, Integer page, Integer size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Pageable pageable = PageRequest.of(page, size);
         Page<UUID> userIdsPage = adRepository.findDistinctUserIds(pageable);
 
         List<UUID> ids = userIdsPage.getContent();
