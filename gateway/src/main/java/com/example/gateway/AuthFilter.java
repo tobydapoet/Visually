@@ -19,7 +19,6 @@ public class AuthFilter extends OncePerRequestFilter {
     @Autowired
     private JwtUtils jwtUtils;
 
-
     private static final AntPathMatcher pathMatcher = new AntPathMatcher();
 
     private record ExcludeRule(String method, String pattern) {
@@ -30,53 +29,53 @@ public class AuthFilter extends OncePerRequestFilter {
     }
 
     private static final List<ExcludeRule> EXCLUDE_RULES = List.of(
-            new ExcludeRule("*",   "/api/users/auth/login"),
-            new ExcludeRule("*",   "/api/users/auth/refresh"),
-            new ExcludeRule("*",   "/api/users/auth/register"),
-            new ExcludeRule("*",   "/api/users/auth/verify-otp"),
-            new ExcludeRule("*",   "/api/users/auth/reset-password"),
-            new ExcludeRule("*",   "/api/users/auth/resend-otp"),
+            new ExcludeRule("*", "/api/users/auth/login"),
+            new ExcludeRule("*", "/api/users/auth/refresh"),
+            new ExcludeRule("*", "/api/users/auth/register"),
+            new ExcludeRule("*", "/api/users/auth/verify-otp"),
+            new ExcludeRule("*", "/api/users/auth/reset-password"),
+            new ExcludeRule("*", "/api/users/auth/resend-otp"),
 
-            new ExcludeRule("*",   "/api/users/google/**"),
-            new ExcludeRule("*",   "/oauth2/**"),
-            new ExcludeRule("*",   "/login/oauth2/**"),
-            new ExcludeRule("*",   "/actuator/health"),
-            new ExcludeRule("*",   "/swagger-ui/index.html"),
+            new ExcludeRule("*", "/api/users/google/**"),
+            new ExcludeRule("*", "/api/auth/**"),
+            new ExcludeRule("*", "/oauth2/**"),
+            new ExcludeRule("*", "/login/oauth2/**"),
+            new ExcludeRule("*", "/actuator/health"),
+            new ExcludeRule("*", "/swagger-ui/index.html"),
 
             new ExcludeRule("GET", "/api/contents/content/recent/*"),
-            new ExcludeRule("POST", "/api/ads/payment/webhook/sepay/*")
-    );
+            new ExcludeRule("POST", "/api/ads/payment/webhook/sepay/*"));
 
     private static final List<ExcludeRule> OPTIONAL_AUTH_RULES = List.of(
             // Post
             new ExcludeRule("GET", "/api/contents/post/**"),
             new ExcludeRule("GET", "/api/contents/content/*"),
 
-            //User
+            // User
             new ExcludeRule("GET", "/api/users/account/username/**"),
 
-            //Follow
+            // Follow
             new ExcludeRule("GET", "/api/follows/relationship/*"),
 
             // Short
             new ExcludeRule("GET", "/api/contents/short/**"),
 
             // Story
-            new ExcludeRule("GET",  "/api/contents/story/me"),
+            new ExcludeRule("GET", "/api/contents/story/me"),
             new ExcludeRule("GET", "/api/contents/story/*"),
             new ExcludeRule("GET", "/api/contents/story/user/*"),
             new ExcludeRule("GET", "/api/contents/story/storage/*"),
 
-            //Story storage
-            new ExcludeRule("GET",  "/api/contents/story-storage/user/*"),
-            new ExcludeRule("GET",  "/api/contents/story/story-storage/*")
+            // Story storage
+            new ExcludeRule("GET", "/api/contents/story-storage/user/*"),
+            new ExcludeRule("GET", "/api/contents/story/story-storage/*")
 
     );
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain chain) throws ServletException, IOException {
+            HttpServletResponse response,
+            FilterChain chain) throws ServletException, IOException {
         String path = request.getRequestURI();
         String method = request.getMethod();
 
@@ -93,11 +92,11 @@ public class AuthFilter extends OncePerRequestFilter {
         boolean isOptionalAuth = OPTIONAL_AUTH_RULES.stream()
                 .anyMatch(rule -> rule.matches(method, path));
 
-
         System.out.println("  Should Skip    : " + shouldSkip);
 
         String authHeader = request.getHeader("Authorization");
-        System.out.println("  Auth Header    : " + (authHeader != null ? authHeader.substring(0, Math.min(20, authHeader.length())) + "..." : "NULL"));
+        System.out.println("  Auth Header    : "
+                + (authHeader != null ? authHeader.substring(0, Math.min(20, authHeader.length())) + "..." : "NULL"));
         System.out.println("╚════════════════════════════════════════════════════════════╝");
 
         if (shouldSkip) {
@@ -111,7 +110,6 @@ public class AuthFilter extends OncePerRequestFilter {
             chain.doFilter(request, response);
             return;
         }
-
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             System.out.println("✗ REJECTED - Missing Authorization header");
@@ -143,13 +141,12 @@ public class AuthFilter extends OncePerRequestFilter {
             String sub = jwtUtils.extractSubject(token);
             String userId = jwtUtils.extractUserId(token);
             String avatarUrl = jwtUtils.extractAvatarUrl(token);
-            String username  = jwtUtils.extractUsername(token);
+            String username = jwtUtils.extractUsername(token);
             String role = jwtUtils.extractRole(token);
 
             System.out.println("✓ AUTHENTICATED - Sub: " + sub + ", ID: " + userId);
 
-            CustomHttpServletRequestWrapper wrappedRequest =
-                    new CustomHttpServletRequestWrapper(request);
+            CustomHttpServletRequestWrapper wrappedRequest = new CustomHttpServletRequestWrapper(request);
 
             wrappedRequest.addHeader("X-User-Id", userId);
             wrappedRequest.addHeader("X-User-Avatar", avatarUrl);
