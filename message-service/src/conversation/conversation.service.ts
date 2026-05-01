@@ -269,7 +269,7 @@ export class ConversationService {
       .getOne();
 
     if (existing) {
-      return await this.findOne(existing.id);
+      return await this.findBotConversation(existing.id);
     }
 
     return this.dataSource.transaction(async (manager) => {
@@ -287,7 +287,7 @@ export class ConversationService {
         isBot: false,
       });
 
-      await manager.save(ConversationMember, {
+      const botMember = await manager.save(ConversationMember, {
         conversation: { id: newConversation.id },
         username: 'AI Assistant',
         isBot: true,
@@ -295,7 +295,42 @@ export class ConversationService {
           'https://res-console.cloudinary.com/ddctz1mh6/thumbnails/transform/v1/image/upload/Y19maWxsLGhfMjAwLHdfMjAw/v1/dmlzdWFsbHlfYm90X3V5aDh2aw==/template_primary',
       });
 
-      return await this.findOne(newConversation.id);
+      return {
+        ...newConversation,
+        otherUsers: [
+          {
+            userId: null,
+            username: botMember.username,
+            avatarUrl: botMember.avatarUrl,
+            lastSeen: null,
+          },
+        ],
+        isBlocked: false,
+      };
     });
+  }
+
+  private async findBotConversation(id: number) {
+    const conversation = await this.conversationRepo.findOne({
+      where: { id },
+      relations: ['members'],
+    });
+
+    const botMember = conversation!.members.find((m) => m.isBot);
+    const { members, ...rest } = conversation as any;
+
+    return {
+      ...rest,
+      otherUsers: [
+        {
+          userId: null,
+          username: 'AI Assistant',
+
+          avatarUrl: botMember?.avatarUrl,
+          lastSeen: null,
+        },
+      ],
+      isBlocked: false,
+    };
   }
 }
