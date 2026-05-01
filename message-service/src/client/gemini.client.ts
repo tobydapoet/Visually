@@ -56,17 +56,22 @@ export class GeminiClient {
       const session = this.sessions.get(conversationId)!;
 
       this.logger.log(`Starting Promise.race with 15s timeout...`);
+
+      let timeoutId: NodeJS.Timeout; // 👈 lưu timeout id
+
       const result = await Promise.race([
         session.sendMessage(message).then((r) => {
           this.logger.log(`Gemini responded successfully!`);
+          clearTimeout(timeoutId); // 👈 cancel timeout khi respond xong
           return r;
         }),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => {
+        new Promise<never>((_, reject) => {
+          timeoutId = setTimeout(() => {
             this.logger.error(`Gemini timeout after 15s!`);
+            this.clearSession(conversationId);
             reject(new Error('Gemini timeout after 15s'));
-          }, 15000),
-        ),
+          }, 15000);
+        }),
       ]);
 
       const text = (result as any).response.text();
