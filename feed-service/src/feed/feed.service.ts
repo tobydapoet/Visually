@@ -124,7 +124,7 @@ export class FeedService {
       })
       .sort((a, b) => b.score - a.score);
 
-    const hasMore = merged.length > take;
+    const hasMore = feeds.length > take || celebrityRaw.length > (take + 1) * 2;
     const result = hasMore ? merged.slice(0, take) : merged;
 
     adItems.forEach((ad, index) => {
@@ -202,19 +202,13 @@ export class FeedService {
       .filter((c) => {
         const key = `${c.contentType}:${c.contentId}`;
         if (key === currentId) return true;
-        return !seenIds.includes(key);
+        return !seenIds.includes(key) && !skippedIds.includes(key);
       })
       .sort((a, b) => {
         const aKey = `${a.contentType}:${a.contentId}`;
         const bKey = `${b.contentType}:${b.contentId}`;
-
         if (aKey === currentId) return -1;
         if (bKey === currentId) return 1;
-
-        const aSkipped = skippedIds.includes(aKey);
-        const bSkipped = skippedIds.includes(bKey);
-        if (aSkipped && !bSkipped) return 1;
-        if (!aSkipped && bSkipped) return -1;
         return 0;
       });
 
