@@ -265,17 +265,17 @@ export class ConversationService {
         'cm.userId = :userId AND cm.deletedAt IS NULL',
         { userId },
       )
-      .innerJoin('c.members', 'bot', 'bot.isBot = true')
-      .where('c.type = :type', { type: ConversationType.PRIVATE })
+      .where('c.type = :type', { type: ConversationType.BOT })
       .getOne();
 
     if (existing) {
       return await this.findOne(existing.id);
     }
+
     return this.dataSource.transaction(async (manager) => {
       const newConversation = await this.conversationRepo.save(
         this.conversationRepo.create({
-          type: ConversationType.PRIVATE,
+          type: ConversationType.BOT,
           name: 'AI Assistant',
         }),
       );
