@@ -64,7 +64,6 @@ export class GeminiClient {
         new Promise<never>((_, reject) =>
           setTimeout(() => {
             this.logger.error(`Gemini timeout after 15s!`);
-            this.clearSession(conversationId);
             reject(new Error('Gemini timeout after 15s'));
           }, 15000),
         ),
