@@ -234,9 +234,6 @@ services:
     container_name: visually-message-service
     restart: always
     environment:
-      GOOGLE_BOT_CLOUD_PROJECT: ${GOOGLE_BOT_CLOUD_PROJECT}
-      GOOGLE_BOT_CLIENT_EMAIL: ${GOOGLE_BOT_CLIENT_EMAIL}
-      GOOGLE_BOT_PRIVATE_KEY: ${GOOGLE_BOT_PRIVATE_KEY}
       REDIS_HOST: ${REDIS_HOST}
       REDIS_PORT: ${REDIS_PORT}
       SERVER_PORT: 8086
