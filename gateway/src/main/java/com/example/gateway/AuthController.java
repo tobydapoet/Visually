@@ -7,6 +7,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 
 @RestController
 public class AuthController {
@@ -22,8 +24,8 @@ public class AuthController {
             HttpServletRequest req,
             HttpServletResponse res) throws IOException {
 
-        req.getSession().setAttribute("redirect_uri", redirectUri);
-
-        res.sendRedirect("/oauth2/authorization/google");
+        String encodedState = Base64.getEncoder()
+                .encodeToString(redirectUri.getBytes(StandardCharsets.UTF_8));
+        res.sendRedirect("/oauth2/authorization/google?state=" + encodedState);
     }
 }

@@ -13,7 +13,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 
@@ -33,14 +35,21 @@ public class OauthHandler implements AuthenticationSuccessHandler {
     }
 
     private String resolveFrontendUrl(HttpServletRequest req) {
-        String redirectUri = (String) req.getSession().getAttribute("redirect_uri");
+        String state = req.getParameter("state");
 
-        boolean isAllowed = getAllowedUrls().stream()
-                .anyMatch(url -> redirectUri != null && redirectUri.startsWith(url));
+        if (state != null) {
+            try {
+                String redirectUri = new String(
+                        Base64.getDecoder().decode(state), StandardCharsets.UTF_8);
 
-        if (isAllowed) {
-            req.getSession().removeAttribute("redirect_uri"); // cleanup
-            return redirectUri.endsWith("/") ? redirectUri : redirectUri + "/";
+                boolean isAllowed = getAllowedUrls().stream()
+                        .anyMatch(redirectUri::startsWith);
+
+                if (isAllowed) {
+                    return redirectUri.endsWith("/") ? redirectUri : redirectUri + "/";
+                }
+            } catch (Exception ignored) {
+            }
         }
 
         return getAllowedUrls().get(0);
