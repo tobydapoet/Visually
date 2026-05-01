@@ -9,6 +9,7 @@ import { Repository } from 'typeorm';
 import { GeminiClient } from 'src/client/gemini.client';
 import Redis from 'ioredis';
 import { FeedSeenService } from 'src/feed-seen/feed-seen.service';
+import { ContentClient } from 'src/client/content.client';
 
 @Injectable()
 export class UserInterestService {
@@ -17,6 +18,7 @@ export class UserInterestService {
     private interestRepo: Repository<UserInterest>,
     private geminiClient: GeminiClient,
     private feedSeenModule: FeedSeenService,
+    private contentClient: ContentClient,
     @Inject('REDIS_INTEREST_CLIENT') private readonly redis: Redis,
   ) {}
 
@@ -54,6 +56,10 @@ export class UserInterestService {
         `,
         [event.senderId, tagName, score, score],
       );
+    }
+
+    if (score >= 1) {
+      await this.redis.del(`user:interests:${event.senderId}`);
     }
   }
 
@@ -97,19 +103,31 @@ export class UserInterestService {
     const interests = await this.interestRepo.find({
       where: { userId },
       order: { score: 'DESC' },
-      take: 20,
+      take: 40,
     });
 
     console.log('📦 DB interests:', interests);
 
-    const tagNames = interests.map((i) => i.tagName);
+    let tagNames = interests.map((i) => i.tagName);
 
     console.log('🏷️ Top tagNames:', tagNames);
 
-    await this.redis.set(cacheKey, JSON.stringify(tagNames), 'EX', 60 * 60);
+    if (tagNames.length < 30) {
+      const trending = await this.contentClient.getTrendingTags();
+      tagNames = [...new Set([...tagNames, ...trending])];
+    }
+
+    const uniqueTagNames = [...new Set(tagNames)];
+
+    await this.redis.set(
+      cacheKey,
+      JSON.stringify(uniqueTagNames),
+      'EX',
+      60 * 60,
+    );
 
     console.log('✅ Saved interests to Redis (TTL: 1h)');
 
-    return tagNames;
+    return uniqueTagNames;
   }
 }

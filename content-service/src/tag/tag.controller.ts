@@ -19,4 +19,9 @@ export class TagController {
   ) {
     return this.tagService.findTag(keyword, page, size);
   }
+
+  @Get('trending')
+  async getTrendingTags() {
+    return this.tagService.getTrendingTags();
+  }
 }

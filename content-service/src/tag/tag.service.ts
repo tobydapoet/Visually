@@ -25,6 +25,19 @@ export class TagService {
     return repo.find({ where: { targetId, type } });
   }
 
+  async getTrendingTags(): Promise<string[]> {
+    const result = await this.tagRepo.query(`
+      SELECT name, COUNT(*) as count
+      FROM tags
+      WHERE createdAt >= DATE_SUB(NOW(), INTERVAL 7 DAY)  -- 7 ngày gần đây
+      GROUP BY name
+      ORDER BY count DESC
+      LIMIT 20
+    `);
+
+    return result.map((r: any) => r.name);
+  }
+
   async getRandomTags(): Promise<string[]> {
     const tags = await this.tagRepo
       .createQueryBuilder('tag')

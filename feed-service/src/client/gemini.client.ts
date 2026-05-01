@@ -22,7 +22,7 @@ export class GeminiClient {
     if (!parts.length) return [];
 
     const prompt = `
-      Extract 15 short topic tags from the following information:
+      Extract 7 short topic tags from the following information:
       ${parts.join('\n')}
       Rules:
       - Return ONLY a JSON array of strings

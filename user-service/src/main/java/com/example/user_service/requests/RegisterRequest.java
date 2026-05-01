@@ -1,10 +1,8 @@
 package com.example.user_service.requests;
 
 import com.example.user_service.enums.Gender;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import jakarta.validation.constraints.*;
 import lombok.Data;
 
 import java.time.LocalDate;
@@ -25,7 +23,9 @@ public class RegisterRequest {
     @NotBlank(message = "Password is required")
     private String confirmPassword;
 
+    @JsonFormat(pattern = "yyyy-MM-dd")
     @NotNull(message = "Date of birth is required")
+    @PastOrPresent(message = "Date of birth cannot be in the future")
     private LocalDate dob;
 
     @NotNull(message = "Gender is required")

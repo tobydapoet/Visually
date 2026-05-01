@@ -1,4 +1,3 @@
-import { InjectRepository } from '@nestjs/typeorm';
 import { ContentType } from 'src/enums/content.type';
 import {
   Column,

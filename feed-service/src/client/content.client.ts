@@ -36,4 +36,11 @@ export class ContentClient {
     );
     return res.data;
   }
+
+  async getTrendingTags(): Promise<string[]> {
+    const res = await firstValueFrom(
+      this.http.get(`${process.env.CONTENT_SERVICE_URL}/tags/trending`),
+    );
+    return res.data;
+  }
 }
