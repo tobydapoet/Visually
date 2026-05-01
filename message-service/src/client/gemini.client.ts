@@ -15,6 +15,7 @@ export class GeminiClient {
   constructor() {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) throw new Error('GEMINI_API_KEY is not defined');
+    this.logger.log(`API key loaded: ${apiKey.slice(0, 8)}...`);
 
     const genAI = new GoogleGenerativeAI(apiKey);
     this.model = genAI.getGenerativeModel({
@@ -27,17 +28,22 @@ export class GeminiClient {
         maxOutputTokens: 2048,
       },
     });
+    this.logger.log('Gemini model initialized');
   }
 
   initSession(conversationId: number, history: Content[] = []): void {
+    this.logger.log(
+      `Initializing session for conversation ${conversationId}, history length: ${history.length}`,
+    );
     const session = this.model.startChat({ history });
     this.sessions.set(conversationId, session);
-
     this.logger.log(`Session created for conversation ${conversationId}`);
   }
 
   hasSession(conversationId: number): boolean {
-    return this.sessions.has(conversationId);
+    const has = this.sessions.has(conversationId);
+    this.logger.log(`hasSession(${conversationId}): ${has}`);
+    return has;
   }
 
   async sendMessage(conversationId: number, message: string): Promise<string> {
@@ -48,8 +54,23 @@ export class GeminiClient {
     try {
       this.logger.log(`Sending to Gemini: "${message}"`);
       const session = this.sessions.get(conversationId)!;
-      const result = await session.sendMessage(message);
-      const text = result.response.text();
+
+      this.logger.log(`Starting Promise.race with 15s timeout...`);
+      const result = await Promise.race([
+        session.sendMessage(message).then((r) => {
+          this.logger.log(`Gemini responded successfully!`);
+          return r;
+        }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => {
+            this.logger.error(`Gemini timeout after 15s!`);
+            reject(new Error('Gemini timeout after 15s'));
+          }, 15000),
+        ),
+      ]);
+
+      const text = (result as any).response.text();
+      this.logger.log(`Gemini reply: "${text.slice(0, 100)}..."`);
       return text;
     } catch (err: any) {
       this.logger.error(`Gemini error: ${err.message}`);
@@ -58,6 +79,7 @@ export class GeminiClient {
   }
 
   clearSession(conversationId: number): void {
+    this.logger.log(`Clearing session for conversation ${conversationId}`);
     this.sessions.delete(conversationId);
     this.logger.log(`Session cleared for conversation ${conversationId}`);
   }
