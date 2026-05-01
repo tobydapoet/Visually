@@ -2,6 +2,7 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { CreateMessageDto } from './dto/create-message.dto';
@@ -34,6 +35,8 @@ export class MessageService {
     private geminiClient: GeminiClient,
     @Inject('KAFKA_SERVICE') private kafkaClient: ClientKafka,
   ) {}
+
+  private readonly logger = new Logger(MessageService.name);
 
   async create(
     createMessageDto: CreateMessageDto,
@@ -331,14 +334,17 @@ export class MessageService {
     userMessage: Message,
     senderUsername: string,
   ): Promise<void> {
+    this.logger.log(
+      `handleBotReply called for conversation ${conversation.id}`,
+    ); // 👈
+
     if (!this.geminiClient.hasSession(conversation.id)) {
       const pastMessages = await this.messageRepo.find({
         where: { conversation: { id: conversation.id } },
         relations: ['sender'],
         order: { createdAt: 'ASC' },
       });
-
-      const botMember = conversation.members.find((m) => m.isBot);
+      this.logger.log(`Loaded ${pastMessages.length} past messages from DB`); // 👈
 
       const history = pastMessages.map((msg) => ({
         role: msg.sender?.isBot ? 'model' : 'user',
@@ -352,10 +358,22 @@ export class MessageService {
       conversation.id,
       userMessage.content,
     );
+    this.logger.log(`Bot reply received: "${botReply.slice(0, 50)}"`); // 👈
 
     const botMember = conversation.members.find((m) => m.isBot);
-    if (!botMember) return;
+    this.logger.log(
+      `Members in conversation: ${JSON.stringify(conversation.members.map((m) => ({ id: m.id, isBot: m.isBot, username: m.username })))}`,
+    ); // 👈
+    this.logger.log(`Bot member found: ${JSON.stringify(botMember)}`); // 👈
 
+    if (!botMember) {
+      this.logger.error(
+        `Bot member NOT FOUND in conversation ${conversation.id}!`,
+      ); // 👈
+      return;
+    }
+
+    this.logger.log(`Saving bot message to DB...`); // 👈
     const botMessage = await this.messageRepo.save(
       this.messageRepo.create({
         conversation: { id: conversation.id },
@@ -364,7 +382,9 @@ export class MessageService {
         replyTo: { id: userMessage.id },
       }),
     );
+    this.logger.log(`Bot message saved with id: ${botMessage.id}`); // 👈
 
+    this.logger.log(`Emitting kafka message.created for bot...`); // 👈
     this.kafkaClient.emit('message.created', {
       key: conversation.id,
       value: {
@@ -387,20 +407,29 @@ export class MessageService {
         mutedUserIds: [],
       },
     });
+    this.logger.log(`Kafka emitted successfully!`); // 👈
   }
 
   async askBot(conversationId: number, content: string) {
+    this.logger.log(
+      `askBot called: conversationId=${conversationId}, content="${content}"`,
+    ); // 👈
     const userId = this.context.getUserId();
+    this.logger.log(`userId: ${userId}`); // 👈
 
     const member = await this.dataSource.manager.findOne(ConversationMember, {
       where: { userId, conversation: { id: conversationId } },
     });
+    this.logger.log(`Member found: ${JSON.stringify(member)}`); // 👈
     if (!member) throw new NotFoundException('Member not found');
 
     const conversation = await this.dataSource.manager.findOne(Conversation, {
       where: { id: conversationId },
       relations: ['members'],
     });
+    this.logger.log(
+      `Conversation found, members count: ${conversation?.members?.length}`,
+    ); // 👈
     if (!conversation) throw new NotFoundException('Conversation not found');
 
     const userMessage = await this.messageRepo.save(
@@ -410,6 +439,7 @@ export class MessageService {
         content,
       }),
     );
+    this.logger.log(`User message saved: ${userMessage.id}`); // 👈
 
     this.kafkaClient.emit('message.created', {
       key: conversationId,
@@ -428,8 +458,11 @@ export class MessageService {
         mutedUserIds: [],
       },
     });
+    this.logger.log(`User message kafka emitted`); // 👈
 
+    this.logger.log(`Calling handleBotReply...`); // 👈
     await this.handleBotReply(conversation, userMessage, member.username);
+    this.logger.log(`handleBotReply completed`); // 👈
 
     return userMessage;
   }
