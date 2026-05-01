@@ -38,13 +38,24 @@ public class OauthHandler implements AuthenticationSuccessHandler {
     private String resolveFrontendUrl(HttpServletRequest req) {
         Cookie[] cookies = req.getCookies();
 
+        System.out.println("=== resolveFrontendUrl ===");
+        System.out.println("Cookies null: " + (cookies == null));
+        if (cookies != null) {
+            for (Cookie c : cookies) {
+                System.out.println(" - " + c.getName() + "=" + c.getValue());
+            }
+        }
+        System.out.println("AllowedUrls: " + getAllowedUrls());
+
         if (cookies != null) {
             for (Cookie cookie : cookies) {
                 if ("redirect_uri".equals(cookie.getName())) {
                     String redirectUri = cookie.getValue();
+                    System.out.println("Found redirect_uri: " + redirectUri);
 
                     boolean isAllowed = getAllowedUrls().stream()
                             .anyMatch(redirectUri::startsWith);
+                    System.out.println("isAllowed: " + isAllowed);
 
                     if (isAllowed) {
                         return redirectUri.endsWith("/") ? redirectUri : redirectUri + "/";
@@ -53,6 +64,7 @@ public class OauthHandler implements AuthenticationSuccessHandler {
             }
         }
 
+        System.out.println("Fallback to: " + getAllowedUrls().get(0));
         return getAllowedUrls().get(0);
     }
 
