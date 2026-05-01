@@ -9,14 +9,14 @@ import org.springframework.web.bind.annotation.RestController;
 import java.io.IOException;
 
 @RestController
-public class TestController {
+public class AuthController {
 
     @GetMapping("/test")
     public String test() {
         return "Gateway is working!";
     }
 
-    @GetMapping("/auth/google/init")
+    @GetMapping("/oauth2/google/init")
     public void initOAuth(
             @RequestParam String redirectUri,
             HttpServletRequest req,

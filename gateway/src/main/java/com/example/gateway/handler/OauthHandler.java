@@ -33,12 +33,17 @@ public class OauthHandler implements AuthenticationSuccessHandler {
     }
 
     private String resolveFrontendUrl(HttpServletRequest req) {
-        String referer = req.getHeader("Referer");
+        String redirectUri = (String) req.getSession().getAttribute("redirect_uri");
 
-        return getAllowedUrls().stream()
-                .filter(url -> referer != null && referer.startsWith(url))
-                .findFirst()
-                .orElse(getAllowedUrls().get(0));
+        boolean isAllowed = getAllowedUrls().stream()
+                .anyMatch(url -> redirectUri != null && redirectUri.startsWith(url));
+
+        if (isAllowed) {
+            req.getSession().removeAttribute("redirect_uri"); // cleanup
+            return redirectUri.endsWith("/") ? redirectUri : redirectUri + "/";
+        }
+
+        return getAllowedUrls().get(0);
     }
 
     @Override
