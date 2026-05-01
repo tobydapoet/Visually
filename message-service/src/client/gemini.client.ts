@@ -52,6 +52,7 @@ export class GeminiClient {
       const text = result.response.text();
       return text;
     } catch (err: any) {
+      this.logger.error(`Gemini error: ${err.message}`);
       throw err;
     }
   }
