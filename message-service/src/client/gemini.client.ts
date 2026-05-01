@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import {
   GoogleGenerativeAI,
   ChatSession,
@@ -8,7 +8,6 @@ import {
 
 @Injectable()
 export class GeminiClient {
-  private readonly logger = new Logger(GeminiClient.name);
   private readonly model: GenerativeModel;
   private readonly sessions = new Map<number, ChatSession>();
 
@@ -32,8 +31,6 @@ export class GeminiClient {
   initSession(conversationId: number, history: Content[] = []): void {
     const session = this.model.startChat({ history });
     this.sessions.set(conversationId, session);
-
-    this.logger.log(`Session created for conversation ${conversationId}`);
   }
 
   hasSession(conversationId: number): boolean {
@@ -46,7 +43,6 @@ export class GeminiClient {
     }
 
     try {
-      this.logger.log(`Sending to Gemini: "${message}"`);
       const session = this.sessions.get(conversationId)!;
       const result = await session.sendMessage(message);
       const text = result.response.text();
@@ -58,6 +54,5 @@ export class GeminiClient {
 
   clearSession(conversationId: number): void {
     this.sessions.delete(conversationId);
-    this.logger.log(`Session cleared for conversation ${conversationId}`);
   }
 }
