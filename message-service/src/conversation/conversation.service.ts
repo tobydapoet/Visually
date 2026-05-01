@@ -253,4 +253,49 @@ export class ConversationService {
       hasNext: safePage < totalPages,
     };
   }
+
+  async createBotConversation() {
+    const userId = this.context.getUserId();
+
+    const existing = await this.conversationRepo
+      .createQueryBuilder('c')
+      .innerJoin(
+        'c.members',
+        'cm',
+        'cm.userId = :userId AND cm.deletedAt IS NULL',
+        { userId },
+      )
+      .innerJoin('c.members', 'bot', 'bot.isBot = true')
+      .where('c.type = :type', { type: ConversationType.PRIVATE })
+      .getOne();
+
+    if (existing) {
+      return await this.findOne(existing.id);
+    }
+    return this.dataSource.transaction(async (manager) => {
+      const newConversation = await this.conversationRepo.save(
+        this.conversationRepo.create({
+          type: ConversationType.PRIVATE,
+          name: 'AI Assistant',
+        }),
+      );
+
+      await manager.save(ConversationMember, {
+        conversation: { id: newConversation.id },
+        userId,
+        username: this.context.getUsername?.() ?? 'User',
+        isBot: false,
+      });
+
+      await manager.save(ConversationMember, {
+        conversation: { id: newConversation.id },
+        username: 'AI Assistant',
+        isBot: true,
+        avatarUrl:
+          'https://res-console.cloudinary.com/ddctz1mh6/thumbnails/transform/v1/image/upload/Y19maWxsLGhfMjAwLHdfMjAw/v1/dmlzdWFsbHlfYm90X3V5aDh2aw==/template_primary',
+      });
+
+      return await this.findOne(newConversation.id);
+    });
+  }
 }

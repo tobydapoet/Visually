@@ -42,6 +42,12 @@ export class ConversationController {
     }
   }
 
+  @Post('bot')
+  @ApiBearerAuth()
+  createBotConversation() {
+    return this.conversationService.createBotConversation();
+  }
+
   @Put(':id')
   @ApiBearerAuth()
   @UseInterceptors(FileInterceptor('file'))
