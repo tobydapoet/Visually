@@ -21,23 +21,37 @@ export class UserInterestService {
   ) {}
 
   async trackInterest(event: ContentInteractionEvent, score: number) {
-    let tagNames: string[] = [];
+    const tagSet = new Set<string>();
 
     if (event.tags && event.tags.length > 0) {
-      tagNames = event.tags.map((t) => t.name);
-    } else if (event.caption) {
-      tagNames = await this.geminiClient.extractTopics(event.caption);
+      event.tags.forEach((t) => tagSet.add(t.name));
+
+      const extractedFromTags = await this.geminiClient.extractTopics(
+        undefined,
+        event.tags.map((t) => t.name),
+      );
+      extractedFromTags.forEach((t) => tagSet.add(t));
+      console.log('BOT_TAG_TAGS: ', extractedFromTags);
     }
 
-    if (!tagNames.length) return;
+    if (event.caption) {
+      const extractedFromCaption = await this.geminiClient.extractTopics(
+        event.caption,
+        event.tags?.map((t) => t.name),
+      );
+      extractedFromCaption.forEach((t) => tagSet.add(t));
+      console.log('BOT_TAG_CAPTION: ', extractedFromCaption);
+    }
 
-    for (const tagName of tagNames) {
+    if (!tagSet.size) return;
+
+    for (const tagName of tagSet) {
       await this.interestRepo.query(
         `
-      INSERT INTO user_interests (userId, tagName, score)
-      VALUES (?, ?, ?)
-      ON DUPLICATE KEY UPDATE score = score + ?
-    `,
+          INSERT INTO user_interests (userId, tagName, score)
+          VALUES (?, ?, ?)
+          ON DUPLICATE KEY UPDATE score = score + ?
+        `,
         [event.senderId, tagName, score, score],
       );
     }

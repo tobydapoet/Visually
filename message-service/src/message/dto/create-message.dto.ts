@@ -5,6 +5,7 @@ import {
   IsEnum,
   IsArray,
   ValidateNested,
+  IsNotEmpty,
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { MentionItem } from '../../mention/dto/create-mention.dto';
@@ -36,4 +37,10 @@ export class CreateMessageDto {
   @ValidateNested({ each: true })
   @Type(() => MentionItem)
   mentions?: MentionItem[];
+}
+
+export class AskBotDto {
+  @IsString()
+  @IsNotEmpty()
+  content!: string;
 }

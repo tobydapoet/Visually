@@ -21,10 +21,10 @@ export class ConversationMember {
   @JoinColumn({ name: 'conversationId' })
   conversation!: Conversation;
 
-  @Column({ type: 'uuid', nullable: false })
+  @Column({ type: 'uuid', nullable: true })
   userId!: string;
 
-  @Column({ type: 'text', nullable: false })
+  @Column({ type: 'text', nullable: true })
   username!: string;
 
   @Column({ type: 'text', nullable: true })
@@ -47,4 +47,7 @@ export class ConversationMember {
 
   @OneToMany(() => Message, (message) => message.sender)
   messages?: Message[];
+
+  @Column({ default: false })
+  isBot!: boolean;
 }

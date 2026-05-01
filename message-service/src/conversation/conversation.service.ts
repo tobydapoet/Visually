@@ -9,6 +9,7 @@ import { ConversationType } from '../enums/conversation.type';
 import { MediaClient } from '../client/media.client';
 import { UpdateConversationDto } from './dto/update-conversation.dto';
 import { FollowClient } from '../client/follow.client';
+import { ConversationMember } from '../conversation_member/entities/conversation_member.entity';
 
 @Injectable()
 export class ConversationService {
@@ -40,6 +41,15 @@ export class ConversationService {
         },
         manager,
       );
+
+      await manager.save(ConversationMember, {
+        conversation: { id: savedConversation.id },
+        username: 'AI Assistant',
+        isBot: true,
+        avatarUrl:
+          'https://res-console.cloudinary.com/ddctz1mh6/thumbnails/transform/v1/image/upload/Y19maWxsLGhfMjAwLHdfMjAw/v1/dmlzdWFsbHlfYm90X3V5aDh2aw==/template_primary',
+      });
+
       return savedConversation;
     });
   }

@@ -15,7 +15,7 @@ import {
   Put,
 } from '@nestjs/common';
 import { MessageService } from './message.service';
-import { CreateMessageDto } from './dto/create-message.dto';
+import { AskBotDto, CreateMessageDto } from './dto/create-message.dto';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiBody, ApiQuery } from '@nestjs/swagger';
 import { UpdateMessageDto } from './dto/update-message.dto';
@@ -34,6 +34,17 @@ export class MessageController {
     @UploadedFiles() files?: Express.Multer.File[],
   ) {
     return this.messageService.create(createMessageDto, files);
+  }
+
+  @Post('conversation/:conversationId/ask-bot')
+  @ApiBearerAuth()
+  @ApiBody({ type: AskBotDto })
+  @HttpCode(HttpStatus.CREATED)
+  askBot(
+    @Param('conversationId', ParseIntPipe) conversationId: number,
+    @Body() dto: AskBotDto,
+  ) {
+    return this.messageService.askBot(conversationId, dto.content);
   }
 
   @Get('conversation/:conversationId')

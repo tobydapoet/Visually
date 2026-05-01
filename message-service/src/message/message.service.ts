@@ -19,6 +19,7 @@ import { MentionService } from '../mention/mention.service';
 import { FollowClient } from '../client/follow.client';
 import { Conversation } from '../conversation/entities/conversation.entity';
 import { ConversationType } from '../enums/conversation.type';
+import { GeminiClient } from '../client/gemini.client';
 
 @Injectable()
 export class MessageService {
@@ -30,6 +31,7 @@ export class MessageService {
     private dataSource: DataSource,
     private mentionService: MentionService,
     private followClient: FollowClient,
+    private geminiClient: GeminiClient,
     @Inject('KAFKA_SERVICE') private kafkaClient: ClientKafka,
   ) {}
 
@@ -322,5 +324,113 @@ export class MessageService {
     });
 
     return { success: true };
+  }
+
+  private async handleBotReply(
+    conversation: Conversation,
+    userMessage: Message,
+    senderUsername: string,
+  ): Promise<void> {
+    if (!this.geminiClient.hasSession(conversation.id)) {
+      const pastMessages = await this.messageRepo.find({
+        where: { conversation: { id: conversation.id } },
+        relations: ['sender'],
+        order: { createdAt: 'ASC' },
+      });
+
+      const botMember = conversation.members.find((m) => m.isBot);
+
+      const history = pastMessages.map((msg) => ({
+        role: msg.sender?.isBot ? 'model' : 'user',
+        parts: [{ text: msg.content ?? '' }],
+      }));
+
+      this.geminiClient.initSession(conversation.id, history);
+    }
+
+    const botReply = await this.geminiClient.sendMessage(
+      conversation.id,
+      userMessage.content,
+    );
+
+    const botMember = conversation.members.find((m) => m.isBot);
+    if (!botMember) return;
+
+    const botMessage = await this.messageRepo.save(
+      this.messageRepo.create({
+        conversation: { id: conversation.id },
+        sender: { id: botMember.id },
+        content: botReply,
+        replyTo: { id: userMessage.id },
+      }),
+    );
+
+    this.kafkaClient.emit('message.created', {
+      key: conversation.id,
+      value: {
+        id: botMessage.id,
+        conversationId: conversation.id,
+        senderId: botMember.userId,
+        content: botReply,
+        replyToId: {
+          id: userMessage.id,
+          username: senderUsername,
+          content: userMessage.content,
+        },
+        createdAt: botMessage.createdAt,
+        senderUsername: botMember.username,
+        senderAvatar: botMember.avatarUrl,
+        mediaUrls: [],
+        memberIds: conversation.members
+          .filter((m) => !m.isBot)
+          .map((m) => m.userId),
+        mutedUserIds: [],
+      },
+    });
+  }
+
+  async askBot(conversationId: number, content: string) {
+    const userId = this.context.getUserId();
+
+    const member = await this.dataSource.manager.findOne(ConversationMember, {
+      where: { userId, conversation: { id: conversationId } },
+    });
+    if (!member) throw new NotFoundException('Member not found');
+
+    const conversation = await this.dataSource.manager.findOne(Conversation, {
+      where: { id: conversationId },
+      relations: ['members'],
+    });
+    if (!conversation) throw new NotFoundException('Conversation not found');
+
+    const userMessage = await this.messageRepo.save(
+      this.messageRepo.create({
+        conversation: { id: conversationId },
+        sender: { id: member.id },
+        content,
+      }),
+    );
+
+    this.kafkaClient.emit('message.created', {
+      key: conversationId,
+      value: {
+        id: userMessage.id,
+        conversationId,
+        senderId: userId,
+        content,
+        createdAt: userMessage.createdAt,
+        senderUsername: member.username,
+        senderAvatar: member.avatarUrl,
+        mediaUrls: [],
+        memberIds: conversation.members
+          .filter((m) => !m.isBot)
+          .map((m) => m.userId),
+        mutedUserIds: [],
+      },
+    });
+
+    await this.handleBotReply(conversation, userMessage, member.username);
+
+    return userMessage;
   }
 }

@@ -4,10 +4,17 @@ import { HttpModule } from '@nestjs/axios';
 import { MediaClient } from './media.client';
 import { EurekaService } from './euruka.service';
 import { FollowClient } from './follow.client';
+import { GeminiClient } from './gemini.client';
 
 @Module({
   imports: [HttpModule],
-  providers: [UserClient, MediaClient, EurekaService, FollowClient],
-  exports: [UserClient, MediaClient, EurekaService, FollowClient],
+  providers: [
+    UserClient,
+    MediaClient,
+    EurekaService,
+    FollowClient,
+    GeminiClient,
+  ],
+  exports: [UserClient, MediaClient, EurekaService, FollowClient, GeminiClient],
 })
 export class ClientModule {}

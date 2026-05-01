@@ -1,21 +1,29 @@
 import { Injectable } from '@nestjs/common';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GenerativeModel, GoogleGenerativeAI } from '@google/generative-ai';
 
 @Injectable()
 export class GeminiClient {
-  private readonly model;
+  private readonly model: GenerativeModel;
 
   constructor() {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) throw new Error('GEMINI_API_KEY is not defined');
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    this.model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    this.model = genAI.getGenerativeModel({ model: 'gemini-flash-latest' });
   }
 
-  async extractTopics(caption: string): Promise<string[]> {
+  async extractTopics(caption?: string, tags?: string[]): Promise<string[]> {
+    const parts: string[] = [];
+
+    if (caption) parts.push(`Caption: "${caption}"`);
+    if (tags?.length) parts.push(`Existing tags: ${tags.join(', ')}`);
+
+    if (!parts.length) return [];
+
     const prompt = `
-      Extract 5 short topic tags from this caption: "${caption}"
+      Extract 15 short topic tags from the following information:
+      ${parts.join('\n')}
       Rules:
       - Return ONLY a JSON array of strings
       - Tags must be lowercase, no spaces (use hyphen if needed)
@@ -26,8 +34,9 @@ export class GeminiClient {
     try {
       const result = await this.model.generateContent(prompt);
       const text = result.response.text().trim();
-      return JSON.parse(text);
-    } catch (e) {
+      const cleaned = text.replace(/```json|```/g, '').trim();
+      return JSON.parse(cleaned);
+    } catch {
       return [];
     }
   }
