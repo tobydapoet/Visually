@@ -10,8 +10,10 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import tools.jackson.databind.exc.InvalidFormatException;
 
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalException {
@@ -33,11 +35,23 @@ public class GlobalException {
         Throwable cause = ex.getCause();
 
         if (cause instanceof InvalidFormatException ife) {
-            if (ife.getTargetType() != null &&
-                    ife.getTargetType().equals(LocalDate.class)) {
+
+            if (ife.getTargetType() != null && ife.getTargetType().equals(LocalDate.class)) {
                 return ResponseEntity.badRequest().body(Map.of(
                         "code", "VALIDATION_ERROR",
                         "errors", Map.of("dob", "Date of birth must be in format yyyy-MM-dd (e.g. 2004-09-29)")
+                ));
+            }
+
+            if (ife.getTargetType() != null && ife.getTargetType().isEnum()) {
+                String fieldName = ife.getPath().isEmpty() ? "field" : ife.getPath().get(0).getFieldName();
+                String acceptedValues = Arrays.stream(ife.getTargetType().getEnumConstants())
+                        .map(Object::toString)
+                        .collect(Collectors.joining(", "));
+
+                return ResponseEntity.badRequest().body(Map.of(
+                        "code", "VALIDATION_ERROR",
+                        "errors", Map.of(fieldName, "Invalid value. Accepted values: " + acceptedValues)
                 ));
             }
         }

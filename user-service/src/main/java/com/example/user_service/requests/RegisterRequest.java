@@ -14,13 +14,13 @@ public class RegisterRequest {
     private String email;
 
     @NotBlank(message = "Password is required")
-//    @Pattern(
-//            regexp = "^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d@$!%*#?&]{8,}$",
-//            message = "Password must be at least 8 characters and include letters and numbers"
-//    )
+    @Pattern(
+            regexp = "^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d@$!%*#?&]{8,}$",
+            message = "Password must be at least 8 characters and include letters and numbers"
+    )
     private String password;
 
-    @NotBlank(message = "Password is required")
+    @NotBlank(message = "Confirm password is required")
     private String confirmPassword;
 
     @JsonFormat(pattern = "yyyy-MM-dd")
