@@ -13,19 +13,33 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 @Component
 public class OauthHandler implements AuthenticationSuccessHandler {
 
     @Autowired
-    private ObjectMapper objectMapper;
-
-    @Autowired
     private RestTemplate restTemplate;
 
     @Value("${REDIRECT_FE}")
-    private String frontendUrl;
+    private String frontendUrls;
+
+    private List<String> getAllowedUrls() {
+        return Arrays.stream(frontendUrls.split(","))
+                .map(url -> url.endsWith("/") ? url : url + "/")
+                .toList();
+    }
+
+    private String resolveFrontendUrl(HttpServletRequest req) {
+        String referer = req.getHeader("Referer");
+
+        return getAllowedUrls().stream()
+                .filter(url -> referer != null && referer.startsWith(url))
+                .findFirst()
+                .orElse(getAllowedUrls().get(0));
+    }
 
     @Override
     public void onAuthenticationSuccess(
@@ -34,29 +48,29 @@ public class OauthHandler implements AuthenticationSuccessHandler {
             Authentication auth) throws IOException {
 
         try {
+            String frontendUrl = resolveFrontendUrl(req);
             OAuth2User user = (OAuth2User) auth.getPrincipal();
             Map<String, Object> payload = Map.of(
                     "email", user.getAttribute("email"),
                     "fullName", user.getAttribute("name"),
                     "avatarUrl", user.getAttribute("picture"),
                     "providerId", user.getAttribute("sub"),
-                    "provider", "GOOGLE"
-            );
+                    "provider", "GOOGLE");
 
             ResponseEntity<Map> response = restTemplate.postForEntity(
                     "http://USER-SERVICE/auth/google/login",
                     payload,
-                    Map.class
-            );
+                    Map.class);
 
             String accessToken = (String) response.getBody().get("accessToken");
             String refreshToken = (String) response.getBody().get("refreshToken");
 
-            res.sendRedirect(frontendUrl + "oauth_success?accessToken=" + accessToken + "&refreshToken=" + refreshToken);
+            res.sendRedirect(
+                    frontendUrl + "oauth_success?accessToken=" + accessToken + "&refreshToken=" + refreshToken);
 
         } catch (Exception e) {
             e.printStackTrace();
-            res.sendRedirect(frontendUrl + "login?error=true");
+            res.sendRedirect(getAllowedUrls().get(0) + "login?error=true");
         }
     }
 

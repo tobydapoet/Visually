@@ -14,6 +14,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Configuration
@@ -27,13 +28,18 @@ public class AuthConfig {
     private OauthHandler oauthHandler;
 
     @Value("${REDIRECT_FE}")
-    private String frontendUrl;
+    private String frontendUrls;
 
+    private List<String> getAllowedOrigins() {
+        return Arrays.stream(frontendUrls.split(","))
+                .map(url -> url.endsWith("/") ? url.substring(0, url.length() - 1) : url)
+                .toList();
+    }
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of(frontendUrl));
+        config.setAllowedOrigins(getAllowedOrigins());
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
@@ -59,11 +65,9 @@ public class AuthConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .anyRequest().permitAll()
-                )
+                        .anyRequest().permitAll())
                 .oauth2Login(oauth -> oauth
-                        .successHandler(oauthHandler)
-                );
+                        .successHandler(oauthHandler));
 
         return http.build();
     }
