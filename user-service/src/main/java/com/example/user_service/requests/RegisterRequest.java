@@ -26,6 +26,10 @@ public class RegisterRequest {
     @JsonFormat(pattern = "yyyy-MM-dd")
     @NotNull(message = "Date of birth is required")
     @PastOrPresent(message = "Date of birth cannot be in the future")
+    @Pattern(
+            regexp = "^\\d{4}-\\d{2}-\\d{2}$",
+            message = "Date of birth must be in format yyyy-MM-dd"
+    )
     private LocalDate dob;
 
     @NotNull(message = "Gender is required")
