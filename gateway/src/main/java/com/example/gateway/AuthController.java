@@ -16,7 +16,7 @@ public class AuthController {
         return "Gateway is working!";
     }
 
-    @GetMapping("/oauth2/google/init")
+    @GetMapping("/auth/google/init")
     public void initOAuth(
             @RequestParam String redirectUri,
             HttpServletRequest req,
