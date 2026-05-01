@@ -1,6 +1,7 @@
 package com.example.gateway.handler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,20 +36,20 @@ public class OauthHandler implements AuthenticationSuccessHandler {
     }
 
     private String resolveFrontendUrl(HttpServletRequest req) {
-        String state = req.getParameter("state");
+        Cookie[] cookies = req.getCookies();
 
-        if (state != null) {
-            try {
-                String redirectUri = new String(
-                        Base64.getDecoder().decode(state), StandardCharsets.UTF_8);
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if ("redirect_uri".equals(cookie.getName())) {
+                    String redirectUri = cookie.getValue();
 
-                boolean isAllowed = getAllowedUrls().stream()
-                        .anyMatch(redirectUri::startsWith);
+                    boolean isAllowed = getAllowedUrls().stream()
+                            .anyMatch(redirectUri::startsWith);
 
-                if (isAllowed) {
-                    return redirectUri.endsWith("/") ? redirectUri : redirectUri + "/";
+                    if (isAllowed) {
+                        return redirectUri.endsWith("/") ? redirectUri : redirectUri + "/";
+                    }
                 }
-            } catch (Exception ignored) {
             }
         }
 

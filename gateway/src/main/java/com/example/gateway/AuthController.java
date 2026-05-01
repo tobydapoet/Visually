@@ -1,5 +1,6 @@
 package com.example.gateway;
 
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,8 +25,13 @@ public class AuthController {
             HttpServletRequest req,
             HttpServletResponse res) throws IOException {
 
-        String encodedState = Base64.getEncoder()
-                .encodeToString(redirectUri.getBytes(StandardCharsets.UTF_8));
-        res.sendRedirect("/oauth2/authorization/google?state=" + encodedState);
+        Cookie cookie = new Cookie("redirect_uri", redirectUri);
+        cookie.setPath("/");
+        cookie.setMaxAge(300);
+        cookie.setHttpOnly(true);
+        cookie.setSecure(true);
+        res.addCookie(cookie);
+
+        res.sendRedirect("/oauth2/authorization/google");
     }
 }
