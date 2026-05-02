@@ -4,6 +4,7 @@ import com.example.media_service.enums.FileType;
 import com.example.media_service.exceptions.ConflictException;
 import com.example.media_service.exceptions.SystemException;
 import com.example.media_service.responses.UploadResult;
+import com.thoughtworks.xstream.core.BaseException;
 import org.springframework.beans.factory.annotation.Value;
 import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
@@ -61,7 +62,6 @@ public class UploadService {
     private Double getDuration(MultipartFile file, FileType type) {
         File tempFile = null;
         try {
-            // ✅ Lấy extension từ file gốc
             String originalFilename = file.getOriginalFilename();
             String extension = (originalFilename != null && originalFilename.contains("."))
                     ? originalFilename.substring(originalFilename.lastIndexOf("."))
@@ -116,6 +116,10 @@ public class UploadService {
 
             return new UploadResult(url, type, duration);
 
+        } catch (ConflictException e) {
+            throw e;
+        } catch (BaseException e) {
+            throw e;
         } catch (Exception e) {
             throw new SystemException("Upload failed: " + e.getMessage(), e);
         }

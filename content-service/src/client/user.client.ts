@@ -46,9 +46,7 @@ export class UserClient {
       const res = await firstValueFrom(
         this.http.post(
           `${process.env.USER_SERVICE_URL}/account/validate`,
-          {
-            users,
-          },
+          users,
           {
             headers: {
               'x-user-id': userId.toString(),
