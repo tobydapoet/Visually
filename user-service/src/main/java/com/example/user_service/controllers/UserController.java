@@ -15,6 +15,7 @@ import com.example.user_service.responses.UserSummaryStatusResponse;
 import com.example.user_service.services.UserService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -35,7 +36,7 @@ public class UserController {
     UserService userService;
 
     @PostMapping("/validate")
-    public List<User> validateUsers(@RequestBody List<UserBatchReq> requests) {
+    public List<User> validateUsers(@RequestBody @Valid List<UserBatchReq> requests) {
         List<User> validUsers = userService.validateUsers(requests);
         return validUsers;
     }

@@ -63,7 +63,11 @@ public class MediaFileService {
             System.out.println("=== SUCCESS - Total saved: " + savedFiles.size() + " ===");
             return savedFiles;
 
-        } catch (Exception e) {
+        }
+        catch (ConflictException e) {
+            throw e;
+        }
+        catch (Exception e) {
             System.err.println("=== ERROR IN CREATE ===");
             System.err.println("Exception: " + e.getClass().getName());
             System.err.println("Message: " + e.getMessage());

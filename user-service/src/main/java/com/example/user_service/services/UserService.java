@@ -18,7 +18,6 @@ import com.example.user_service.responses.RelationshipResponse;
 import com.example.user_service.responses.MediaResponse;
 import com.example.user_service.responses.UserResponseExtend;
 import io.jsonwebtoken.Claims;
-import jakarta.ws.rs.BadRequestException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.*;
@@ -495,11 +494,11 @@ public class UserService {
             String actualUsername = userMap.get(req.getId());
 
             if (actualUsername == null) {
-                throw new BadRequestException("userId is not exist: " + req.getId());
+                throw new NotFoundException("userId is not exist: " + req.getId());
             }
 
             if (!actualUsername.equals(req.getUsername())) {
-                throw new BadRequestException("username don not match: " + req.getId());
+                throw new NotFoundException("username don not match: " + req.getId());
             }
         }
 

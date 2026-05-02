@@ -50,9 +50,9 @@ public class UploadService {
                 return FileType.AUDIO;
             }
 
-            throw new ConflictException("Unsupported file type: " + mimeType);
+            throw new ConflictException("Unsupported file type");
 
-        } catch (SystemException e) {
+        } catch (ConflictException e) {
             throw e;
         } catch (Exception e) {
             throw new SystemException("Cannot detect file type", e);
