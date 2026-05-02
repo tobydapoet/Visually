@@ -6,6 +6,7 @@ import com.example.user_service.enums.RoleType;
 import com.example.user_service.enums.StatusType;
 import com.example.user_service.requests.CurrentUser;
 import com.example.user_service.requests.UpdateUserRequest;
+import com.example.user_service.requests.UserBatchReq;
 import com.example.user_service.requests.UserStatusSummaryResponse;
 import com.example.user_service.responses.UserResponse;
 import com.example.user_service.responses.UserResponseExtend;
@@ -32,6 +33,12 @@ import java.util.*;
 public class UserController {
     @Autowired
     UserService userService;
+
+    @PostMapping("/validate")
+    public ResponseEntity<List<User>> validateUsers(@RequestBody List<UserBatchReq> requests) {
+        List<User> validUsers = userService.validateUsers(requests);
+        return ResponseEntity.ok(validUsers);
+    }
 
     @GetMapping("/current")
     public UserResponse getCurrentUser(HttpServletRequest request) {

@@ -11,7 +11,7 @@ import { ContentType } from 'src/enums/content.type';
 export class CreateMentionDto {
   @ApiProperty()
   @IsUUID('4')
-  userId?: string;
+  userId!: string;
 
   @ApiProperty()
   @IsString()
@@ -33,17 +33,9 @@ export class CreateMentionDto {
 export class CreateMentionContentDto {
   @ApiProperty()
   @IsUUID('4')
-  userId?: string;
+  userId!: string;
 
   @ApiProperty()
   @IsString()
   username!: string;
-
-  @ApiProperty()
-  @IsNumber()
-  start!: number;
-
-  @ApiProperty()
-  @IsNumber()
-  end!: number;
 }

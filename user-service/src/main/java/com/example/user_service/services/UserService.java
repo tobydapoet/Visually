@@ -4,7 +4,6 @@ import com.example.user_service.clients.ContentClient;
 import com.example.user_service.clients.FollowClient;
 import com.example.user_service.enums.Gender;
 import com.example.user_service.exceptions.ConflictException;
-import com.example.user_service.exceptions.ForbiddenException;
 import com.example.user_service.exceptions.NotFoundException;
 import com.example.user_service.exceptions.ValidatorException;
 import com.example.user_service.producers.UserEventProducer;
@@ -19,6 +18,7 @@ import com.example.user_service.responses.RelationshipResponse;
 import com.example.user_service.responses.MediaResponse;
 import com.example.user_service.responses.UserResponseExtend;
 import io.jsonwebtoken.Claims;
+import jakarta.ws.rs.BadRequestException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.*;
@@ -479,5 +479,30 @@ public class UserService {
         User followed = this.findById(followedId);
         follower.setFollowing(follower.getFollowing() - 1);
         followed.setFollowers(followed.getFollowers() - 1);
+    }
+
+    public List<User> validateUsers(List<UserBatchReq> requests) {
+        List<UUID> ids = requests.stream()
+                .map(UserBatchReq::getId)
+                .toList();
+
+        List<User> users = userRepository.findAllById(ids);
+
+        Map<UUID, String> userMap = users.stream()
+                .collect(Collectors.toMap(User::getId, User::getUsername));
+
+        for (UserBatchReq req : requests) {
+            String actualUsername = userMap.get(req.getId());
+
+            if (actualUsername == null) {
+                throw new BadRequestException("userId is not exist: " + req.getId());
+            }
+
+            if (!actualUsername.equals(req.getUsername())) {
+                throw new BadRequestException("username don not match: " + req.getId());
+            }
+        }
+
+        return users;
     }
 }

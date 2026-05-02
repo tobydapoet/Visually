@@ -107,6 +107,7 @@ export class ShortService {
 
       if (createShortDto.mentions) {
         await this.mentionService.createMany(
+          userId,
           createShortDto.mentions.map((m) => ({
             ...m,
             targetId: savedShort.id,
@@ -577,6 +578,7 @@ export class ShortService {
 
       if (updateShortDto.mentionAdd && updateShortDto.mentionAdd.length > 0) {
         await this.mentionService.createMany(
+          userId,
           updateShortDto.mentionAdd.map((m) => ({
             ...m,
             targetId: shortId,

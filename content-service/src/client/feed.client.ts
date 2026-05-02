@@ -19,7 +19,7 @@ export class FeedClient {
           take,
         },
         headers: {
-          'x-user-Id': userId.toString(),
+          'x-user-id': userId.toString(),
         },
       }),
     );

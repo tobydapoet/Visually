@@ -1,4 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom, lastValueFrom } from 'rxjs';
 import { MediaResponse } from './dto/MediaResponse.dto';
@@ -53,7 +58,21 @@ export class MediaClient {
       this.logger.error(
         `[upload] Headers sent: ${JSON.stringify(error.config?.headers)}`,
       );
-      throw error;
+      if (error.response?.status === 400) {
+        throw new BadRequestException(
+          error.response.data?.message || 'Invalid file upload request',
+        );
+      }
+
+      if (error.response?.status === 413) {
+        throw new BadRequestException('File size too large');
+      }
+
+      if (error.response?.status === 415) {
+        throw new BadRequestException('Unsupported file type');
+      }
+
+      throw new InternalServerErrorException('Failed to upload files');
     }
   }
 

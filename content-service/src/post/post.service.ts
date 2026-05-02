@@ -101,6 +101,7 @@ export class PostService {
 
       if (createPostDto.mentions) {
         await this.mentionService.createMany(
+          userId,
           createPostDto.mentions.map((m) => ({
             ...m,
             targetId: savedPost.id,
@@ -562,6 +563,7 @@ export class PostService {
 
       if (updatePostDto.mentionAdd && updatePostDto.mentionAdd.length > 0) {
         await this.mentionService.createMany(
+          userId,
           updatePostDto.mentionAdd.map((m) => ({
             ...m,
             targetId: postId,
