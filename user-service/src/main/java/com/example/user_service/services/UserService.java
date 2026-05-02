@@ -104,6 +104,10 @@ public class UserService {
                 .orElseThrow(() -> new NotFoundException("User not found"));
     }
 
+    public User findByEmail(String email) {
+        return userRepository.findByEmail(email);
+    }
+
     public User resetPassword(ResetPasswordReq req) {
 
         if (!req.getPassword().equals(req.getConfirmPassword())) {

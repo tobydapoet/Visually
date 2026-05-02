@@ -1,5 +1,7 @@
 package com.example.user_service.controllers;
 
+import com.example.user_service.exceptions.ConflictException;
+import com.example.user_service.exceptions.NotFoundException;
 import com.example.user_service.exceptions.UnauthorizedException;
 import com.example.user_service.requests.*;
 import com.example.user_service.entities.User;
@@ -148,6 +150,13 @@ public class AuthController {
     @PostMapping("/resend-otp")
     public ResponseEntity<Map<String, String>>resendOtp(@RequestBody Map<String, String> body) {
         String email = body.get("email");
+        User user = userService.findByEmail(email);
+        if(user == null) {
+            throw new NotFoundException("Can't find this email");
+        }
+        if(user.getProviderId() != null) {
+            throw new ConflictException("This account can't resend your otp");
+        }
         String otp = otpService.generateAndStore(email);
         mailService.sendOtp(email, otp);
         return ResponseEntity.ok(Map.of("message", "OTP has been resent"));
