@@ -118,10 +118,10 @@ public class UploadService {
 
         } catch (ConflictException e) {
             throw e;
-        } catch (BaseException e) {
+        } catch (SystemException e) {
             throw e;
         } catch (Exception e) {
-            throw new SystemException("Upload failed: " + e.getMessage(), e);
+            throw new SystemException("Failed to create media files: " + e.getMessage(), e);
         }
     }
 
