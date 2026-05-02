@@ -68,6 +68,11 @@ export class UserClient {
       if (error.response?.status === 404) {
         throw new NotFoundException('Users not found');
       }
+      if (error.response?.status === 500) {
+        throw new InternalServerErrorException(
+          error.response.data?.message || 'User Service internal error',
+        );
+      }
       throw new InternalServerErrorException('Failed to validate batch users');
     }
   }

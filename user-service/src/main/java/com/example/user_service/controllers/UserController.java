@@ -35,9 +35,9 @@ public class UserController {
     UserService userService;
 
     @PostMapping("/validate")
-    public ResponseEntity<List<User>> validateUsers(@RequestBody List<UserBatchReq> requests) {
+    public List<User> validateUsers(@RequestBody List<UserBatchReq> requests) {
         List<User> validUsers = userService.validateUsers(requests);
-        return ResponseEntity.ok(validUsers);
+        return validUsers;
     }
 
     @GetMapping("/current")
