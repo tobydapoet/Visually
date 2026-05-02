@@ -39,7 +39,7 @@ export class ContentClient {
 
   async getTrendingTags(): Promise<string[]> {
     const res = await firstValueFrom(
-      this.http.get(`${process.env.CONTENT_SERVICE_URL}/tags/trending`),
+      this.http.get(`${process.env.CONTENT_SERVICE_URL}/tag/trending`),
     );
     return res.data;
   }
