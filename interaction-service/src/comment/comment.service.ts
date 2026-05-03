@@ -187,17 +187,25 @@ export class CommentService {
     size = 10,
   ) {
     const userId = this.context.getUserId();
-    const [comments, total] = await this.commentRepo.findAndCount({
-      where: {
-        targetId,
-        targetType: type,
-        replyTo: IsNull(),
-      },
-      order: { createdAt: 'DESC' },
-      skip: (page - 1) * size,
-      take: size,
-      relations: ['mentions'],
-    });
+    const qb = this.commentRepo
+      .createQueryBuilder('comment')
+      .leftJoinAndSelect('comment.mentions', 'mentions')
+      .where('comment.targetId = :targetId', { targetId })
+      .andWhere('comment.targetType = :type', { type })
+      .andWhere('comment.replyTo IS NULL');
+
+    if (userId) {
+      qb.orderBy(`CASE WHEN comment.userId = :userId THEN 0 ELSE 1 END`, 'ASC')
+        .setParameter('userId', userId)
+        .addOrderBy('comment.createdAt', 'DESC');
+    } else {
+      qb.orderBy('comment.createdAt', 'DESC');
+    }
+
+    const [comments, total] = await qb
+      .skip((page - 1) * size)
+      .take(size)
+      .getManyAndCount();
 
     let likedCommentIds = new Set<number>();
     if (userId) {

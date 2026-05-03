@@ -47,7 +47,7 @@ export class ConversationService {
         username: 'AI Assistant',
         isBot: true,
         avatarUrl:
-          'https://res-console.cloudinary.com/ddctz1mh6/thumbnails/transform/v1/image/upload/Y19maWxsLGhfMjAwLHdfMjAw/v1/dmlzdWFsbHlfYm90X3V5aDh2aw==/template_primary',
+          'https://res.cloudinary.com/ddctz1mh6/image/upload/v1/visually_bot_uyh8vk',
       });
 
       return savedConversation;
@@ -292,7 +292,7 @@ export class ConversationService {
         username: 'AI Assistant',
         isBot: true,
         avatarUrl:
-          'https://res-console.cloudinary.com/ddctz1mh6/thumbnails/transform/v1/image/upload/Y19maWxsLGhfMjAwLHdfMjAw/v1/dmlzdWFsbHlfYm90X3V5aDh2aw==/template_primary',
+          'https://res.cloudinary.com/ddctz1mh6/image/upload/v1/visually_bot_uyh8vk',
       });
 
       return {

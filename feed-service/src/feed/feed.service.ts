@@ -198,11 +198,22 @@ export class FeedService {
       this.adClient.getAdFeeds(age, user.gender),
     ]);
 
+    console.log('📥 contents from API:', contents.length);
+    console.log('👁️ seenIds count:', seenIds.length);
+    console.log('⏭️ skippedIds count:', skippedIds.length);
+
     const filtered = contents
       .filter((c) => {
         const key = `${c.contentType}:${c.contentId}`;
         if (key === currentId) return true;
-        return !seenIds.includes(key) && !skippedIds.includes(key);
+        const isSeen = seenIds.includes(key);
+        const isSkipped = skippedIds.includes(key);
+        if (isSeen || isSkipped) {
+          console.log(
+            `🚫 Filtered out: ${key} | seen=${isSeen} skipped=${isSkipped}`,
+          );
+        }
+        return !isSeen && !isSkipped;
       })
       .sort((a, b) => {
         const aKey = `${a.contentType}:${a.contentId}`;
@@ -211,6 +222,8 @@ export class FeedService {
         if (bKey === currentId) return 1;
         return 0;
       });
+
+    console.log('✅ filtered count:', filtered.length);
 
     const adItems = ads.map((ad) => ({
       contentId: ad.contentId,
