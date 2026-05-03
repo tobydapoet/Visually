@@ -3,13 +3,27 @@ import { CreateMentionDto, MentionItem } from './dto/create-mention.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Mention } from './entities/mention.entity';
 import { In, Repository } from 'typeorm';
+import { UserClient } from 'src/client/user.client';
+import { ContextService } from 'src/context/context.service';
 
 @Injectable()
 export class MentionService {
   constructor(
     @InjectRepository(Mention) private mentionRepo: Repository<Mention>,
+    private userClient: UserClient,
+    private context: ContextService,
   ) {}
   async createMany(dto: CreateMentionDto) {
+    const userId = this.context.getUserId();
+    if (!dto.mentions.length) return [];
+
+    await this.userClient.getValidateBatchUsers(
+      userId,
+      dto.mentions.map((m) => ({
+        id: m.userId,
+        username: m.username,
+      })),
+    );
     const mentions = dto.mentions.map((m) =>
       this.mentionRepo.create({
         userId: m.userId,
