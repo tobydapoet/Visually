@@ -70,6 +70,31 @@ export class ShortService {
       throw new BadRequestException('Thumbnail is required!');
     }
 
+    const allowedVideoMimeTypes = [
+      'video/mp4',
+      'video/mpeg',
+      'video/quicktime',
+      'video/x-msvideo',
+      'video/webm',
+    ];
+    if (!allowedVideoMimeTypes.includes(fileVideo.mimetype)) {
+      throw new BadRequestException(
+        'Invalid file type! Video must be a valid video file (mp4, mpeg, mov, avi, webm).',
+      );
+    }
+
+    const allowedImageMimeTypes = [
+      'image/jpeg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+    ];
+    if (!allowedImageMimeTypes.includes(fileThumbnail.mimetype)) {
+      throw new BadRequestException(
+        'Invalid file type! Thumbnail must be a valid image file (jpeg, png, gif, webp).',
+      );
+    }
+
     const files: Express.Multer.File[] = [fileVideo, fileThumbnail];
     const mediaResponses = await this.mediaClient.upload(
       files,
