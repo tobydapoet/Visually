@@ -19,7 +19,7 @@ export class Report {
   @Column({ type: 'text', nullable: false })
   username!: string;
 
-  @Column({ type: 'text' })
+  @Column({ type: 'text', nullable: true })
   avatarUrl?: string;
 
   @Column({ type: 'integer', nullable: false })

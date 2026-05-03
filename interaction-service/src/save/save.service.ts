@@ -10,8 +10,9 @@ import { Save } from './entities/save.entity';
 import { DataSource, In, Repository } from 'typeorm';
 import { ContextService } from 'src/context/context.service';
 import { ClientKafka } from '@nestjs/microservices';
-import { ContentType } from 'src/enums/ContentType';
+import { ContentServiceType, ContentType } from 'src/enums/ContentType';
 import { OutboxEventsService } from 'src/outbox_events/outbox_events.service';
+import { ContentCacheService } from 'src/content-cache/content-cache.service';
 
 @Injectable()
 export class SaveService {
@@ -21,6 +22,7 @@ export class SaveService {
     @Inject('KAFKA_SERVICE') private kafkaClient: ClientKafka,
     private dataSource: DataSource,
     private outboxEventService: OutboxEventsService,
+    private contentCacheService: ContentCacheService,
   ) {}
 
   async create(createSaveDto: CreateSaveDto) {
@@ -39,6 +41,17 @@ export class SaveService {
     if (existingSave) {
       return { saved: true };
     }
+
+    const contentTypeMap: Record<ContentType, ContentServiceType> = {
+      [ContentType.POST]: ContentServiceType.POST,
+      [ContentType.SHORT]: ContentServiceType.SHORT,
+    };
+
+    const isValid = await this.contentCacheService.verifyContentWithCache(
+      createSaveDto.targetId,
+      contentTypeMap[createSaveDto.targetType],
+    );
+    if (!isValid) throw new NotFoundException('Content not found');
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();

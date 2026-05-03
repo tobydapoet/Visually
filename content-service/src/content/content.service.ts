@@ -1,4 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   FeedPageResponse,
@@ -28,6 +32,7 @@ import { RepostService } from 'src/repost/repost.service';
 import { Repost } from 'src/repost/entities/repost.entity';
 import { FollowClient } from 'src/client/follow.client';
 import { StoryService } from 'src/story/story.service';
+import { Story } from 'src/story/entities/story.entity';
 
 @Injectable()
 export class ContentService {
@@ -36,6 +41,8 @@ export class ContentService {
     private readonly postRepo: Repository<Post>,
     @InjectRepository(Short)
     private readonly shortRepo: Repository<Short>,
+    @InjectRepository(Story)
+    private readonly storyRepo: Repository<Story>,
     private readonly storyService: StoryService,
     private feedClient: FeedClient,
     private context: ContextService,
@@ -162,6 +169,22 @@ export class ContentService {
     `,
       params,
     );
+  }
+
+  async findIdContentByTarget(id: number, type: ContentServiceType) {
+    const repoMap = {
+      [ContentServiceType.POST]: this.postRepo,
+      [ContentServiceType.SHORT]: this.shortRepo,
+      [ContentServiceType.STORY]: this.storyRepo,
+    };
+
+    const repo = repoMap[type];
+    if (!repo) throw new BadRequestException('Invalid type request');
+
+    const res = await repo.findOne({ where: { id } });
+    if (!res) throw new NotFoundException("Can't find this content");
+
+    return true;
   }
 
   async searchFeedContent(

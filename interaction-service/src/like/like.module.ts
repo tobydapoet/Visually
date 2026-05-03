@@ -8,6 +8,8 @@ import { ContextModule } from 'src/context/context.module';
 import { CommentModule } from 'src/comment/comment.module';
 import { KafkaModule } from 'src/kafka/kafka.module';
 import { OutboxEventsModule } from 'src/outbox_events/outbox_events.module';
+import Redis from 'ioredis';
+import { ContentCacheModule } from 'src/content-cache/content-cache.module';
 
 @Module({
   imports: [
@@ -16,6 +18,7 @@ import { OutboxEventsModule } from 'src/outbox_events/outbox_events.module';
     ContextModule,
     KafkaModule,
     OutboxEventsModule,
+    ContentCacheModule,
     forwardRef(() => CommentModule),
   ],
   controllers: [LikeController],

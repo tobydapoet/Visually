@@ -13,6 +13,7 @@ import { MentionModule } from './mention/mention.module';
 import { OutboxEventsModule } from './outbox_events/outbox_events.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ViewModule } from './view/view.module';
+import { ContentCacheModule } from './content-cache/content-cache.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { ViewModule } from './view/view.module';
     MentionModule,
     OutboxEventsModule,
     ViewModule,
+    ContentCacheModule,
   ],
   providers: [AppService],
 })

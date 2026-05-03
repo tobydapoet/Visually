@@ -32,7 +32,7 @@ export class ContentController {
     private readonly contentService: ContentService,
   ) {}
 
-  @Get('/target')
+  @Get('target')
   async getContent(
     @Query('contentId', ParseIntPipe) contentId: number,
     @Query('contentType') contentType: ContentType,
@@ -44,6 +44,14 @@ export class ContentController {
     } else {
       throw new ConflictException("Can't find this type");
     }
+  }
+
+  @Get('target-id')
+  async getContentId(
+    @Query('contentId', ParseIntPipe) contentId: number,
+    @Query('contentType') contentType: ContentServiceType,
+  ) {
+    return this.contentService.findIdContentByTarget(contentId, contentType);
   }
 
   @Get('feed')

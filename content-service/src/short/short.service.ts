@@ -32,7 +32,6 @@ import {
 } from 'src/repost/dto/respose-default.dto';
 import { Repost } from 'src/repost/entities/repost.entity';
 import { ShortResponseDto } from './dto/response-short.dto';
-import { ClientKafka } from '@nestjs/microservices';
 
 @Injectable()
 export class ShortService {
@@ -50,7 +49,6 @@ export class ShortService {
     private outboxEventService: OutboxEventsService,
     private mentionService: MentionsService,
     private interactionClient: InteractionClient,
-    @Inject('KAFKA_SERVICE') private kafkaClient: ClientKafka,
   ) {}
 
   async create(

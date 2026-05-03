@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
   Scope,
@@ -9,13 +8,15 @@ import { CreateLikeDto } from './dto/create-like.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Like } from './entities/like.entity';
 import { In, Repository } from 'typeorm';
-import { LikeTargetType } from 'src/enums/ContentType';
+import { ContentServiceType, LikeTargetType } from 'src/enums/ContentType';
 import { ContextService } from 'src/context/context.service';
 import { CommentService } from 'src/comment/comment.service';
 import { InteractionType } from 'src/enums/InteractionType';
 import { ContentClient } from 'src/client/content.client';
 import { OutboxEventsService } from 'src/outbox_events/outbox_events.service';
 import { DataSource } from 'typeorm';
+import { likeToContentTypeMap } from './maps/likeToContentTypeMap';
+import { ContentCacheService } from 'src/content-cache/content-cache.service';
 
 @Injectable({ scope: Scope.REQUEST })
 export class LikeService {
@@ -26,7 +27,9 @@ export class LikeService {
     private contentClient: ContentClient,
     private outboxEventService: OutboxEventsService,
     private dataSource: DataSource,
+    private contentCacheService: ContentCacheService,
   ) {}
+
   async create(createLikeDto: CreateLikeDto) {
     const currentUserId = this.context.getUserId();
     const currentUserAvatarUrl = this.context.getAvatarUrl();
@@ -40,6 +43,21 @@ export class LikeService {
       },
     });
     if (existingLike) return { liked: true };
+
+    if (createLikeDto.targetType === LikeTargetType.COMMENT) {
+      const comment = await this.commentService.findById(
+        createLikeDto.targetId,
+      );
+      if (!comment) throw new NotFoundException("Can't find this content");
+    } else {
+      const contentType = likeToContentTypeMap[createLikeDto.targetType];
+      if (!contentType) throw new BadRequestException('Invalid target type');
+      const isValid = await this.contentCacheService.verifyContentWithCache(
+        createLikeDto.targetId,
+        contentType,
+      );
+      if (!isValid) throw new NotFoundException('Content not found');
+    }
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -214,12 +232,6 @@ export class LikeService {
 
     if (!existLike) {
       throw new NotFoundException('Like not found!');
-    }
-
-    if (existLike.userId !== userId) {
-      throw new ForbiddenException(
-        "You don't have permission to do this action",
-      );
     }
 
     if (existLike.targetType === LikeTargetType.COMMENT) {

@@ -1,21 +1,36 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateReportDto } from './dto/create-report.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Like, Repository } from 'typeorm';
 import { Report } from './entities/report.entity';
 import { ContextService } from 'src/context/context.service';
-import { ContentServiceType } from 'src/enums/ContentType';
+import { ContentServiceType, ContentType } from 'src/enums/ContentType';
+import { ContentCacheService } from 'src/content-cache/content-cache.service';
 
 @Injectable()
 export class ReportService {
   constructor(
     @InjectRepository(Report) private reportRepo: Repository<Report>,
     private context: ContextService,
+    private contentCacheService: ContentCacheService,
   ) {}
-  create(createReportDto: CreateReportDto) {
+
+  async create(createReportDto: CreateReportDto) {
     const userId = this.context.getUserId();
     const avatarUrl = this.context.getAvatarUrl();
     const username = this.context.getUsername();
+
+    const contentTypeMap: Record<ContentType, ContentServiceType> = {
+      [ContentType.POST]: ContentServiceType.POST,
+      [ContentType.SHORT]: ContentServiceType.SHORT,
+    };
+
+    const isValid = await this.contentCacheService.verifyContentWithCache(
+      createReportDto.targetId,
+      contentTypeMap[createReportDto.targetType],
+    );
+    if (!isValid) throw new NotFoundException('Content not found');
+
     const newReport = this.reportRepo.create({
       avatarUrl,
       userId,

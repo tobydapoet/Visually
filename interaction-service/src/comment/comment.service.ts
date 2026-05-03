@@ -68,6 +68,8 @@ export class CommentService {
         ? await this.contentClient.getPost(createCommentDto.targetId)
         : await this.contentClient.getShort(createCommentDto.targetId);
 
+    if (!content) throw new NotFoundException('Content not found');
+
     let repliedUser: UserDto | null = null;
     if (createCommentDto.replyToId) {
       const repliedComment = await this.commentRepo.findOne({
@@ -195,8 +197,12 @@ export class CommentService {
       .andWhere('comment.replyTo IS NULL');
 
     if (userId) {
-      qb.orderBy(`CASE WHEN comment.userId = :userId THEN 0 ELSE 1 END`, 'ASC')
+      qb.addSelect(
+        `CASE WHEN comment.userId = :userId THEN 0 ELSE 1 END`,
+        'user_priority',
+      )
         .setParameter('userId', userId)
+        .orderBy('user_priority', 'ASC')
         .addOrderBy('comment.createdAt', 'DESC');
     } else {
       qb.orderBy('comment.createdAt', 'DESC');
@@ -231,6 +237,14 @@ export class CommentService {
     };
   }
 
+  async findById(commentId: number) {
+    const res = await this.commentRepo.findOne({ where: { id: commentId } });
+    if (!res) {
+      throw new NotFoundException("Can't find this comment");
+    }
+    return res.id;
+  }
+
   async findReplies(commentId: number, page = 1, size = 10) {
     const userId = this.context.getUserId();
 
@@ -257,7 +271,7 @@ export class CommentService {
     return {
       content: replies.map((r) => ({
         ...r,
-        isLiked: likedCommentIds.has(r.id), // ✅
+        isLiked: likedCommentIds.has(r.id),
       })),
       page,
       size,

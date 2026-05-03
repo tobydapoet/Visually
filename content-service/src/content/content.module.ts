@@ -12,6 +12,7 @@ import { TagModule } from 'src/tag/tag.module';
 import { MentionModule } from 'src/mention/mention.module';
 import { ClientModule } from 'src/client/client.module';
 import { RepostModule } from 'src/repost/repost.module';
+import { Story } from 'src/story/entities/story.entity';
 
 @Module({
   imports: [
@@ -23,7 +24,7 @@ import { RepostModule } from 'src/repost/repost.module';
     MentionModule,
     ContextModule,
     RepostModule,
-    TypeOrmModule.forFeature([Post, Short]),
+    TypeOrmModule.forFeature([Post, Short, Story]),
   ],
   controllers: [ContentController],
   providers: [ContentService],

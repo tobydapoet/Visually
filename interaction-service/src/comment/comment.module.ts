@@ -10,6 +10,7 @@ import { KafkaModule } from 'src/kafka/kafka.module';
 import { MentionModule } from 'src/mention/mention.module';
 import { Like } from 'src/like/entities/like.entity';
 import { OutboxEventsModule } from 'src/outbox_events/outbox_events.module';
+import { ContentCacheModule } from 'src/content-cache/content-cache.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { OutboxEventsModule } from 'src/outbox_events/outbox_events.module';
     ContextModule,
     MentionModule,
     OutboxEventsModule,
+    ContentCacheModule,
   ],
   controllers: [CommentController],
   providers: [CommentService],
