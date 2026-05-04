@@ -28,8 +28,12 @@ export class CommentController {
   @Post()
   @ApiBearerAuth()
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() createCommentDto: CreateCommentDto) {
-    return this.commentService.create(createCommentDto);
+  async create(@Body() createCommentDto: CreateCommentDto) {
+    const res = this.commentService.create(createCommentDto);
+    return {
+      message: 'Create comment success!',
+      content: res,
+    };
   }
 
   @Get('target')
