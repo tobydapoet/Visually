@@ -248,9 +248,10 @@ export class ConversationService {
     return {
       content: conversations.map((c: Conversation) => {
         const lastMessage = c.messages?.[0] || null;
-        const otherMembers = c.members.filter(
-          (m) => m.userId !== userId && !m.isBot,
-        );
+        const otherMembers =
+          c.type === ConversationType.BOT
+            ? c.members.filter((m) => m.userId !== userId)
+            : c.members.filter((m) => m.userId !== userId && !m.isBot);
 
         const otherUsers = (
           c.type === ConversationType.PRIVATE
