@@ -145,9 +145,10 @@ export class ConversationService {
       throw new NotFoundException("Can't find this conversation");
     }
 
-    const otherMembers = conversation.members.filter(
-      (m) => m.userId !== userId && !m.isBot,
-    );
+    const otherMembers =
+      conversation.type === ConversationType.BOT
+        ? conversation.members.filter((m) => m.userId !== userId)
+        : conversation.members.filter((m) => m.userId !== userId && !m.isBot);
 
     const otherUsers =
       conversation.type === ConversationType.PRIVATE
