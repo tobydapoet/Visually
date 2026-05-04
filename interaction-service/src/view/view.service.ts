@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import { CreateViewDto } from './dto/create-view.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { View } from './entities/view.entity';
@@ -7,6 +7,7 @@ import { ContextService } from 'src/context/context.service';
 import { OutboxEventsService } from 'src/outbox_events/outbox_events.service';
 import { ContentServiceType } from 'src/enums/ContentType';
 import { ContentClient } from 'src/client/content.client';
+import { UserRole } from 'src/enums/user_role.type';
 
 @Injectable()
 export class ViewService {
@@ -64,15 +65,12 @@ export class ViewService {
     await queryRunner.startTransaction();
 
     const userId = this.context.getUserId();
+    const role = this.context.getRole();
 
     try {
-      const existing = await queryRunner.manager.findOne(View, {
-        where: {
-          userId,
-          targetId: createViewDto.targetId,
-          targetType: createViewDto.targetType,
-        },
-      });
+      if (role !== UserRole.CLIENT) {
+        throw new ForbiddenException('Only clients can perform this action');
+      }
 
       const savedView = await queryRunner.manager.save(View, {
         ...createViewDto,

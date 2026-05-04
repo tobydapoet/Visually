@@ -1,7 +1,6 @@
 package com.example.follow_service.services;
 
 import com.example.follow_service.entities.Block;
-import com.example.follow_service.entities.Follow;
 import com.example.follow_service.exceptions.ConflictException;
 import com.example.follow_service.repositories.BlockRepository;
 import com.example.follow_service.responses.BlockInfoResponse;
@@ -17,7 +16,7 @@ public class BlockService {
     @Autowired
     BlockRepository blockRepository;
 
-    public Block save (UUID userId, UUID blockerId) {
+    public Block save(UUID userId, UUID blockerId) {
         Block block = new Block();
         block.setBlockerId(blockerId);
         block.setUserId(userId);
@@ -26,7 +25,8 @@ public class BlockService {
     }
 
     public boolean delete(UUID userId, UUID blockerId) {
-        Block block = blockRepository.findByUserIdAndBlockerId(userId, blockerId).orElseThrow(()->new ConflictException("Block not found"));
+        Block block = blockRepository.findByUserIdAndBlockerId(userId, blockerId)
+                .orElseThrow(() -> new ConflictException("Block not found"));
         blockRepository.deleteById(block.getId());
         return true;
     }
@@ -51,8 +51,8 @@ public class BlockService {
                 .findByUserIdAndBlockerId(userId, targetUserId)
                 .isPresent()
                 || blockRepository
-                .findByUserIdAndBlockerId(targetUserId, userId)
-                .isPresent();
+                        .findByUserIdAndBlockerId(targetUserId, userId)
+                        .isPresent();
     }
 
     public List<UUID> getCurrentBlockers(UUID userId) {
@@ -61,14 +61,12 @@ public class BlockService {
 
     public Map<UUID, Boolean> getBlockedUsers(
             UUID currentUserId,
-            List<UUID> targetUserIds
-    ) {
+            List<UUID> targetUserIds) {
         if (targetUserIds == null || targetUserIds.isEmpty()) {
             return Collections.emptyMap();
         }
 
-        List<UUID> blockedIds =
-                blockRepository.findBlockedIds(currentUserId, targetUserIds);
+        List<UUID> blockedIds = blockRepository.findBlockedIds(currentUserId, targetUserIds);
 
         Set<UUID> blockedSet = new HashSet<>(blockedIds);
 
@@ -83,8 +81,7 @@ public class BlockService {
 
     public Map<String, Boolean> getBlockedUser(
             UUID currentUserId,
-            UUID targetUserId
-    ) {
+            UUID targetUserId) {
         boolean isBlocked = blockRepository.existsBlock(currentUserId, targetUserId);
         return Map.of("isBlocked", isBlocked);
     }

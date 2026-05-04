@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable } from '@nestjs/common';
 import { CreateFeedDto } from './dto/create-feed.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Feed } from './entities/feed.entity';
@@ -13,6 +13,7 @@ import { ContextService } from 'src/context/context.service';
 import { UserInterestService } from 'src/user_interest/user_interest.service';
 import { ContentClient } from 'src/client/content.client';
 import { DeleteContentJobData } from './dto/job-feed.dto';
+import { UserRole } from 'src/enums/user_role.type';
 
 @Injectable()
 export class FeedService {
@@ -53,6 +54,11 @@ export class FeedService {
 
   async getFollowFeed(cursor?: string, take: number = 20) {
     const userId = this.context.getUserId();
+    const role = this.context.getRole();
+
+    if (role !== UserRole.CLIENT) {
+      throw new ForbiddenException('Only clients can perform this action');
+    }
     const seenKey = `feed:seen:${userId}`;
     const skippedKey = `feed:skipped:${userId}`;
 
@@ -171,6 +177,11 @@ export class FeedService {
 
   async getReelsFeed(cursor?: number, take?: number) {
     const userId = this.context.getUserId();
+    const role = this.context.getRole();
+
+    if (role !== UserRole.CLIENT) {
+      throw new ForbiddenException('Only clients can perform this action');
+    }
     const seenKey = `reels:seen:${userId}`;
     const skippedKey = `reels:skipped:${userId}`;
     const currentKey = `reels:current:${userId}`;

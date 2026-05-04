@@ -7,7 +7,6 @@ import com.example.follow_service.enums.FollowType;
 import com.example.follow_service.exceptions.ConflictException;
 import com.example.follow_service.producers.FollowEventProducer;
 import com.example.follow_service.repositories.FollowRepository;
-import com.example.follow_service.requests.FollowEvent;
 import com.example.follow_service.requests.FollowNotificationEvent;
 import com.example.follow_service.responses.*;
 import lombok.extern.slf4j.Slf4j;
@@ -23,358 +22,326 @@ import java.util.stream.Collectors;
 @Service
 @Slf4j
 public class FollowService {
-    @Autowired
-    private FollowRepository followRepository;
+        @Autowired
+        private FollowRepository followRepository;
 
-    @Autowired
-    private BlockService blockService;
+        @Autowired
+        private BlockService blockService;
 
-    @Autowired
-    private UserClient userClient;
+        @Autowired
+        private UserClient userClient;
 
-    @Autowired
-    private FollowEventProducer producer;
+        @Autowired
+        private FollowEventProducer producer;
 
-    @Transactional
-    public Follow save(FollowNotificationEvent event) {
+        @Transactional
+        public Follow save(FollowNotificationEvent event) {
 
-        followRepository
-                .findByUserIdAndFollowerId(
-                        event.getFollowedId(),
-                        event.getFollowerId()
-                )
-                .ifPresent(f -> {
-                    throw new ConflictException("Already followed");
-                });
+                followRepository
+                                .findByUserIdAndFollowerId(
+                                                event.getFollowedId(),
+                                                event.getFollowerId())
+                                .ifPresent(f -> {
+                                        throw new ConflictException("Already followed");
+                                });
 
-        Follow follow = new Follow();
-        follow.setFollowerId(event.getFollowerId());
-        follow.setUserId(event.getFollowedId());
+                Follow follow = new Follow();
+                follow.setFollowerId(event.getFollowerId());
+                follow.setUserId(event.getFollowedId());
 
-        followRepository.save(follow);
+                followRepository.save(follow);
 
-        producer.emitFollow(event.getFollowerId(), event.getFollowedId());
-        producer.emitFollowNotification(event);
+                producer.emitFollow(event.getFollowerId(), event.getFollowedId());
+                producer.emitFollowNotification(event);
 
-        return follow;
-    }
-
-    public boolean delete(UUID userId, UUID followerId) {
-        Follow follow = followRepository.findByUserIdAndFollowerId(userId, followerId).orElseThrow(()->new ConflictException("Follow not found"));
-        followRepository.deleteById(follow.getId());
-        producer.emitUnfollow(followerId, userId);
-        return true;
-    }
-
-    public FollowInfoResponse isFollowed(UUID userId, UUID followerId) {
-        boolean isFollow = false;
-        if(userId != null) {
-            isFollow =
-                    followRepository.findByUserIdAndFollowerId(userId, followerId).isPresent();
-        }
-        long followers = followRepository.countByUserId(userId);
-        long following = followRepository.countByFollowerId(userId);
-
-        return new FollowInfoResponse(isFollow, followers, following);
-    }
-
-    public Long countByUserId(UUID userId) {
-        return followRepository.countByUserId(userId);
-    }
-
-    public boolean isFollowedBool(UUID userId, UUID targetUserId) {
-        return followRepository
-                .findByUserIdAndFollowerId(targetUserId, userId)
-                .isPresent();
-    }
-
-    public Map<String, Long> getFollowCount(UUID userId) {
-        long following = followRepository.countByFollowerId(userId);
-        long followers = followRepository.countByUserId(userId);
-
-        Map<String, Long> result = new HashMap<>();
-        result.put("following", following);
-        result.put("followers", followers);
-
-        return result;
-    }
-
-    public Page<UserResponse> getCurrentFollowers(
-            UUID userId,
-            int page,
-            int size,
-            FollowType type
-    ) {
-        Pageable pageable = PageRequest.of(
-                page,
-                size,
-                Sort.by(Sort.Direction.DESC, "createdAt")
-        );
-
-        Page<Follow> follows;
-
-        if (type == FollowType.FOLLOWER) {
-            follows = followRepository.findAllByUserId(userId, pageable);
-        } else {
-            follows = followRepository.findAllByFollowerId(userId, pageable);
+                return follow;
         }
 
-        if (follows.isEmpty()) {
-            return Page.empty(pageable);
+        public boolean delete(UUID userId, UUID followerId) {
+                Follow follow = followRepository.findByUserIdAndFollowerId(userId, followerId)
+                                .orElseThrow(() -> new ConflictException("Follow not found"));
+                followRepository.deleteById(follow.getId());
+                producer.emitUnfollow(followerId, userId);
+                return true;
         }
 
-        String ids = follows.getContent()
-                .stream()
-                .map(f -> type == FollowType.FOLLOWER
-                        ? f.getFollowerId().toString()
-                        : f.getUserId().toString())
-                .collect(Collectors.joining(","));
+        public FollowInfoResponse isFollowed(UUID userId, UUID followerId) {
+                boolean isFollow = false;
+                if (userId != null) {
+                        isFollow = followRepository.findByUserIdAndFollowerId(userId, followerId).isPresent();
+                }
+                long followers = followRepository.countByUserId(userId);
+                long following = followRepository.countByFollowerId(userId);
 
-        List<UserResponse> users =
-                userClient.getUsers(ids, userId);
-
-        return new PageImpl<>(
-                users,
-                pageable,
-                follows.getTotalElements()
-        );
-    }
-
-    private Page<FollowResponse> buildFollowPage(
-            UUID currentUserId,
-            List<UUID> targetIds,
-            Page<Follow> follows,
-            Function<Follow, UUID> idExtractor,
-            Pageable pageable,
-            String search
-    ) {
-        if (targetIds.isEmpty()) return Page.empty(pageable);
-
-        List<UserResponse> users = userClient.getUsers(
-                targetIds.stream().map(UUID::toString).collect(Collectors.joining(",")),
-                currentUserId
-        );
-
-        if (search != null && !search.isBlank()) {
-            String keyword = search.toLowerCase().trim();
-            users = users.stream()
-                    .filter(u ->
-                            u.getUsername().toLowerCase().contains(keyword) ||
-                                    u.getFullName().toLowerCase().contains(keyword)
-                    )
-                    .toList();
+                return new FollowInfoResponse(isFollow, followers, following);
         }
 
-        Set<UUID> followedByCurrentUser = new HashSet<>();
-        if (currentUserId != null && !users.isEmpty()) {
-            List<UUID> filteredIds = users.stream().map(UserResponse::getId).toList();
-            followedByCurrentUser = followRepository
-                    .findByFollowerIdAndUserIdIn(currentUserId, filteredIds)
-                    .stream()
-                    .map(Follow::getUserId)
-                    .collect(Collectors.toSet());
+        public Long countByUserId(UUID userId) {
+                return followRepository.countByUserId(userId);
         }
 
-        Set<UUID> finalFollowed = followedByCurrentUser;
-        Map<UUID, UserWithFollowResponse> userMap = users.stream()
-                .map(u -> UserWithFollowResponse.from(u, finalFollowed.contains(u.getId())))
-                .collect(Collectors.toMap(UserWithFollowResponse::getId, u -> u));
-
-        List<FollowResponse> content = follows.getContent().stream()
-                .map(idExtractor)
-                .filter(userMap::containsKey)
-                .map(id -> new FollowResponse(id, userMap.get(id),
-                        follows.getContent().stream()
-                                .filter(f -> idExtractor.apply(f).equals(id))
-                                .findFirst()
-                                .map(Follow::getCreatedAt)
-                                .orElse(null)
-                ))
-                .toList();
-
-        return new PageImpl<>(content, pageable, search != null && !search.isBlank() ? content.size() : follows.getTotalElements());
-    }
-
-    private Page<FollowResponse> buildFollowPageFromIds(
-            UUID currentUserId,
-            List<UUID> targetIds,
-            Pageable pageable,
-            String search,
-            long total
-    ) {
-        if (targetIds.isEmpty()) return Page.empty(pageable);
-
-        List<UserResponse> users = userClient.getUsers(
-                targetIds.stream().map(UUID::toString).collect(Collectors.joining(",")),
-                currentUserId
-        );
-
-        if (search != null && !search.isBlank()) {
-            String keyword = search.toLowerCase().trim();
-            users = users.stream()
-                    .filter(u ->
-                            u.getUsername().toLowerCase().contains(keyword) ||
-                                    u.getFullName().toLowerCase().contains(keyword)
-                    )
-                    .toList();
+        public boolean isFollowedBool(UUID userId, UUID targetUserId) {
+                return followRepository
+                                .findByUserIdAndFollowerId(targetUserId, userId)
+                                .isPresent();
         }
 
-        Set<UUID> followedByCurrentUser = followRepository
-                .findByFollowerIdAndUserIdIn(
-                        currentUserId,
-                        users.stream().map(UserResponse::getId).toList()
-                )
-                .stream()
-                .map(Follow::getUserId)
-                .collect(Collectors.toSet());
+        public Map<String, Long> getFollowCount(UUID userId) {
+                long following = followRepository.countByFollowerId(userId);
+                long followers = followRepository.countByUserId(userId);
 
-        List<FollowResponse> content = users.stream()
-                .map(u -> new FollowResponse(
-                        u.getId(),
-                        UserWithFollowResponse.from(
-                                u,
-                                followedByCurrentUser.contains(u.getId())
-                        ),
-                        null
-                ))
-                .toList();
+                Map<String, Long> result = new HashMap<>();
+                result.put("following", following);
+                result.put("followers", followers);
 
-        return new PageImpl<>(content, pageable, total);
-    }
-
-    public Page<FollowResponse> findAllByUserId(
-            UUID currentUserId,
-            UUID userId,
-            int page,
-            int size,
-            String search
-    ) {
-        Pageable pageable = PageRequest.of(page, size);
-
-        Page<UUID> idPage =
-                followRepository.findFollowingIds(userId, pageable);
-
-        return buildFollowPageFromIds(
-                currentUserId,
-                idPage.getContent(),
-                pageable,
-                search,
-                idPage.getTotalElements()
-        );
-    }
-
-    public Page<FollowResponse> findAllByFollowerId(
-            UUID currentUserId,
-            UUID userId,
-            int page,
-            int size,
-            String search
-    ) {
-        Pageable pageable = PageRequest.of(page, size);
-
-        Page<UUID> idPage =
-                followRepository.findFollowerIds(userId, pageable);
-
-        return buildFollowPageFromIds(
-                currentUserId,
-                idPage.getContent(),
-                pageable,
-                search,
-                idPage.getTotalElements()
-        );
-    }
-
-    public Page<UserSummaryStatusResponse> findCurrentUserFollowing(
-            UUID currentUserId,
-            int page,
-            int size
-    ) {
-        Pageable pageable = PageRequest.of(page, size);
-
-        Page<UUID> idPage = followRepository.findFollowingIds(currentUserId, pageable);
-        List<UUID> ids = idPage.getContent();
-
-        if (ids.isEmpty()) {
-            return new PageImpl<>(Collections.emptyList(), pageable, 0);
+                return result;
         }
 
-        String idsParam = ids.stream()
-                .map(UUID::toString)
-                .collect(Collectors.joining(","));
+        public Page<UserResponse> getCurrentFollowers(
+                        UUID userId,
+                        int page,
+                        int size,
+                        FollowType type) {
+                Pageable pageable = PageRequest.of(
+                                page,
+                                size,
+                                Sort.by(Sort.Direction.DESC, "createdAt"));
 
-        List<UserSummaryStatusResponse> users =
-                userClient.getUsersWithStatus(idsParam, currentUserId);
+                Page<Follow> follows;
 
-        Map<UUID, UserSummaryStatusResponse> map =
-                users.stream().collect(Collectors.toMap(
-                        UserSummaryStatusResponse::getId,
-                        u -> u
-                ));
+                if (type == FollowType.FOLLOWER) {
+                        follows = followRepository.findAllByUserId(userId, pageable);
+                } else {
+                        follows = followRepository.findAllByFollowerId(userId, pageable);
+                }
 
-        List<UserSummaryStatusResponse> result = ids.stream()
-                .map(map::get)
-                .filter(Objects::nonNull)
-                .toList();
+                if (follows.isEmpty()) {
+                        return Page.empty(pageable);
+                }
 
-        return new PageImpl<>(result, pageable, idPage.getTotalElements());
-    }
+                String ids = follows.getContent()
+                                .stream()
+                                .map(f -> type == FollowType.FOLLOWER
+                                                ? f.getFollowerId().toString()
+                                                : f.getUserId().toString())
+                                .collect(Collectors.joining(","));
 
-    @Transactional
-    public Block blockUser(UUID userId, UUID blockerId) {
-        if (isFollowedBool(blockerId, userId)) {
-            delete(userId, blockerId);
+                List<UserResponse> users = userClient.getUsers(ids, userId);
+
+                return new PageImpl<>(
+                                users,
+                                pageable,
+                                follows.getTotalElements());
         }
-        if (isFollowedBool(userId, blockerId)) {
-            delete(blockerId, userId);
+
+        private Page<FollowResponse> buildFollowPage(
+                        UUID currentUserId,
+                        List<UUID> targetIds,
+                        Page<Follow> follows,
+                        Function<Follow, UUID> idExtractor,
+                        Pageable pageable,
+                        String search) {
+                if (targetIds.isEmpty())
+                        return Page.empty(pageable);
+
+                List<UserResponse> users = userClient.getUsers(
+                                targetIds.stream().map(UUID::toString).collect(Collectors.joining(",")),
+                                currentUserId);
+
+                if (search != null && !search.isBlank()) {
+                        String keyword = search.toLowerCase().trim();
+                        users = users.stream()
+                                        .filter(u -> u.getUsername().toLowerCase().contains(keyword) ||
+                                                        u.getFullName().toLowerCase().contains(keyword))
+                                        .toList();
+                }
+
+                Set<UUID> followedByCurrentUser = new HashSet<>();
+                if (currentUserId != null && !users.isEmpty()) {
+                        List<UUID> filteredIds = users.stream().map(UserResponse::getId).toList();
+                        followedByCurrentUser = followRepository
+                                        .findByFollowerIdAndUserIdIn(currentUserId, filteredIds)
+                                        .stream()
+                                        .map(Follow::getUserId)
+                                        .collect(Collectors.toSet());
+                }
+
+                Set<UUID> finalFollowed = followedByCurrentUser;
+                Map<UUID, UserWithFollowResponse> userMap = users.stream()
+                                .map(u -> UserWithFollowResponse.from(u, finalFollowed.contains(u.getId())))
+                                .collect(Collectors.toMap(UserWithFollowResponse::getId, u -> u));
+
+                List<FollowResponse> content = follows.getContent().stream()
+                                .map(idExtractor)
+                                .filter(userMap::containsKey)
+                                .map(id -> new FollowResponse(id, userMap.get(id),
+                                                follows.getContent().stream()
+                                                                .filter(f -> idExtractor.apply(f).equals(id))
+                                                                .findFirst()
+                                                                .map(Follow::getCreatedAt)
+                                                                .orElse(null)))
+                                .toList();
+
+                return new PageImpl<>(content, pageable,
+                                search != null && !search.isBlank() ? content.size() : follows.getTotalElements());
         }
 
-        return blockService.save(userId, blockerId);
-    }
+        private Page<FollowResponse> buildFollowPageFromIds(
+                        UUID currentUserId,
+                        List<UUID> targetIds,
+                        Pageable pageable,
+                        String search,
+                        long total) {
+                if (targetIds.isEmpty())
+                        return Page.empty(pageable);
 
-    public Page<UUID> getFollowerIdByUserId(
-            UUID userId, Integer page, Integer size
-    ) {
-        Pageable pageable = PageRequest.of(page, size);
-        return followRepository.findFollowingIds(userId, pageable);
-    }
+                List<UserResponse> users = userClient.getUsers(
+                                targetIds.stream().map(UUID::toString).collect(Collectors.joining(",")),
+                                currentUserId);
 
-    public Page<FollowResponse> findBothByFollowerId(
-            UUID currentUserId, int page, int size, String search
-    ) {
-        Pageable pageable = PageRequest.of(page, size);
+                if (search != null && !search.isBlank()) {
+                        String keyword = search.toLowerCase().trim();
+                        users = users.stream()
+                                        .filter(u -> u.getUsername().toLowerCase().contains(keyword) ||
+                                                        u.getFullName().toLowerCase().contains(keyword))
+                                        .toList();
+                }
 
-        Page<UUID> idPage =
-                followRepository.findRelatedUserIds(currentUserId, pageable);
+                Set<UUID> followedByCurrentUser = followRepository
+                                .findByFollowerIdAndUserIdIn(
+                                                currentUserId,
+                                                users.stream().map(UserResponse::getId).toList())
+                                .stream()
+                                .map(Follow::getUserId)
+                                .collect(Collectors.toSet());
 
-        List<UUID> ids = idPage.getContent();
+                List<FollowResponse> content = users.stream()
+                                .map(u -> new FollowResponse(
+                                                u.getId(),
+                                                UserWithFollowResponse.from(
+                                                                u,
+                                                                followedByCurrentUser.contains(u.getId())),
+                                                null))
+                                .toList();
 
-        return buildFollowPageFromIds(
-                currentUserId,
-                ids,
-                pageable,
-                search,
-                idPage.getTotalElements()
-        );
-    }
+                return new PageImpl<>(content, pageable, total);
+        }
 
-    public Page<FollowResponse> findMutualFollows(
-            UUID currentUserId, int page, int size, String search
-    ) {
-        Pageable pageable = PageRequest.of(page, size);
+        public Page<FollowResponse> findAllByUserId(
+                        UUID currentUserId,
+                        UUID userId,
+                        int page,
+                        int size,
+                        String search) {
+                Pageable pageable = PageRequest.of(page, size);
 
-        Page<UUID> idPage =
-                followRepository.findMutualFollows(currentUserId, pageable);
+                Page<UUID> idPage = followRepository.findFollowingIds(userId, pageable);
 
-        List<UUID> ids = idPage.getContent();
+                return buildFollowPageFromIds(
+                                currentUserId,
+                                idPage.getContent(),
+                                pageable,
+                                search,
+                                idPage.getTotalElements());
+        }
 
-        return buildFollowPageFromIds(
-                currentUserId,
-                ids,
-                pageable,
-                search,
-                idPage.getTotalElements()
-        );
-    }
+        public Page<FollowResponse> findAllByFollowerId(
+                        UUID currentUserId,
+                        UUID userId,
+                        int page,
+                        int size,
+                        String search) {
+                Pageable pageable = PageRequest.of(page, size);
 
+                Page<UUID> idPage = followRepository.findFollowerIds(userId, pageable);
+
+                return buildFollowPageFromIds(
+                                currentUserId,
+                                idPage.getContent(),
+                                pageable,
+                                search,
+                                idPage.getTotalElements());
+        }
+
+        public Page<UserSummaryStatusResponse> findCurrentUserFollowing(
+                        UUID currentUserId,
+                        int page,
+                        int size) {
+                Pageable pageable = PageRequest.of(page, size);
+
+                Page<UUID> idPage = followRepository.findFollowingIds(currentUserId, pageable);
+                List<UUID> ids = idPage.getContent();
+
+                if (ids.isEmpty()) {
+                        return new PageImpl<>(Collections.emptyList(), pageable, 0);
+                }
+
+                String idsParam = ids.stream()
+                                .map(UUID::toString)
+                                .collect(Collectors.joining(","));
+
+                List<UserSummaryStatusResponse> users = userClient.getUsersWithStatus(idsParam, currentUserId);
+
+                Map<UUID, UserSummaryStatusResponse> map = users.stream().collect(Collectors.toMap(
+                                UserSummaryStatusResponse::getId,
+                                u -> u));
+
+                List<UserSummaryStatusResponse> result = ids.stream()
+                                .map(map::get)
+                                .filter(Objects::nonNull)
+                                .toList();
+
+                return new PageImpl<>(result, pageable, idPage.getTotalElements());
+        }
+
+        @Transactional
+        public Block blockUser(UUID userId, UUID blockerId) {
+                if (isFollowedBool(blockerId, userId)) {
+                        delete(userId, blockerId);
+                }
+                if (isFollowedBool(userId, blockerId)) {
+                        delete(blockerId, userId);
+                }
+
+                return blockService.save(userId, blockerId);
+        }
+
+        public Page<UUID> getFollowerIdByUserId(
+                        UUID userId, Integer page, Integer size) {
+                Pageable pageable = PageRequest.of(page, size);
+                return followRepository.findFollowingIds(userId, pageable);
+        }
+
+        public Page<FollowResponse> findBothByFollowerId(
+                        UUID currentUserId, int page, int size, String search) {
+                Pageable pageable = PageRequest.of(page, size);
+
+                Page<UUID> idPage = followRepository.findRelatedUserIds(currentUserId, pageable);
+
+                List<UUID> ids = idPage.getContent();
+
+                return buildFollowPageFromIds(
+                                currentUserId,
+                                ids,
+                                pageable,
+                                search,
+                                idPage.getTotalElements());
+        }
+
+        public Page<FollowResponse> findMutualFollows(
+                        UUID currentUserId, int page, int size, String search) {
+                Pageable pageable = PageRequest.of(page, size);
+
+                Page<UUID> idPage = followRepository.findMutualFollows(currentUserId, pageable);
+
+                List<UUID> ids = idPage.getContent();
+
+                return buildFollowPageFromIds(
+                                currentUserId,
+                                ids,
+                                pageable,
+                                search,
+                                idPage.getTotalElements());
+        }
 
 }

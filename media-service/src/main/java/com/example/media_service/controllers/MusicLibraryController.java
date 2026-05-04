@@ -13,7 +13,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -26,91 +25,76 @@ public class MusicLibraryController {
     MusicLibraryService musicLibraryService;
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<Map<String, String>> create(@ModelAttribute MusicCreateRequest req)
-    {
+    public ResponseEntity<Map<String, String>> create(@ModelAttribute MusicCreateRequest req) {
         CurrentUser currentUser = AuthContext.get();
 
-        if(currentUser.getRole().equals("CLIENT")){
-            throw new UnauthorizedException("You are not allowed to perform this operation");
+        if (currentUser.getRole().equals("CLIENT")) {
+            throw new UnauthorizedException("Only clients can perform this action");
         }
 
         MusicLibrary savedMusic = musicLibraryService.create(req);
-        if(savedMusic != null) {
+        if (savedMusic != null) {
             return ResponseEntity.ok(Map.of(
-                    "message", "Add music success"
-            ));
-        }
-        else {
+                    "message", "Add music success"));
+        } else {
             return ResponseEntity.badRequest().body(Map.of(
-                    "message", "Add music failed"
-            ));
+                    "message", "Add music failed"));
         }
     }
 
     @PutMapping(value = "/{id}/status")
     public ResponseEntity<Map<String, String>> updateStatus(
             @PathVariable Long id,
-            @RequestParam MusicStatus status)
-    {
+            @RequestParam MusicStatus status) {
 
         CurrentUser currentUser = AuthContext.get();
 
-        if(currentUser.getRole().equals("CLIENT")){
-            throw new UnauthorizedException("You are not allowed to perform this operation");
+        if (currentUser.getRole().equals("CLIENT")) {
+            throw new UnauthorizedException("Only clients can perform this action");
         }
 
-        MusicLibrary updatedMusic = musicLibraryService.updateStatus(id,status);
-        if(updatedMusic != null) {
+        MusicLibrary updatedMusic = musicLibraryService.updateStatus(id, status);
+        if (updatedMusic != null) {
             return ResponseEntity.ok(Map.of(
-                    "message", "Update music success"
-            ));
-        }
-        else {
+                    "message", "Update music success"));
+        } else {
             return ResponseEntity.badRequest().body(Map.of(
-                    "message", "Update music failed"
-            ));
+                    "message", "Update music failed"));
         }
     }
 
-    @PutMapping(value = "/{id}",consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Map<String, String>> update(
             @PathVariable Long id,
-            @ModelAttribute MusicUpdateRequest req)
-    {
+            @ModelAttribute MusicUpdateRequest req) {
         CurrentUser currentUser = AuthContext.get();
 
-        if(currentUser.getRole().equals("CLIENT")){
-            throw new UnauthorizedException("You are not allowed to perform this operation");
+        if (currentUser.getRole().equals("CLIENT")) {
+            throw new UnauthorizedException("Only clients can perform this action");
         }
 
-        MusicLibrary updatedMusic = musicLibraryService.update(id,req);
-        if(updatedMusic != null) {
+        MusicLibrary updatedMusic = musicLibraryService.update(id, req);
+        if (updatedMusic != null) {
             return ResponseEntity.ok(Map.of(
-                    "message", "Update music success"
-            ));
-        }
-        else {
+                    "message", "Update music success"));
+        } else {
             return ResponseEntity.badRequest().body(Map.of(
-                    "message", "Update music failed"
-            ));
+                    "message", "Update music failed"));
         }
     }
 
-
     @DeleteMapping(value = "/{id}")
-    public ResponseEntity<Map<String, String>> delete(@PathVariable Long id)
-    {
+    public ResponseEntity<Map<String, String>> delete(@PathVariable Long id) {
 
         CurrentUser currentUser = AuthContext.get();
 
-        if(currentUser.getRole().equals("CLIENT")){
-            throw new UnauthorizedException("You are not allowed to perform this operation");
+        if (currentUser.getRole().equals("CLIENT")) {
+            throw new UnauthorizedException("Only clients can perform this action");
         }
 
         musicLibraryService.delete(id);
         return ResponseEntity.ok(Map.of(
-                "message", "Delete music success"
-        ));
+                "message", "Delete music success"));
     }
 
     @GetMapping()
@@ -118,15 +102,13 @@ public class MusicLibraryController {
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false, defaultValue = "ACTIVE") MusicStatus status,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
-    ) {
+            @RequestParam(defaultValue = "20") int size) {
         Page<MusicLibrary> result = musicLibraryService.search(keyword, status, page, size);
         return ResponseEntity.ok(result);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<MusicLibrary> get(@PathVariable Long id)
-    {
+    public ResponseEntity<MusicLibrary> get(@PathVariable Long id) {
         MusicLibrary result = musicLibraryService.findById(id);
         return ResponseEntity.ok(result);
     }

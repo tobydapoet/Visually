@@ -31,6 +31,7 @@ import { StoryStorageService } from 'src/story_storage/story_storage.service';
 import { InteractionClient } from 'src/client/interaction.client';
 import { ContentServiceType } from 'src/enums/content.type';
 import { FollowClient } from 'src/client/follow.client';
+import { UserRole } from 'src/enums/user_role.type';
 
 @Injectable()
 export class StoryService {
@@ -56,6 +57,10 @@ export class StoryService {
     const avatarUrl = this.context.getAvatarUrl();
     const username = this.context.getUsername();
     const role = this.context.getRole();
+
+    if (role !== UserRole.CLIENT) {
+      throw new ForbiddenException('Only clients can perform this action');
+    }
 
     const files: Express.Multer.File[] = [file];
     const mediaResponses = await this.mediaClient.upload(
@@ -112,15 +117,6 @@ export class StoryService {
           createdAt: savedStory.createdAt,
         },
       });
-
-      // this.kafkaClient.emit(`content.created`, {
-      //   senderId: userId,
-      //   username,
-      //   avatarUrl,
-      //   contentId: story.id,
-      //   contentType: 'STORY',
-      //   timestamp: new Date().toISOString(),
-      // });
 
       await queryRunner.commitTransaction();
 

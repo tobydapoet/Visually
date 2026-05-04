@@ -8,7 +8,7 @@ import {
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Comment } from './entities/comment.entity';
-import { In, IsNull, Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { ContextService } from 'src/context/context.service';
 import { CommentTargetType, LikeTargetType } from 'src/enums/ContentType';
 import { InteractionType } from 'src/enums/InteractionType';
@@ -20,6 +20,7 @@ import { UpdateCommentDto } from './dto/update-comment.dto';
 import { Like } from 'src/like/entities/like.entity';
 import { DataSource } from 'typeorm';
 import { OutboxEventsService } from 'src/outbox_events/outbox_events.service';
+import { UserRole } from 'src/enums/user_role.type';
 
 @Injectable({ scope: Scope.REQUEST })
 export class CommentService {
@@ -62,6 +63,11 @@ export class CommentService {
     const userId = this.context.getUserId();
     const username = this.context.getUsername();
     const avatarUrl = this.context.getAvatarUrl();
+    const role = this.context.getRole();
+
+    if (role !== UserRole.CLIENT) {
+      throw new ForbiddenException('Only clients can perform this action');
+    }
 
     const content =
       createCommentDto.targetType === CommentTargetType.POST
@@ -344,6 +350,12 @@ export class CommentService {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
+
+    const role = this.context.getRole();
+
+    if (role !== UserRole.CLIENT) {
+      throw new ForbiddenException('Only clients can perform this action');
+    }
 
     try {
       const rootComment = await queryRunner.manager.findOne(Comment, {

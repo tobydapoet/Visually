@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateReportDto } from './dto/create-report.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Like, Repository } from 'typeorm';
@@ -6,6 +10,7 @@ import { Report } from './entities/report.entity';
 import { ContextService } from 'src/context/context.service';
 import { ContentServiceType, ContentType } from 'src/enums/ContentType';
 import { ContentCacheService } from 'src/content-cache/content-cache.service';
+import { UserRole } from 'src/enums/user_role.type';
 
 @Injectable()
 export class ReportService {
@@ -19,6 +24,11 @@ export class ReportService {
     const userId = this.context.getUserId();
     const avatarUrl = this.context.getAvatarUrl();
     const username = this.context.getUsername();
+    const role = this.context.getRole();
+
+    if (role !== UserRole.CLIENT) {
+      throw new ForbiddenException('Only clients can perform this action');
+    }
 
     const contentTypeMap: Record<ContentType, ContentServiceType> = {
       [ContentType.POST]: ContentServiceType.POST,

@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Conversation } from './entities/conversation.entity';
@@ -10,6 +14,7 @@ import { MediaClient } from '../client/media.client';
 import { UpdateConversationDto } from './dto/update-conversation.dto';
 import { FollowClient } from '../client/follow.client';
 import { ConversationMember } from '../conversation_member/entities/conversation_member.entity';
+import { UserRole } from '../enums/user_role';
 
 @Injectable()
 export class ConversationService {
@@ -24,6 +29,12 @@ export class ConversationService {
   ) {}
 
   async create(createConversationDto: CreateConversationDto) {
+    const role = this.context.getRole();
+
+    if (role !== UserRole.CLIENT) {
+      throw new ForbiddenException('Only clients can perform this action');
+    }
+
     return this.dataSource.transaction(async (manager) => {
       const newConversation = this.conversationRepo.create({
         ...createConversationDto,
@@ -67,6 +78,14 @@ export class ConversationService {
 
     if (!existingConversation) {
       throw new NotFoundException("Can't find this conversation");
+    }
+
+    if (
+      existingConversation.members.map((member) => member.userId !== userId)
+    ) {
+      throw new NotFoundException(
+        "Yout don't have permission to do this action",
+      );
     }
 
     let mediaId = existingConversation.mediaId;
@@ -166,6 +185,11 @@ export class ConversationService {
 
   async getOrCreatePrivateConversation(userBId: string) {
     const userAId = this.context.getUserId();
+    const role = this.context.getRole();
+
+    if (role !== UserRole.CLIENT) {
+      throw new ForbiddenException('Only clients can perform this action');
+    }
 
     const conversation = await this.findPrivateConversation(userBId);
 
@@ -325,7 +349,6 @@ export class ConversationService {
         {
           userId: null,
           username: 'AI Assistant',
-
           avatarUrl: botMember?.avatarUrl,
           lastSeen: null,
         },

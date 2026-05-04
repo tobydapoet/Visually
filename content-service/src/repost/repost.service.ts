@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repost } from './entities/repost.entity';
 import { In, Repository } from 'typeorm';
@@ -9,6 +13,7 @@ import { ContentType } from 'src/enums/content.type';
 import { RepostReqDto } from './dto/create-repost.dto';
 import { InteractionType } from 'src/enums/interaction.type';
 import { DefaultReponseDto } from './dto/respose-default.dto';
+import { UserRole } from 'src/enums/user_role.type';
 
 @Injectable()
 export class RepostService {
@@ -22,6 +27,11 @@ export class RepostService {
     const userId = this.context.getUserId();
     const avatarUrl = this.context.getAvatarUrl();
     const username = this.context.getUsername();
+    const role = this.context.getRole();
+
+    if (role !== UserRole.CLIENT) {
+      throw new ForbiddenException('Only clients can perform this action');
+    }
 
     const existing = await this.repostRepo.findOne({
       where: {
@@ -152,6 +162,11 @@ export class RepostService {
 
   async remove(dto: RepostReqDto) {
     const userId = this.context.getUserId();
+    const role = this.context.getRole();
+
+    if (role !== UserRole.CLIENT) {
+      throw new ForbiddenException('Only clients can perform this action');
+    }
     await this.repostRepo.delete({
       userId,
       originalId: dto.originalId,

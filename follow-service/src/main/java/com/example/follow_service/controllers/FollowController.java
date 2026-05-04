@@ -3,6 +3,7 @@ package com.example.follow_service.controllers;
 import com.example.follow_service.contexts.AuthContext;
 import com.example.follow_service.entities.Follow;
 import com.example.follow_service.enums.FollowType;
+import com.example.follow_service.exceptions.UnauthorizedException;
 import com.example.follow_service.requests.CurrentUser;
 import com.example.follow_service.requests.FollowNotificationEvent;
 import com.example.follow_service.responses.FollowInfoResponse;
@@ -31,15 +32,13 @@ public class FollowController {
     public Page<UserResponse> getFollowersOrFollowings(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam FollowType type
-    ) {
+            @RequestParam FollowType type) {
         CurrentUser currentUser = AuthContext.get();
         return followService.getCurrentFollowers(
                 currentUser.getUserId(),
                 page,
                 size,
-                type
-        );
+                type);
     }
 
     @GetMapping("/followers")
@@ -47,29 +46,25 @@ public class FollowController {
             @RequestParam UUID followerId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) String search
-    ) {
+            @RequestParam(required = false) String search) {
         CurrentUser currentUser = AuthContext.get();
         return followService.findAllByFollowerId(
                 currentUser.getUserId(),
                 followerId,
                 page,
                 size,
-                search
-        );
+                search);
     }
 
     @GetMapping("/following/online")
     public Page<UserSummaryStatusResponse> getFollowers(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
-    ) {
+            @RequestParam(defaultValue = "10") int size) {
         CurrentUser currentUser = AuthContext.get();
         return followService.findCurrentUserFollowing(
                 currentUser.getUserId(),
                 page,
-                size
-        );
+                size);
     }
 
     @GetMapping("/following/status")
@@ -77,16 +72,14 @@ public class FollowController {
             @RequestParam UUID followerId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) String search
-    ) {
+            @RequestParam(required = false) String search) {
         CurrentUser currentUser = AuthContext.get();
         return followService.findAllByUserId(
                 currentUser.getUserId(),
                 followerId,
                 page,
                 size,
-                search
-        );
+                search);
     }
 
     @GetMapping("/following")
@@ -94,62 +87,58 @@ public class FollowController {
             @RequestParam UUID followerId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) String search
-    ) {
+            @RequestParam(required = false) String search) {
         CurrentUser currentUser = AuthContext.get();
         return followService.findAllByUserId(
                 currentUser.getUserId(),
                 followerId,
                 page,
                 size,
-                search
-        );
+                search);
     }
 
     @GetMapping("/both")
     public Page<FollowResponse> getBothByUserIds(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) String search
-    ) {
+            @RequestParam(required = false) String search) {
         CurrentUser currentUser = AuthContext.get();
         return followService.findBothByFollowerId(
                 currentUser.getUserId(),
                 page,
                 size,
-                search
-        );
+                search);
     }
 
     @GetMapping("/mutual")
     public Page<FollowResponse> getMutualFollowsUserIds(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) String search
-    ) {
+            @RequestParam(required = false) String search) {
         CurrentUser currentUser = AuthContext.get();
         return followService.findMutualFollows(
                 currentUser.getUserId(),
                 page,
                 size,
-                search
-        );
+                search);
     }
 
     @GetMapping("/{id}")
     public FollowInfoResponse isFollowed(
-            @PathVariable UUID followedId
-    ) {
+            @PathVariable UUID followedId) {
         CurrentUser currentUser = AuthContext.get();
         return followService.isFollowed(currentUser.getUserId(), followedId);
     }
 
     @PostMapping("/{id}")
     public ResponseEntity<Map<String, String>> follow(
-            @PathVariable UUID id
-    ) {
+            @PathVariable UUID id) {
         try {
             CurrentUser currentUser = AuthContext.get();
+
+            if (currentUser.getRole().equals("CLIENT")) {
+                throw new UnauthorizedException("Only clients can perform this action");
+            }
 
             FollowNotificationEvent event = new FollowNotificationEvent();
             event.setFollowedId(id);
@@ -177,11 +166,13 @@ public class FollowController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Map<String, String>> unfollow(
-            @PathVariable UUID id
-    ) {
+            @PathVariable UUID id) {
         try {
             CurrentUser currentUser = AuthContext.get();
             boolean follow = followService.delete(id, currentUser.getUserId());
+            if (currentUser.getRole().equals("CLIENT")) {
+                throw new UnauthorizedException("Only clients can perform this action");
+            }
             Map<String, String> response = new HashMap<>();
             if (follow) {
                 response.put("status", "success");

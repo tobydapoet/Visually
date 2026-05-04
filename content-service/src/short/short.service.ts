@@ -59,6 +59,11 @@ export class ShortService {
     const userId = this.context.getUserId();
     const avatarUrl = this.context.getAvatarUrl();
     const username = this.context.getUsername();
+    const role = this.context.getRole();
+
+    if (role !== UserRole.CLIENT) {
+      throw new ForbiddenException('Only clients can perform this action');
+    }
 
     if (!fileVideo) {
       throw new BadRequestException('Video is required!');

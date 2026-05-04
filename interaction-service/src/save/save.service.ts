@@ -13,6 +13,7 @@ import { ClientKafka } from '@nestjs/microservices';
 import { ContentServiceType, ContentType } from 'src/enums/ContentType';
 import { OutboxEventsService } from 'src/outbox_events/outbox_events.service';
 import { ContentCacheService } from 'src/content-cache/content-cache.service';
+import { UserRole } from 'src/enums/user_role.type';
 
 @Injectable()
 export class SaveService {
@@ -29,6 +30,11 @@ export class SaveService {
     const userId = this.context.getUserId();
     const username = this.context.getUsername();
     const avatarUrl = this.context.getAvatarUrl();
+    const role = this.context.getRole();
+
+    if (role !== UserRole.CLIENT) {
+      throw new ForbiddenException('Only clients can perform this action');
+    }
 
     const existingSave = await this.saveRepo.findOne({
       where: {

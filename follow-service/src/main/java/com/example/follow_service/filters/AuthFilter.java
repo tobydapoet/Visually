@@ -11,7 +11,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.UUID;
 
 @Component
@@ -21,8 +20,7 @@ public class AuthFilter extends OncePerRequestFilter {
     protected void doFilterInternal(
             HttpServletRequest request,
             HttpServletResponse response,
-            FilterChain filterChain
-    ) throws ServletException, IOException {
+            FilterChain filterChain) throws ServletException, IOException {
 
         String userId = request.getHeader("X-User-Id");
         String sessionId = request.getHeader("X-Session-Id");
@@ -40,8 +38,7 @@ public class AuthFilter extends OncePerRequestFilter {
                 sessionId != null ? Long.parseLong(sessionId) : null,
                 role,
                 avatarUrl,
-                username
-        );
+                username);
 
         AuthContext.set(currentUser);
 
@@ -64,4 +61,3 @@ public class AuthFilter extends OncePerRequestFilter {
 
     }
 }
-

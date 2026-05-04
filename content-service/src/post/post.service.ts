@@ -58,6 +58,11 @@ export class PostService {
     const userId = this.context.getUserId();
     const avatarUrl = this.context.getAvatarUrl();
     const username = this.context.getUsername();
+    const role = this.context.getRole();
+
+    if (role !== UserRole.CLIENT) {
+      throw new ForbiddenException('Only clients can perform this action');
+    }
 
     if (!files) {
       throw new NotFoundException('file cannot be empty!');

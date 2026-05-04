@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
   Scope,
@@ -17,6 +18,7 @@ import { OutboxEventsService } from 'src/outbox_events/outbox_events.service';
 import { DataSource } from 'typeorm';
 import { likeToContentTypeMap } from './maps/likeToContentTypeMap';
 import { ContentCacheService } from 'src/content-cache/content-cache.service';
+import { UserRole } from 'src/enums/user_role.type';
 
 @Injectable({ scope: Scope.REQUEST })
 export class LikeService {
@@ -34,6 +36,11 @@ export class LikeService {
     const currentUserId = this.context.getUserId();
     const currentUserAvatarUrl = this.context.getAvatarUrl();
     const currentUsername = this.context.getUsername();
+    const role = this.context.getRole();
+
+    if (role !== UserRole.CLIENT) {
+      throw new ForbiddenException('Only clients can perform this action');
+    }
 
     const existingLike = await this.likeRepo.findOne({
       where: {
@@ -225,6 +232,11 @@ export class LikeService {
 
   async remove(targetId: number, targetType: LikeTargetType) {
     const userId = this.context.getUserId();
+    const role = this.context.getRole();
+
+    if (role !== UserRole.CLIENT) {
+      throw new ForbiddenException('Only clients can perform this action');
+    }
 
     const existLike = await this.likeRepo.findOne({
       where: { targetId, targetType, userId },

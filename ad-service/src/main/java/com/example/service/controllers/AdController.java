@@ -5,6 +5,7 @@ import com.example.service.entities.Ad;
 import com.example.service.enums.AdStatus;
 import com.example.service.enums.AdType;
 import com.example.service.enums.Gender;
+import com.example.service.exceptions.UnauthorizedException;
 import com.example.service.requests.CreateAdDto;
 import com.example.service.requests.CurrentUser;
 import com.example.service.requests.PendingAdData;
@@ -40,10 +41,13 @@ public class AdController {
     public ResponseEntity<ApiResponse<Ad>> createAd(
             @RequestBody CreateAdDto createAdDto) {
         CurrentUser currentUser = AuthContext.get();
+        if (currentUser.getRole().equals("CLIENT")) {
+            throw new UnauthorizedException("Only clients can perform this action");
+        }
         PendingAdData data = new PendingAdData();
         data.setDto(createAdDto);
         data.setUsername(currentUser.getUsername());
-        Ad ad = adService.createAd(data,currentUser.getUserId());
+        Ad ad = adService.createAd(data, currentUser.getUserId());
         ApiResponse<Ad> response = new ApiResponse<>();
         response.setMessage("Ad created successfully");
         response.setData(ad);
@@ -53,7 +57,10 @@ public class AdController {
     @PostMapping("/pending")
     public ResponseEntity<?> savePendingAd(@RequestBody CreateAdDto dto) {
         CurrentUser currentUser = AuthContext.get();
-        pendingAdService.save(currentUser.getUserId(), currentUser.getUsername(),dto);
+        if (currentUser.getRole().equals("CLIENT")) {
+            throw new UnauthorizedException("Only clients can perform this action");
+        }
+        pendingAdService.save(currentUser.getUserId(), currentUser.getUsername(), dto);
         return ResponseEntity.ok(Map.of("message", "OK"));
     }
 
@@ -87,14 +94,12 @@ public class AdController {
     @GetMapping("/feed")
     public List<AdFeedResponse> getAdsForFeed(
             @RequestParam(required = false) Integer age,
-            @RequestParam(required = false) Gender gender
-    ) {
+            @RequestParam(required = false) Gender gender) {
         List<Ad> ads = adService.getAdByGenderAndAge(gender, age);
 
         return new ArrayList<>(ads.stream().map(ad -> new AdFeedResponse(
                 ad.getContentId(),
-                ad.getContentType()
-        )).toList());
+                ad.getContentType())).toList());
     }
 
     @GetMapping

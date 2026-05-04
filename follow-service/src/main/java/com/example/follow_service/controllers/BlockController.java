@@ -2,6 +2,9 @@ package com.example.follow_service.controllers;
 
 import com.example.follow_service.contexts.AuthContext;
 import com.example.follow_service.entities.Block;
+import com.example.follow_service.enums.UserRole;
+import com.example.follow_service.exceptions.ForbiddenException;
+import com.example.follow_service.exceptions.UnauthorizedException;
 import com.example.follow_service.requests.CurrentUser;
 import com.example.follow_service.responses.BlockInfoResponse;
 import com.example.follow_service.services.BlockService;
@@ -28,51 +31,48 @@ public class BlockController {
 
     @PostMapping("/users/check-block")
     public Map<UUID, Boolean> checkBlockedUsers(
-            @RequestBody List<UUID> targetUserIds
-    ) {
+            @RequestBody List<UUID> targetUserIds) {
         CurrentUser currentUser = AuthContext.get();
 
         return blockService.getBlockedUsers(
                 currentUser.getUserId(),
-                targetUserIds
-        );
+                targetUserIds);
     }
 
     @GetMapping("/current")
     public List<UUID> getCurrentBlockers() {
         CurrentUser currentUser = AuthContext.get();
         return blockService.getCurrentBlockers(
-                currentUser.getUserId()
-        );
+                currentUser.getUserId());
     }
 
     @GetMapping("/user/check-block/{userId}")
     public Map<String, Boolean> checkBlockedUser(
-            @PathVariable UUID userId
-    ) {
+            @PathVariable UUID userId) {
         CurrentUser currentUser = AuthContext.get();
 
         return blockService.getBlockedUser(
                 currentUser.getUserId(),
-                userId
-        );
+                userId);
     }
 
     @GetMapping("/{id}")
     public BlockInfoResponse isBlocked(
-            @PathVariable UUID blockedId
-    ) {
+            @PathVariable UUID blockedId) {
         CurrentUser currentUser = AuthContext.get();
         return blockService.isBlocked(currentUser.getUserId(), blockedId);
     }
 
     @PostMapping("/{id}")
     public ResponseEntity<Map<String, String>> block(
-            @PathVariable UUID id
-    ) {
+            @PathVariable UUID id) {
         try {
             CurrentUser currentUser = AuthContext.get();
             Block block = followService.blockUser(currentUser.getUserId(), id);
+
+            if (currentUser.getRole().equals("CLIENT")) {
+                throw new UnauthorizedException("Only clients can perform this action");
+            }
 
             Map<String, String> response = new HashMap<>();
             if (block != null) {
@@ -92,10 +92,12 @@ public class BlockController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Map<String, String>> unblock(
-            @PathVariable UUID id
-    ) {
+            @PathVariable UUID id) {
         try {
             CurrentUser currentUser = AuthContext.get();
+            if (currentUser.getRole().equals("CLIENT")) {
+                throw new UnauthorizedException("Only clients can perform this action");
+            }
             boolean block = blockService.delete(currentUser.getUserId(), id);
             Map<String, String> response = new HashMap<>();
             if (block) {

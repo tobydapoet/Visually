@@ -1,12 +1,13 @@
 package com.example.service.controllers;
 
+import com.example.service.contexts.AuthContext;
 import com.example.service.entities.Ad;
-import com.example.service.requests.CreateAdDto;
+import com.example.service.exceptions.UnauthorizedException;
+import com.example.service.requests.CurrentUser;
 import com.example.service.requests.PendingAdData;
 import com.example.service.requests.SepayWebhookDto;
 import com.example.service.services.AdService;
 import com.example.service.services.PendingAdService;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -28,10 +29,14 @@ public class PaymentWebhookController {
     private final PendingAdService pendingAdService;
     private final AdService adService;
     private final KafkaTemplate<String, String> kafkaTemplate;
-    private final ObjectMapper objectMapper;
 
     @PostMapping("/webhook/sepay")
     public ResponseEntity<?> handleSepayWebhook(@RequestBody SepayWebhookDto body) {
+        CurrentUser currentUser = AuthContext.get();
+
+        if (currentUser.getRole().equals("CLIENT")) {
+            throw new UnauthorizedException("Only clients can perform this action");
+        }
 
         if (!"in".equals(body.getTransferType())) {
             return ResponseEntity.ok(Map.of("success", true));
@@ -47,8 +52,7 @@ public class PaymentWebhookController {
         String rawId = matcher.group(1);
         String userId = rawId.replaceAll(
                 "([a-f0-9]{8})([a-f0-9]{4})([a-f0-9]{4})([a-f0-9]{4})([a-f0-9]{12})",
-                "$1-$2-$3-$4-$5"
-        );
+                "$1-$2-$3-$4-$5");
 
         PendingAdData dto = pendingAdService.get(UUID.fromString(userId));
 

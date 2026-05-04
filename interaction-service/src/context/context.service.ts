@@ -1,5 +1,6 @@
 import { Inject, Injectable, Scope } from '@nestjs/common';
 import { REQUEST } from '@nestjs/core';
+import { UserRole } from 'src/enums/user_role.type';
 
 @Injectable({ scope: Scope.REQUEST })
 export class ContextService {
@@ -21,7 +22,7 @@ export class ContextService {
     return this.req.headers['x-user-username'];
   }
 
-  getRole(): string {
+  getRole(): UserRole {
     return this.req.headers['x-user-role'];
   }
 }
