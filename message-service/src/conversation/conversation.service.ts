@@ -145,7 +145,7 @@ export class ConversationService {
     }
 
     const otherMembers = conversation.members.filter(
-      (m) => m.userId !== userId,
+      (m) => m.userId !== userId && !m.isBot,
     );
 
     const otherUsers =

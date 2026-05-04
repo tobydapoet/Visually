@@ -90,6 +90,7 @@ export class ConversationMemberService {
       where: {
         conversation: { id: conversationId },
         deletedAt: IsNull(),
+        isBot: false,
       },
     });
 
