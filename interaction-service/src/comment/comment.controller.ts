@@ -29,7 +29,7 @@ export class CommentController {
   @ApiBearerAuth()
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() createCommentDto: CreateCommentDto) {
-    const res = this.commentService.create(createCommentDto);
+    const res = await this.commentService.create(createCommentDto);
     return {
       message: 'Create comment success!',
       content: res,
