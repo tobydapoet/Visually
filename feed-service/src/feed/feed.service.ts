@@ -54,11 +54,6 @@ export class FeedService {
 
   async getFollowFeed(cursor?: string, take: number = 20) {
     const userId = this.context.getUserId();
-    const role = this.context.getRole();
-
-    if (role !== UserRole.CLIENT) {
-      throw new ForbiddenException('Only clients can perform this action');
-    }
     const seenKey = `feed:seen:${userId}`;
     const skippedKey = `feed:skipped:${userId}`;
 
@@ -177,11 +172,7 @@ export class FeedService {
 
   async getReelsFeed(cursor?: number, take?: number) {
     const userId = this.context.getUserId();
-    const role = this.context.getRole();
 
-    if (role !== UserRole.CLIENT) {
-      throw new ForbiddenException('Only clients can perform this action');
-    }
     const seenKey = `reels:seen:${userId}`;
     const skippedKey = `reels:skipped:${userId}`;
     const currentKey = `reels:current:${userId}`;
