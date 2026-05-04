@@ -81,7 +81,12 @@ export class CommentService {
       const repliedComment = await this.commentRepo.findOne({
         where: { id: createCommentDto.replyToId },
       });
-      if (repliedComment && repliedComment.userId !== userId) {
+
+      if (!repliedComment) {
+        throw new NotFoundException('Reply comment not found');
+      }
+
+      if (repliedComment.userId !== userId) {
         repliedUser = {
           userId: repliedComment.userId,
           username: repliedComment.username,
