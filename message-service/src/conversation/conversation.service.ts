@@ -127,6 +127,7 @@ export class ConversationService {
       .where('m.userId IN (:...userIds)', {
         userIds: [userAId, userBId],
       })
+      .andWhere('c.type = :type', { type: ConversationType.PRIVATE })
       .andWhere('m.deletedAt IS NULL')
       .groupBy('c.id')
       .having('COUNT(DISTINCT m.userId) = 2')
@@ -247,7 +248,9 @@ export class ConversationService {
     return {
       content: conversations.map((c: Conversation) => {
         const lastMessage = c.messages?.[0] || null;
-        const otherMembers = c.members.filter((m) => m.userId !== userId);
+        const otherMembers = c.members.filter(
+          (m) => m.userId !== userId && !m.isBot,
+        );
 
         const otherUsers = (
           c.type === ConversationType.PRIVATE
