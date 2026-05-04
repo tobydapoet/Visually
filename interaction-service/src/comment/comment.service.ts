@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Inject,
   Injectable,
@@ -162,6 +163,22 @@ export class CommentService {
     }
 
     if (createCommentDto.replyToId) {
+      const repliedComment = await this.commentRepo.findOne({
+        where: { id: createCommentDto.replyToId },
+      });
+
+      if (!repliedComment) {
+        throw new NotFoundException('Reply comment not found');
+      }
+
+      if (
+        repliedComment.targetId !== createCommentDto.targetId ||
+        repliedComment.targetType !== createCommentDto.targetType
+      ) {
+        throw new BadRequestException(
+          'Reply comment must belong to the same target',
+        );
+      }
       await this.updateInteraction(
         createCommentDto.replyToId,
         InteractionType.COMMENT,
