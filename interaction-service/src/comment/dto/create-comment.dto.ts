@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsArray,
   IsEnum,
@@ -16,6 +16,7 @@ export class CreateCommentDto {
   @ApiProperty()
   @IsNotEmpty()
   @IsNumber()
+  @Transform(({ value }) => Number(value))
   targetId!: number;
 
   @ApiProperty({
@@ -34,6 +35,7 @@ export class CreateCommentDto {
   @ApiProperty()
   @IsOptional()
   @IsNumber()
+  @Transform(({ value }) => (value !== undefined ? Number(value) : undefined))
   replyToId?: number;
 
   @IsOptional()
