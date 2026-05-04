@@ -15,12 +15,6 @@ export class MentionService {
   ) {}
   async createMany(dto: CreateMentionDto) {
     const userId = this.context.getUserId();
-    console.log(
-      'createMany called, userId:',
-      userId,
-      'mentions:',
-      dto.mentions,
-    );
 
     if (!dto.mentions.length) return [];
 
