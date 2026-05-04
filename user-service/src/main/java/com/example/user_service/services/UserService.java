@@ -498,7 +498,7 @@ public class UserService {
             }
 
             if (!actualUsername.equals(req.getUsername())) {
-                throw new NotFoundException("username don not match: " + req.getId());
+                throw new NotFoundException("username do not match: " + req.getId());
             }
         }
 

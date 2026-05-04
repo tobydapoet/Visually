@@ -15,15 +15,28 @@ export class MentionService {
   ) {}
   async createMany(dto: CreateMentionDto) {
     const userId = this.context.getUserId();
+    console.log(
+      'createMany called, userId:',
+      userId,
+      'mentions:',
+      dto.mentions,
+    );
+
     if (!dto.mentions.length) return [];
 
-    await this.userClient.getValidateBatchUsers(
-      userId,
-      dto.mentions.map((m) => ({
-        id: m.userId,
-        username: m.username,
-      })),
-    );
+    try {
+      await this.userClient.getValidateBatchUsers(
+        userId,
+        dto.mentions.map((m) => ({
+          id: m.userId,
+          username: m.username,
+        })),
+      );
+    } catch (err: any) {
+      console.error('getValidateBatchUsers error:', err.message, err.status);
+      throw err;
+    }
+
     const mentions = dto.mentions.map((m) =>
       this.mentionRepo.create({
         userId: m.userId,

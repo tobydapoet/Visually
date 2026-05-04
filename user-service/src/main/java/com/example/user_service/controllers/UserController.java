@@ -27,6 +27,7 @@ import org.springframework.web.multipart.MultipartHttpServletRequest;
 
 import java.io.InputStream;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RestController
@@ -36,11 +37,12 @@ public class UserController {
     UserService userService;
 
     @PostMapping("/validate")
-    public List<User> validateUsers(@RequestBody @Valid List<UserBatchReq> requests) {
+    public List<UserSummaryResponse> validateUsers(@RequestBody @Valid List<UserBatchReq> requests) {
         List<User> validUsers = userService.validateUsers(requests);
-        return validUsers;
+        return validUsers.stream()
+                .map(UserSummaryResponse::fromEntity)
+                .collect(Collectors.toList());
     }
-
     @GetMapping("/current")
     public UserResponse getCurrentUser(HttpServletRequest request) {
         CurrentUser currentUser = AuthContext.get();
