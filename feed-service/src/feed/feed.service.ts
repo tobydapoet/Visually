@@ -225,6 +225,22 @@ export class FeedService {
         return 0;
       });
 
+    if (filtered.length === 0) {
+      await this.redisInterest.del(skippedKey);
+      const freshContents = await this.contentClient.getContent(
+        take ?? 20,
+        cursor ?? 1,
+        topInterests,
+        userId,
+      );
+      filtered.push(
+        ...freshContents.filter((c) => {
+          const key = `${c.contentType}:${c.contentId}`;
+          return !seenIds.includes(key);
+        }),
+      );
+    }
+
     console.log('✅ filtered count:', filtered.length);
 
     const adItems = ads.map((ad) => ({

@@ -55,6 +55,12 @@ export class FeedSeenService {
       const skippedKey = `reels:skipped:${userId}`;
       await this.redis.sadd(skippedKey, key);
       await this.redis.expire(skippedKey, TTL);
+
+      const count = await this.redis.scard(skippedKey);
+      if (count > 15) {
+        const members = await this.redis.smembers(skippedKey);
+        await this.redis.srem(skippedKey, members[0]);
+      }
     }
   }
 }
