@@ -192,6 +192,7 @@ public class UserService {
 
         if (req.getUsername() != null) {
             user.setUsername(req.getUsername());
+            userDetailEvent.setUsername(req.getUsername());
             usernameChanged = true;
         }
 
