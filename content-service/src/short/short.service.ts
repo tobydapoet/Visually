@@ -453,7 +453,7 @@ export class ShortService {
     const currentUserId = this.context.getUserId();
 
     const [shorts, total] = await this.shortRepo.findAndCount({
-      where: { userId },
+      where: { userId, status: ContentStatus.ACTIVE },
       select: [
         'id',
         'caption',

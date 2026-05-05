@@ -401,7 +401,7 @@ export class PostService {
   ): Promise<PostResponsePageDto> {
     const currentUserId = this.context.getUserId();
     const [posts, total] = await this.postRepo.findAndCount({
-      where: { userId },
+      where: { userId, status: ContentStatus.ACTIVE },
       relations: ['medias'],
       order: { createdAt: 'DESC' },
       skip: (page - 1) * size,
