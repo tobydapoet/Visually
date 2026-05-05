@@ -78,7 +78,7 @@ public class GlobalException {
             if ("gender".equals(field) && "typeMismatch".equals(code)) {
                 return ResponseEntity.badRequest().body(Map.of(
                         "code", "VALIDATION_ERROR",
-                        "message", "Gender must be one of: NAM, NU"
+                        "message", "Gender must be one of: MALE, FEMALE, OTHER"
                 ));
             }
         }

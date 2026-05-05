@@ -159,7 +159,7 @@ public class UserController {
     @SecurityRequirement(name = "bearerAuth")
     @PutMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Map<String, String>> updateUser(
-            @ModelAttribute UpdateUserRequest req,
+            @ModelAttribute @Valid UpdateUserRequest req,
             HttpServletRequest request
     ) throws Exception {
         CurrentUser currentUser = AuthContext.get();
