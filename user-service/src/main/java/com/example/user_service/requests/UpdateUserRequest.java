@@ -13,7 +13,6 @@ import java.time.LocalDate;
 @Data
 public class UpdateUserRequest {
     @JsonFormat(pattern = "yyyy-MM-dd")
-    @NotNull(message = "Date of birth is required")
     @PastOrPresent(message = "Date of birth cannot be in the future")
     private LocalDate dob;
 
