@@ -178,7 +178,18 @@ export class LikeService {
     }
   }
 
-  async updateUserDetail(userId: string, avatarUrl: string, username: string) {
+  async updateUserDetail(
+    userId: string,
+    avatarUrl?: string,
+    username?: string,
+  ) {
+    const updateFields = {
+      ...(avatarUrl && { avatarUrl }),
+      ...(username && { username }),
+    };
+
+    if (!Object.keys(updateFields).length) return;
+
     const BATCH_SIZE = 100;
     let skip = 0;
 
@@ -194,7 +205,7 @@ export class LikeService {
 
       await this.likeRepo.update(
         { id: In(likes.map((p) => p.id)) },
-        { avatarUrl, username },
+        updateFields,
       );
 
       skip += BATCH_SIZE;

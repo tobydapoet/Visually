@@ -10,7 +10,7 @@ import java.util.UUID;
 @AllArgsConstructor
 @NoArgsConstructor
 public class UserDetailUpdateEvent {
-    private UUID userId;
+    private UUID id;
     private String avatarUrl;
     private String username;
 }

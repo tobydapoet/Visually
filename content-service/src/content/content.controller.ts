@@ -333,7 +333,7 @@ export class ContentController {
 
   @EventPattern('user.updated.detail')
   updateAvarUrl(
-    @Payload() data: { id: string; avatarUrl: string; username: string },
+    @Payload() data: { id: string; avatarUrl?: string; username?: string },
   ) {
     return this.contentService.updateUserDetail(
       data.id,

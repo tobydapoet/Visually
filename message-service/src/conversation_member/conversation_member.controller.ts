@@ -87,9 +87,9 @@ export class ConversationMemberController {
     }
   }
 
-  @EventPattern('user.updated.profile')
+  @EventPattern('user.updated.detail')
   updateAvarUrl(
-    @Payload() data: { id: string; avatarUrl: string; username: string },
+    @Payload() data: { id: string; avatarUrl?: string; username?: string },
   ) {
     return this.conversationMemberService.updateUserDetail(
       data.id,

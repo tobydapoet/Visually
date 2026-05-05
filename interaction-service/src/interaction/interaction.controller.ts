@@ -23,9 +23,9 @@ export class InteractionController {
     return this.interactionService.getUserInteractions(ids, targetType);
   }
 
-  @EventPattern('user.updated.profile')
+  @EventPattern('user.updated.detail')
   updateAvarUrl(
-    @Payload() data: { id: string; avatarUrl: string; username: string },
+    @Payload() data: { id: string; avatarUrl?: string; username?: string },
   ) {
     return this.interactionService.updateUserDetail(
       data.id,

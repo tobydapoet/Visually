@@ -236,23 +236,34 @@ export class ConversationMemberService {
     return this.memberRepo.findOne({ where: { id } });
   }
 
-  async updateUserDetail(userId: string, avatarUrl: string, username: string) {
+  async updateUserDetail(
+    userId: string,
+    avatarUrl?: string,
+    username?: string,
+  ) {
+    const updateFields = {
+      ...(avatarUrl && { avatarUrl }),
+      ...(username && { username }),
+    };
+
+    if (!Object.keys(updateFields).length) return;
+
     const BATCH_SIZE = 100;
     let skip = 0;
 
     while (true) {
-      const member = await this.memberRepo.find({
+      const members = await this.memberRepo.find({
         where: { userId },
         select: ['id'],
         take: BATCH_SIZE,
         skip,
       });
 
-      if (!member.length) break;
+      if (!members.length) break;
 
       await this.memberRepo.update(
-        { id: In(member.map((p) => p.id)) },
-        { avatarUrl, username },
+        { id: In(members.map((p) => p.id)) },
+        updateFields,
       );
 
       skip += BATCH_SIZE;

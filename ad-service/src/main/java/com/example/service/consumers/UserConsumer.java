@@ -18,10 +18,10 @@ public class UserConsumer {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @KafkaListener(topics = "user.updated.detail", groupId = "ad-group")
-    public void handleUpdateUsername(String message) {
+    public void handleUpdateUserDetail(String message) {
         try {
             UserUpdateEvent event = objectMapper.readValue(message, UserUpdateEvent.class);
-            adService.updateUsername(event);
+            adService.updateUserDetail(event);
         } catch (Exception e) {
             log.error("Failed to handle user update event: {}", e.getMessage());
         }

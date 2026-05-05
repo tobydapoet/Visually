@@ -165,12 +165,13 @@ public class UserService {
 
         boolean profileChanged = false;
         boolean avatarChanged = false;
+        boolean usernameChanged = false;
 
         UserProfileUpdatedEvent profileEvent = new UserProfileUpdatedEvent();
         profileEvent.setId(id);
 
-        UserDetailUpdateEvent avatarEvent = new UserDetailUpdateEvent();
-        avatarEvent.setId(id);
+        UserDetailUpdateEvent userDetailEvent = new UserDetailUpdateEvent();
+        userDetailEvent.setId(id);
 
         if (req.getFullName() != null) {
             user.setFullName(req.getFullName());
@@ -191,7 +192,7 @@ public class UserService {
 
         if (req.getUsername() != null) {
             user.setUsername(req.getUsername());
-            profileChanged = true;
+            usernameChanged = true;
         }
 
         if (req.getBio() != null) {
@@ -210,7 +211,7 @@ public class UserService {
             user.setAvatarUrl(media.getUrl());
             user.setAvatarId(media.getId());
 
-            avatarEvent.setAvatarUrl(media.getUrl());
+            userDetailEvent.setAvatarUrl(media.getUrl());
             avatarChanged = true;
         }
 
@@ -220,8 +221,8 @@ public class UserService {
             userEventProducer.emitUserProfileUpdated(profileEvent);
         }
 
-        if (avatarChanged) {
-            userEventProducer.emitUserDetailUpdated(avatarEvent);
+        if (avatarChanged || usernameChanged) {
+            userEventProducer.emitUserDetailUpdated(userDetailEvent);
         }
 
         return savedUser;

@@ -53,7 +53,18 @@ export class ReportService {
     return this.reportRepo.save(newReport);
   }
 
-  async updateUserDetail(userId: string, avatarUrl: string, username: string) {
+  async updateUserDetail(
+    userId: string,
+    avatarUrl?: string,
+    username?: string,
+  ) {
+    const updateFields = {
+      ...(avatarUrl && { avatarUrl }),
+      ...(username && { username }),
+    };
+
+    if (!Object.keys(updateFields).length) return;
+
     const BATCH_SIZE = 100;
     let skip = 0;
 
@@ -69,7 +80,7 @@ export class ReportService {
 
       await this.reportRepo.update(
         { id: In(reports.map((p) => p.id)) },
-        { avatarUrl, username },
+        updateFields,
       );
 
       skip += BATCH_SIZE;

@@ -329,10 +329,12 @@ public class AdService {
         adRepository.save(ad);
     }
 
-    public void updateUsername(UserUpdateEvent event) {
+    public void updateUserDetail(UserUpdateEvent event) {
         adRepository.findByUserId(event.getUserId()).ifPresent(ad -> {
-            ad.setUsername(event.getUsername());
-            adRepository.save(ad);
+            if (event.getUsername() != null) {
+                ad.setUsername(event.getUsername());
+                adRepository.save(ad);
+            }
         });
     }
 }

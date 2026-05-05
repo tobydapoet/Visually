@@ -60,7 +60,11 @@ export class InteractionService {
     }));
   }
 
-  async updateUserDetail(userId: string, avatarUrl: string, username: string) {
+  async updateUserDetail(
+    userId: string,
+    avatarUrl?: string,
+    username?: string,
+  ) {
     await this.likeService.updateUserDetail(userId, avatarUrl, username);
     await this.commentService.updateUserDetail(userId, avatarUrl, username);
     await this.saveService.updateUserDetail(userId, avatarUrl, username);

@@ -475,7 +475,11 @@ export class ContentService {
     };
   }
 
-  async updateUserDetail(userId: string, avatarUrl: string, username: string) {
+  async updateUserDetail(
+    userId: string,
+    avatarUrl?: string,
+    username?: string,
+  ) {
     await Promise.all([
       this.updateBatch(this.postRepo, userId, avatarUrl, username),
       this.updateBatch(this.shortRepo, userId, avatarUrl, username),
@@ -486,9 +490,16 @@ export class ContentService {
   private async updateBatch(
     repo: Repository<any>,
     userId: string,
-    avatarUrl: string,
-    username: string,
+    avatarUrl?: string,
+    username?: string,
   ) {
+    const updateFields = {
+      ...(avatarUrl && { avatarUrl }),
+      ...(username && { username }),
+    };
+
+    if (!Object.keys(updateFields).length) return;
+
     const BATCH_SIZE = 100;
     let skip = 0;
 
@@ -502,10 +513,7 @@ export class ContentService {
 
       if (!records.length) break;
 
-      await repo.update(
-        { id: In(records.map((r) => r.id)) },
-        { avatarUrl, username },
-      );
+      await repo.update({ id: In(records.map((r) => r.id)) }, updateFields);
 
       skip += BATCH_SIZE;
     }

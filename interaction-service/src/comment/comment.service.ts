@@ -37,7 +37,18 @@ export class CommentService {
     private dataSource: DataSource,
   ) {}
 
-  async updateUserDetail(userId: string, avatarUrl: string, username: string) {
+  async updateUserDetail(
+    userId: string,
+    avatarUrl?: string,
+    username?: string,
+  ) {
+    const updateFields = {
+      ...(avatarUrl && { avatarUrl }),
+      ...(username && { username }),
+    };
+
+    if (!Object.keys(updateFields).length) return;
+
     const BATCH_SIZE = 100;
     let skip = 0;
 
@@ -53,7 +64,7 @@ export class CommentService {
 
       await this.commentRepo.update(
         { id: In(comments.map((p) => p.id)) },
-        { avatarUrl, username },
+        updateFields,
       );
 
       skip += BATCH_SIZE;

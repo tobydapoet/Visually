@@ -32,7 +32,7 @@ public class UserEventProducer {
     }
 
     public void emitUserDetailUpdated(UserDetailUpdateEvent event) {
-        sendAfterCommit("user.updated.detail", event.getUserId(), event);
+        sendAfterCommit("user.updated.detail", event.getId(), event);
     }
 
     private void sendAfterCommit(String topic, UUID key, Object event) {
