@@ -24,6 +24,7 @@ import org.springframework.data.domain.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -202,18 +203,28 @@ public class UserService {
         }
 
         if (req.getFile() != null) {
+            MultipartFile file = req.getFile();
 
-            if (user.getAvatarId() != null) {
-                uploadService.delete(user.getAvatarId(), id, roles);
+            if (file != null && !file.isEmpty()) {
+
+                String contentType = file.getContentType();
+
+                if (contentType == null || !contentType.startsWith("image/")) {
+                    throw new ConflictException("Only image file is accepted");
+                }
+
+                MediaResponse media = uploadService.upload(file, id, roles);
+
+                if (user.getAvatarId() != null) {
+                    uploadService.delete(user.getAvatarId(), id, roles);
+                }
+
+                user.setAvatarUrl(media.getUrl());
+                user.setAvatarId(media.getId());
+
+                userDetailEvent.setAvatarUrl(media.getUrl());
+                avatarChanged = true;
             }
-
-            MediaResponse media = uploadService.upload(req.getFile(), id, roles);
-
-            user.setAvatarUrl(media.getUrl());
-            user.setAvatarId(media.getId());
-
-            userDetailEvent.setAvatarUrl(media.getUrl());
-            avatarChanged = true;
         }
 
         User savedUser = userRepository.save(user);
