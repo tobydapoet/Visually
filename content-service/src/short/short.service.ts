@@ -616,10 +616,14 @@ export class ShortService {
       }
 
       if (
-        updateShortDto.mentionIdRemove &&
-        updateShortDto.mentionIdRemove.length > 0
+        updateShortDto.mentionUserIdRemove &&
+        updateShortDto.mentionUserIdRemove.length > 0
       ) {
-        await this.mentionService.deleteMany(updateShortDto.mentionIdRemove);
+        await this.mentionService.deleteMany(
+          updateShortDto.mentionUserIdRemove,
+          ContentType.SHORT,
+          shortId,
+        );
       }
 
       const savedShort = await queryRunner.manager.save(currentShort);

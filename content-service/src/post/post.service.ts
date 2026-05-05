@@ -578,10 +578,14 @@ export class PostService {
       }
 
       if (
-        updatePostDto.mentionIdRemove &&
-        updatePostDto.mentionIdRemove.length > 0
+        updatePostDto.mentionUserIdRemove &&
+        updatePostDto.mentionUserIdRemove.length > 0
       ) {
-        await this.mentionService.deleteMany(updatePostDto.mentionIdRemove);
+        await this.mentionService.deleteMany(
+          updatePostDto.mentionUserIdRemove,
+          ContentType.POST,
+          postId,
+        );
       }
 
       const savedPost = await queryRunner.manager.save(currentPost);

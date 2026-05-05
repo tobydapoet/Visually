@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsArray, IsNumber, IsString } from 'class-validator';
+import { IsArray, IsNumber, IsString, IsUUID } from 'class-validator';
 import { CreateMentionContentDto } from 'src/mention/dto/create-mention.dto';
 
 export class UpdatePostDto {
@@ -28,7 +28,6 @@ export class UpdatePostDto {
 
   @ApiProperty()
   @IsArray()
-  @IsNumber({}, { each: true })
-  @Type(() => Number)
-  mentionIdRemove?: number[];
+  @IsUUID('4', { each: true })
+  mentionUserIdRemove?: string[];
 }

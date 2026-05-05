@@ -43,8 +43,12 @@ export class MentionsService {
     await this.mentionRepo.insert(createMentionDtos);
   }
 
-  async deleteMany(id: number[]) {
-    await this.mentionRepo.delete(id);
+  async deleteMany(userIds: string[], type: ContentType, contentId: number) {
+    await this.mentionRepo.delete({
+      userId: In(userIds),
+      type: type,
+      targetId: contentId,
+    });
   }
 
   async findMany(
