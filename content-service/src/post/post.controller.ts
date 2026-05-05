@@ -111,7 +111,7 @@ export class PostController {
   @Put(':id')
   async updateCaption(
     @Body() updatePostDto: UpdatePostDto,
-    @Param() id: number,
+    @Param('id', ParseIntPipe) id: number,
   ) {
     const savedPost = await this.postService.update(id, updatePostDto);
     if (savedPost) {

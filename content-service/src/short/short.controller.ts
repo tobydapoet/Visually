@@ -109,7 +109,10 @@ export class ShortController {
 
   @ApiBearerAuth()
   @Put(':id')
-  async update(@Body() updateShortDto: UpdateShortDto, @Param() id: number) {
+  async update(
+    @Body() updateShortDto: UpdateShortDto,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
     const savedShort = await this.shortService.update(id, updateShortDto);
     if (savedShort) {
       return {
