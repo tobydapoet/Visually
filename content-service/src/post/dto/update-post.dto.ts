@@ -1,6 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsArray, IsNumber, IsString, IsUUID } from 'class-validator';
+import {
+  IsArray,
+  IsNumber,
+  IsString,
+  IsUUID,
+  ValidateNested,
+} from 'class-validator';
 import { CreateMentionContentDto } from 'src/mention/dto/create-mention.dto';
 
 export class UpdatePostDto {
@@ -23,7 +29,8 @@ export class UpdatePostDto {
 
   @ApiProperty()
   @IsArray()
-  @IsString({ each: true })
+  @ValidateNested({ each: true })
+  @Type(() => CreateMentionContentDto)
   mentionAdd?: CreateMentionContentDto[];
 
   @ApiProperty()
