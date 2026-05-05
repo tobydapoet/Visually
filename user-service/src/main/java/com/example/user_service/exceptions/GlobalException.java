@@ -62,6 +62,28 @@ public class GlobalException {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<?> handleValidation(MethodArgumentNotValidException ex) {
+
+        for (var error : ex.getBindingResult().getFieldErrors()) {
+
+            String field = error.getField();
+            String code = error.getCode();
+
+            if ("dob".equals(field) && "typeMismatch".equals(code)) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "code", "VALIDATION_ERROR",
+                        "message", "Date of birth must be in format yyyy-MM-dd"
+                ));
+            }
+
+            if ("gender".equals(field) && "typeMismatch".equals(code)) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "code", "VALIDATION_ERROR",
+                        "message", "Gender must be one of: NAM, NU"
+                ));
+            }
+        }
+
+        // fallback
         String message = ex.getBindingResult().getFieldErrors()
                 .stream()
                 .findFirst()
