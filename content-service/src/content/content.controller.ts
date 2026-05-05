@@ -330,4 +330,15 @@ export class ContentController {
       console.error('handleContentUnSaved error:', err);
     }
   }
+
+  @EventPattern('user.updated.detail')
+  updateAvarUrl(
+    @Payload() data: { id: string; avatarUrl: string; username: string },
+  ) {
+    return this.contentService.updateUserDetail(
+      data.id,
+      data.avatarUrl,
+      data.username,
+    );
+  }
 }

@@ -12,6 +12,7 @@ import com.example.service.exceptions.NotFoundException;
 import com.example.service.repositories.AdRepository;
 import com.example.service.requests.CreateAdDto;
 import com.example.service.requests.PendingAdData;
+import com.example.service.requests.UserUpdateEvent;
 import com.example.service.responses.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.*;
@@ -326,5 +327,12 @@ public class AdService {
         ad.setDailySpend(ad.getDailySpend().add(BigDecimal.valueOf(200)));
         if (ad.getSpentAmount().compareTo(ad.getDailyBudget()) >= 0) return;
         adRepository.save(ad);
+    }
+
+    public void updateUsername(UserUpdateEvent event) {
+        adRepository.findByUserId(event.getUserId()).ifPresent(ad -> {
+            ad.setUsername(event.getUsername());
+            adRepository.save(ad);
+        });
     }
 }

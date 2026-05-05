@@ -87,9 +87,4 @@ export class CommentController {
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.commentService.remove(id);
   }
-
-  @EventPattern('user.updated.avatar')
-  updateAvarUrl(@Payload() data: { id: string; avatarUrl: string }) {
-    return this.commentService.updateAvatarUrl(data.id, data.avatarUrl);
-  }
 }

@@ -1,4 +1,4 @@
-package com.example.user_service.requests;
+package com.example.service.requests;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -9,7 +9,7 @@ import java.util.UUID;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class UserAvatarUpdateEvent {
-    private UUID id;
-    private String avatarUrl;
+public class UserUpdateEvent {
+    private UUID userId;
+    private String username;
 }

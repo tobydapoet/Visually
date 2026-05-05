@@ -52,9 +52,4 @@ export class SaveController {
   ) {
     return this.saveService.remove(targetId, targetType);
   }
-
-  @EventPattern('user.updated.avatar')
-  updateAvarUrl(@Payload() data: { id: string; avatarUrl: string }) {
-    return this.saveService.updateAvatarUrl(data.id, data.avatarUrl);
-  }
 }

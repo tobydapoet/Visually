@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { CreateReportDto } from './dto/create-report.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Like, Repository } from 'typeorm';
+import { In, Like, Repository } from 'typeorm';
 import { Report } from './entities/report.entity';
 import { ContextService } from 'src/context/context.service';
 import { ContentServiceType, ContentType } from 'src/enums/ContentType';
@@ -51,6 +51,29 @@ export class ReportService {
     });
 
     return this.reportRepo.save(newReport);
+  }
+
+  async updateUserDetail(userId: string, avatarUrl: string, username: string) {
+    const BATCH_SIZE = 100;
+    let skip = 0;
+
+    while (true) {
+      const reports = await this.reportRepo.find({
+        where: { userId },
+        select: ['id'],
+        take: BATCH_SIZE,
+        skip,
+      });
+
+      if (!reports.length) break;
+
+      await this.reportRepo.update(
+        { id: In(reports.map((p) => p.id)) },
+        { avatarUrl, username },
+      );
+
+      skip += BATCH_SIZE;
+    }
   }
 
   async findByTarget(

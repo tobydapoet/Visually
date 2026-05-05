@@ -16,7 +16,7 @@ import {
   FeedReponseDto,
 } from 'src/repost/dto/respose-default.dto';
 import { Short } from 'src/short/entities/short.entity';
-import { In, Repository } from 'typeorm';
+import { In, MoreThan, Repository } from 'typeorm';
 import {
   FeedContentPageResponse,
   FeedContentResponse,
@@ -473,5 +473,41 @@ export class ContentService {
       content,
       nextCursor: feedRes.nextCursor,
     };
+  }
+
+  async updateUserDetail(userId: string, avatarUrl: string, username: string) {
+    await Promise.all([
+      this.updateBatch(this.postRepo, userId, avatarUrl, username),
+      this.updateBatch(this.shortRepo, userId, avatarUrl, username),
+      this.updateBatch(this.storyRepo, userId, avatarUrl, username),
+    ]);
+  }
+
+  private async updateBatch(
+    repo: Repository<any>,
+    userId: string,
+    avatarUrl: string,
+    username: string,
+  ) {
+    const BATCH_SIZE = 100;
+    let skip = 0;
+
+    while (true) {
+      const records = await repo.find({
+        where: { userId },
+        select: ['id'],
+        take: BATCH_SIZE,
+        skip,
+      });
+
+      if (!records.length) break;
+
+      await repo.update(
+        { id: In(records.map((r) => r.id)) },
+        { avatarUrl, username },
+      );
+
+      skip += BATCH_SIZE;
+    }
   }
 }

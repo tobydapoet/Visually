@@ -8,6 +8,7 @@ import {
   LikeTargetType,
 } from 'src/enums/ContentType';
 import { LikeService } from 'src/like/like.service';
+import { ReportService } from 'src/report/report.service';
 import { SaveService } from 'src/save/save.service';
 
 @Injectable()
@@ -16,6 +17,7 @@ export class InteractionService {
     private likeService: LikeService,
     private commentService: CommentService,
     private saveService: SaveService,
+    private reportService: ReportService,
     private context: ContextService,
   ) {}
 
@@ -56,5 +58,12 @@ export class InteractionService {
       isCommented: commentedIds.includes(id),
       isSaved: savedIds.includes(id),
     }));
+  }
+
+  async updateUserDetail(userId: string, avatarUrl: string, username: string) {
+    await this.likeService.updateUserDetail(userId, avatarUrl, username);
+    await this.commentService.updateUserDetail(userId, avatarUrl, username);
+    await this.saveService.updateUserDetail(userId, avatarUrl, username);
+    await this.reportService.updateUserDetail(userId, avatarUrl, username);
   }
 }

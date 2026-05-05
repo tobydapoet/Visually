@@ -236,23 +236,23 @@ export class ConversationMemberService {
     return this.memberRepo.findOne({ where: { id } });
   }
 
-  async updateAvatarUrl(userId: string, avatarUrl: string) {
+  async updateUserDetail(userId: string, avatarUrl: string, username: string) {
     const BATCH_SIZE = 100;
     let skip = 0;
 
     while (true) {
-      const posts = await this.memberRepo.find({
+      const member = await this.memberRepo.find({
         where: { userId },
         select: ['id'],
         take: BATCH_SIZE,
         skip,
       });
 
-      if (!posts.length) break;
+      if (!member.length) break;
 
       await this.memberRepo.update(
-        { id: In(posts.map((p) => p.id)) },
-        { avatarUrl },
+        { id: In(member.map((p) => p.id)) },
+        { avatarUrl, username },
       );
 
       skip += BATCH_SIZE;

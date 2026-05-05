@@ -60,11 +60,6 @@ export class LikeController {
     return this.likeService.remove(targetId, targetType);
   }
 
-  @EventPattern('user.updated.avatar')
-  updateAvarUrl(@Payload() data: { id: string; avatarUrl: string }) {
-    return this.likeService.updateAvatarUrl(data.id, data.avatarUrl);
-  }
-
   @EventPattern('comment.likes.remove')
   async handleRemoveCommentLikes(
     @Payload()

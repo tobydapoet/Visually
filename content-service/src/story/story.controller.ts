@@ -159,9 +159,4 @@ export class StoryController {
       StoryInteractionType.DISLIKE,
     );
   }
-
-  @EventPattern('user.updated.avatar')
-  updateAvarUrl(@Payload() data: { id: string; avatarUrl: string }) {
-    return this.storyService.updateAvatarUrl(data.id, data.avatarUrl);
-  }
 }

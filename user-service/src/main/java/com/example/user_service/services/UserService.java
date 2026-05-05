@@ -169,7 +169,7 @@ public class UserService {
         UserProfileUpdatedEvent profileEvent = new UserProfileUpdatedEvent();
         profileEvent.setId(id);
 
-        UserAvatarUpdateEvent avatarEvent = new UserAvatarUpdateEvent();
+        UserDetailUpdateEvent avatarEvent = new UserDetailUpdateEvent();
         avatarEvent.setId(id);
 
         if (req.getFullName() != null) {
@@ -221,7 +221,7 @@ public class UserService {
         }
 
         if (avatarChanged) {
-            userEventProducer.emitUserAvatarUpdated(avatarEvent);
+            userEventProducer.emitUserDetailUpdated(avatarEvent);
         }
 
         return savedUser;

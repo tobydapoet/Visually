@@ -1,6 +1,6 @@
 package com.example.user_service.producers;
 
-import com.example.user_service.requests.UserAvatarUpdateEvent;
+import com.example.user_service.requests.UserDetailUpdateEvent;
 import com.example.user_service.requests.UserProfileUpdatedEvent;
 import com.example.user_service.requests.UserStatusUpdateEvent;
 import lombok.RequiredArgsConstructor;
@@ -31,8 +31,8 @@ public class UserEventProducer {
         sendAfterCommit("user.updated.status", event.getId(), event);
     }
 
-    public void emitUserAvatarUpdated(UserAvatarUpdateEvent event) {
-        sendAfterCommit("user.updated.avatar", event.getId(), event);
+    public void emitUserDetailUpdated(UserDetailUpdateEvent event) {
+        sendAfterCommit("user.updated.detail", event.getUserId(), event);
     }
 
     private void sendAfterCommit(String topic, UUID key, Object event) {

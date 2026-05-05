@@ -14,5 +14,6 @@ import { ContentCacheModule } from 'src/content-cache/content-cache.module';
   ],
   controllers: [ReportController],
   providers: [ReportService],
+  exports: [ReportService],
 })
 export class ReportModule {}

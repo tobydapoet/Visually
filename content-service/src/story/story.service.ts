@@ -144,29 +144,6 @@ export class StoryService {
     }
   }
 
-  async updateAvatarUrl(userId: string, avatarUrl: string) {
-    const BATCH_SIZE = 100;
-    let skip = 0;
-
-    while (true) {
-      const stories = await this.storyRepo.find({
-        where: { userId },
-        select: ['id'],
-        take: BATCH_SIZE,
-        skip,
-      });
-
-      if (!stories.length) break;
-
-      await this.storyRepo.update(
-        { id: In(stories.map((p) => p.id)) },
-        { avatarUrl },
-      );
-
-      skip += BATCH_SIZE;
-    }
-  }
-
   async haveNonExpiredStory(userId: string): Promise<boolean> {
     const stories = await this.storyRepo.find({
       where: {

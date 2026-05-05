@@ -85,6 +85,8 @@ public interface AdRepository extends JpaRepository<Ad,Long> {
             Pageable pageable
     );
 
+    Optional<Ad> findByUserId(UUID userId);
+
     @Modifying
     @Query("UPDATE Ad a SET a.spentAmount = 0")
     void resetAllSpentAmount();
