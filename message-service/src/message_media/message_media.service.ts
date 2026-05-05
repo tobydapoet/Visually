@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { CreateMessageMediaDto } from './dto/create-message_media.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { MessageMedia } from './entities/message_media.entity';
-import { EntityManager, Repository } from 'typeorm';
+import { EntityManager, IsNull, Repository } from 'typeorm';
 
 @Injectable()
 export class MessageMediaService {
@@ -26,6 +26,7 @@ export class MessageMediaService {
     const [mediaList, total] = await this.mediaRepo.findAndCount({
       where: {
         message: {
+          deletedAt: IsNull(),
           conversation: {
             id: conversationId,
           },
@@ -40,13 +41,14 @@ export class MessageMediaService {
     });
 
     return {
-      data: mediaList,
-      meta: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-      },
+      data: mediaList.map((media) => ({
+        id: media.id,
+        url: media.url,
+      })),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
     };
   }
 }

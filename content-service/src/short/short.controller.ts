@@ -13,6 +13,7 @@ import {
   Put,
   Post,
   ParseArrayPipe,
+  Delete,
 } from '@nestjs/common';
 import { ShortService } from './short.service';
 import {
@@ -153,6 +154,12 @@ export class ShortController {
     ids: number[],
   ): Promise<DefaultReponseDto[]> {
     return await this.shortService.findManyByIds(ids);
+  }
+
+  @ApiBearerAuth()
+  @Delete(':id')
+  async deleteStory(@Param('id') id: number) {
+    return this.shortService.delete(id);
   }
 
   @Get('user')
