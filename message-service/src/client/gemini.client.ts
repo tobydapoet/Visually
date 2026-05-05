@@ -18,7 +18,8 @@ export class GeminiClient {
     const genAI = new GoogleGenerativeAI(apiKey);
     this.model = genAI.getGenerativeModel({
       model: 'gemini-2.5-flash',
-      systemInstruction: 'Bạn là trợ lý AI hữu ích.',
+      systemInstruction:
+        'Bạn là trợ lý AI chuyên debug, trả lời ngắn gọn, rõ ràng.',
       generationConfig: {
         temperature: 0.9,
         topK: 40,
