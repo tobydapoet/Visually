@@ -22,6 +22,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.multipart.MultipartHttpServletRequest;
 
@@ -240,5 +241,13 @@ public class UserController {
     ) {
         User updatedUser = userService.updateUserRole(id, role);
         return ResponseEntity.ok(UserResponse.fromEntity(updatedUser));
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<?> handleMaxSize(MaxUploadSizeExceededException ex) {
+        return ResponseEntity.badRequest().body(Map.of(
+                "code", "FILE_TOO_LARGE",
+                "message", "File size exceeds maximum limit (e.g. 5MB)"
+        ));
     }
 }
