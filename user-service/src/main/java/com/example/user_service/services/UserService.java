@@ -144,6 +144,9 @@ public class UserService {
         if(user == null || !passwordEncoder.matches(req.getPassword(), user.getPassword())) {
             throw new NotFoundException("Email or password incorrect!");
         }
+        if(user.getStatus() != StatusType.ACTIVE) {
+            throw new NotFoundException("Your account is not available!");
+        }
         String refreshToken = jwtService.generateRefreshToken();
         Session session = new Session();
         session.setUser(user);
@@ -174,7 +177,7 @@ public class UserService {
         UserDetailUpdateEvent userDetailEvent = new UserDetailUpdateEvent();
         userDetailEvent.setId(id);
 
-        if (req.getFullName() != null) {
+        if (req.getFullName() != null && !req.getFullName().isEmpty()){
             user.setFullName(req.getFullName());
             profileChanged = true;
         }
@@ -191,13 +194,13 @@ public class UserService {
             profileChanged = true;
         }
 
-        if (req.getUsername() != null) {
+        if (req.getUsername() != null  && !req.getUsername().isEmpty()) {
             user.setUsername(req.getUsername());
             userDetailEvent.setUsername(req.getUsername());
             usernameChanged = true;
         }
 
-        if (req.getBio() != null) {
+        if (req.getBio() != null  && !req.getBio().isEmpty()) {
             user.setBio(req.getBio());
             profileChanged = true;
         }
@@ -423,6 +426,10 @@ public class UserService {
 
         User user = userRepository.findByEmail(req.getEmail());
 
+        if (user.getStatus() != StatusType.ACTIVE) {
+            throw new NotFoundException("Your account is not available!");
+        }
+
         if (user == null) {
             user = new User();
             user.setEmail(req.getEmail());
@@ -443,10 +450,6 @@ public class UserService {
             userEventProducer.emitUserCreated(userEvent);
         }
 
-        if (user.getStatus() != StatusType.ACTIVE) {
-            throw new ConflictException("User not active");
-        }
-
         String refreshToken = jwtService.generateRefreshToken();
 
         Session session = new Session();
@@ -464,8 +467,6 @@ public class UserService {
                 "refreshToken", refreshToken
         );
     }
-
-
 
     public void logout(Long id) {
         sessionService.delete(id);
