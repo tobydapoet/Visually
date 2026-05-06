@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Base64;
@@ -95,9 +96,10 @@ public class OauthHandler implements AuthenticationSuccessHandler {
             res.sendRedirect(
                     frontendUrl + "oauth_success?accessToken=" + accessToken + "&refreshToken=" + refreshToken);
 
-        } catch (Exception e) {
+        }  catch (Exception e) {
             e.printStackTrace();
-            res.sendRedirect(getAllowedUrls().get(0) + "login?error=true");
+            String errorMessage = URLEncoder.encode("Google login failed. Please try again!", StandardCharsets.UTF_8);
+            res.sendRedirect(getAllowedUrls().get(0) + "login?error=true&message=" + errorMessage);
         }
     }
 
