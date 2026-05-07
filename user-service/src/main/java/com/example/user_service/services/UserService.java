@@ -165,10 +165,8 @@ public class UserService {
     @Transactional
     public User updateUser(UpdateUserRequest req, UUID id, String roles) {
 
-        log.debug("=== updateUser START === id: {}", id);
 
         User user = this.findById(id);
-        log.debug("Found user: username={}, avatarId={}", user.getUsername(), user.getAvatarId());
 
         boolean profileChanged = false;
         boolean avatarChanged = false;
@@ -198,18 +196,14 @@ public class UserService {
         }
 
         if (req.getUsername() != null && !req.getUsername().isEmpty()) {
-            log.debug("Username request: {}, current: {}", req.getUsername(), user.getUsername());
             if (!req.getUsername().equals(user.getUsername())) {
                 boolean exists = userRepository.existsByUsername(req.getUsername());
-                log.debug("Username {} exists: {}", req.getUsername(), exists);
                 if (exists) {
                     throw new ConflictException("Username already exists");
                 }
                 user.setUsername(req.getUsername());
                 userDetailEvent.setUsername(req.getUsername());
                 usernameChanged = true;
-            } else {
-                log.debug("Username unchanged, skipping");
             }
         }
 
@@ -219,7 +213,6 @@ public class UserService {
         }
 
         Long oldAvatarId = user.getAvatarId();
-        log.debug("oldAvatarId: {}", oldAvatarId);
 
         if (req.getFile() != null) {
             MultipartFile file = req.getFile();
@@ -227,15 +220,12 @@ public class UserService {
             if (file != null && !file.isEmpty()) {
 
                 String contentType = file.getContentType();
-                log.debug("File contentType: {}", contentType);
 
                 if (contentType == null || !contentType.startsWith("image/")) {
                     throw new ConflictException("Only image file is accepted");
                 }
 
-                log.debug("Uploading file...");
                 MediaResponse media = uploadService.upload(file, id, roles);
-                log.debug("Upload success: mediaId={}, url={}", media.getId(), media.getUrl());
 
                 user.setAvatarUrl(media.getUrl());
                 user.setAvatarId(media.getId());
@@ -245,14 +235,10 @@ public class UserService {
             }
         }
 
-        log.debug("Saving user: avatarChanged={}, usernameChanged={}, profileChanged={}", avatarChanged, usernameChanged, profileChanged);
         User savedUser = userRepository.save(user);
-        log.debug("Save success: userId={}", savedUser.getId());
 
         if (avatarChanged && oldAvatarId != null) {
-            log.debug("Deleting old avatar: {}", oldAvatarId);
             uploadService.delete(oldAvatarId, id, roles);
-            log.debug("Delete old avatar success");
         }
 
         if (profileChanged) {
@@ -263,7 +249,6 @@ public class UserService {
             userEventProducer.emitUserDetailUpdated(userDetailEvent);
         }
 
-        log.debug("=== updateUser END ===");
         return savedUser;
     }
 
