@@ -194,16 +194,20 @@ public class UserService {
             profileChanged = true;
         }
 
-        if (req.getUsername() != null  && !req.getUsername().isEmpty()) {
-            user.setUsername(req.getUsername());
-            userDetailEvent.setUsername(req.getUsername());
-            usernameChanged = true;
+        if (req.getUsername() != null && !req.getUsername().isEmpty()) {
+            if (!req.getUsername().equals(user.getUsername())) {
+                user.setUsername(req.getUsername());
+                userDetailEvent.setUsername(req.getUsername());
+                usernameChanged = true;
+            }
         }
 
         if (req.getBio() != null  && !req.getBio().isEmpty()) {
             user.setBio(req.getBio());
             profileChanged = true;
         }
+
+        Long oldAvatarId = user.getAvatarId();
 
         if (req.getFile() != null) {
             MultipartFile file = req.getFile();
@@ -218,10 +222,6 @@ public class UserService {
 
                 MediaResponse media = uploadService.upload(file, id, roles);
 
-                if (user.getAvatarId() != null) {
-                    uploadService.delete(user.getAvatarId(), id, roles);
-                }
-
                 user.setAvatarUrl(media.getUrl());
                 user.setAvatarId(media.getId());
 
@@ -231,6 +231,10 @@ public class UserService {
         }
 
         User savedUser = userRepository.save(user);
+
+        if (avatarChanged && oldAvatarId != null) {
+            uploadService.delete(oldAvatarId, id, roles);
+        }
 
         if (profileChanged) {
             userEventProducer.emitUserProfileUpdated(profileEvent);
@@ -474,6 +478,13 @@ public class UserService {
 
     public String refreshToken(String token) {
         Session session = sessionService.findByToken(token);
+        if(session == null) {
+            throw new NotFoundException("Token not found");
+        }
+        User user = this.findById(session.getUser().getId());
+        if(user.getStatus() != StatusType.ACTIVE) {
+            throw new NotFoundException("Your account is not available!");
+        }
         if(session.getExpiredAt().isBefore(LocalDateTime.now())) {
             throw new ValidatorException("Refresh token expired");
         }
