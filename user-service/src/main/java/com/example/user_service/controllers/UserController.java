@@ -86,10 +86,7 @@ public class UserController {
     public List<UserSummaryResponse> getUsersByIds(
             @RequestParam String ids
     ) {
-        System.out.println("😀 ids= " + ids);
-
         if (ids == null || ids.isBlank()) {
-            System.out.println("🔍 NOTHING");
             return List.of();
         }
 
@@ -98,11 +95,6 @@ public class UserController {
                 .filter(s -> !s.isEmpty())
                 .map(UUID::fromString)
                 .toList();
-
-        System.out.println("😀 RESPONSE " + userService.findManyUser(idList)
-                .stream()
-                .map(UserSummaryResponse::fromEntity)
-                .toList());
 
         return userService.findManyUser(idList)
                 .stream()
