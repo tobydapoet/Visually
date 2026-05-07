@@ -26,24 +26,32 @@ public class MusicLibraryService {
 
 
     public MusicLibrary create(MusicCreateRequest req) {
+        if (req.getUrl() == null || req.getUrl().isEmpty()) {
+            throw new ValidatorException("Audio file is required");
+        }
         String audioContentType = req.getUrl().getContentType();
         if (audioContentType == null || !audioContentType.startsWith("audio/")) {
             throw new ValidatorException("Only audio file is accepted");
         }
 
-        String imageContentType = req.getImg().getContentType();
-        if (imageContentType == null || !imageContentType.startsWith("image/")) {
-            throw new ValidatorException("Only image file is accepted");
-        }
         MusicLibrary musicLibrary = new MusicLibrary();
         musicLibrary.setArtist(req.getArtist());
         musicLibrary.setTitle(req.getTitle());
         musicLibrary.setStatus(MusicStatus.PENDING);
+
         UploadResult audioRes = uploadService.upload(req.getUrl(), "music");
-        UploadResult imageRes = uploadService.upload(req.getImg(), "music_img");
         musicLibrary.setUrl((String) audioRes.getUrl());
-        musicLibrary.setImg((String) imageRes.getUrl());
         musicLibrary.setDuration((Double) audioRes.getDuration());
+
+        if (req.getImg() != null && !req.getImg().isEmpty()) {
+            String imageContentType = req.getImg().getContentType();
+            if (imageContentType == null || !imageContentType.startsWith("image/")) {
+                throw new ValidatorException("Only image file is accepted");
+            }
+            UploadResult imageRes = uploadService.upload(req.getImg(), "music_img");
+            musicLibrary.setImg((String) imageRes.getUrl());
+        }
+
         return musicLibraryRepository.save(musicLibrary);
     }
 
