@@ -4,6 +4,7 @@ import com.example.media_service.contexts.AuthContext;
 import com.example.media_service.entities.MusicLibrary;
 import com.example.media_service.enums.MusicStatus;
 import com.example.media_service.exceptions.ConflictException;
+import com.example.media_service.exceptions.ValidatorException;
 import com.example.media_service.repositories.MusicLibraryRepository;
 import com.example.media_service.requests.CurrentUser;
 import com.example.media_service.requests.MusicCreateRequest;
@@ -25,6 +26,15 @@ public class MusicLibraryService {
 
 
     public MusicLibrary create(MusicCreateRequest req) {
+        String audioContentType = req.getUrl().getContentType();
+        if (audioContentType == null || !audioContentType.startsWith("audio/")) {
+            throw new ValidatorException("Only audio file is accepted");
+        }
+
+        String imageContentType = req.getImg().getContentType();
+        if (imageContentType == null || !imageContentType.startsWith("image/")) {
+            throw new ValidatorException("Only image file is accepted");
+        }
         MusicLibrary musicLibrary = new MusicLibrary();
         musicLibrary.setArtist(req.getArtist());
         musicLibrary.setTitle(req.getTitle());
