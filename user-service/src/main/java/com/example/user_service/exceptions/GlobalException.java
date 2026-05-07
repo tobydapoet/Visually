@@ -82,7 +82,6 @@ public class GlobalException {
             }
         }
 
-        // fallback
         String message = ex.getBindingResult().getFieldErrors()
                 .stream()
                 .findFirst()
