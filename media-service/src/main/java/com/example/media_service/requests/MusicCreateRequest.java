@@ -16,6 +16,5 @@ public class MusicCreateRequest {
     @NotNull(message = "Url file is required")
     MultipartFile url;
 
-    @NotNull(message = "Image is required")
     MultipartFile img;
 }
