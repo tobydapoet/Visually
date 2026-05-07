@@ -19,6 +19,7 @@ import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -27,6 +28,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.multipart.MultipartHttpServletRequest;
 
 import java.io.InputStream;
+import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -218,9 +220,10 @@ public class UserController {
     @PutMapping("/{id}/status")
     public ResponseEntity<UserResponse> updateStatus(
             @PathVariable UUID id,
-            @RequestParam StatusType status
+            @RequestParam StatusType status,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate bannedUntil
     ) {
-        User updatedUser = userService.updateUserStatus(status, id);
+        User updatedUser = userService.updateUserStatus(status, id, bannedUntil);
 
         return ResponseEntity.ok(UserResponse.fromEntity(updatedUser));
     }

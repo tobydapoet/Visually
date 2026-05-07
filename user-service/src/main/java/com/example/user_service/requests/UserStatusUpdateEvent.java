@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Data
@@ -14,4 +15,6 @@ public class UserStatusUpdateEvent {
     private UUID id;
 
     private StatusType status;
+
+    private LocalDate bannedUntil;
 }

@@ -71,6 +71,9 @@ public class User {
     @Column(nullable = false)
     private Long following = 0L;
 
+    @Column(nullable = true)
+    private LocalDate bannedUntil = null;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Gender gender;

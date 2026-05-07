@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
@@ -144,9 +145,24 @@ public class UserService {
         if(user == null || !passwordEncoder.matches(req.getPassword(), user.getPassword())) {
             throw new NotFoundException("Email or password incorrect!");
         }
+
+        if(user.getStatus() == StatusType.BANNED) {
+            if(user.getBannedUntil() != null && user.getBannedUntil().isBefore(LocalDate.now())) {
+                user.setStatus(StatusType.ACTIVE);
+                user.setBannedUntil(null);
+                userRepository.save(user);
+            } else {
+                String msg = user.getBannedUntil() != null
+                        ? "Your account is banned until " + user.getBannedUntil()
+                        : "Your account is permanently banned!";
+                throw new NotFoundException(msg);
+            }
+        }
+
         if(user.getStatus() != StatusType.ACTIVE) {
             throw new NotFoundException("Your account is not available!");
         }
+
         String refreshToken = jwtService.generateRefreshToken();
         Session session = new Session();
         session.setUser(user);
@@ -325,15 +341,28 @@ public class UserService {
     }
 
     @Transactional
-    public User updateUserStatus(StatusType status, UUID id) {
+    public User updateUserStatus(StatusType status, UUID id, LocalDate bannedUntil) {
         User user = this.findById(id);
         if (user.getStatus() == status) {
             return user;
         }
+
+        if (status == StatusType.BANNED) {
+            if (bannedUntil != null && bannedUntil.isBefore(LocalDate.now())) {
+                throw new ValidatorException("bannedUntil must be in the future!");
+            }
+            user.setBannedUntil(bannedUntil);
+        } else {
+            user.setBannedUntil(null);
+        }
+
         user.setStatus(status);
+
         UserStatusUpdateEvent event = new UserStatusUpdateEvent();
         event.setId(id);
         event.setStatus(status);
+        event.setBannedUntil(bannedUntil);
+
         User savedUser = userRepository.save(user);
         userEventProducer.emitUserStatusUpdated(event);
         return savedUser;
@@ -435,10 +464,6 @@ public class UserService {
 
         User user = userRepository.findByEmail(req.getEmail());
 
-        if (user.getStatus() != StatusType.ACTIVE) {
-            throw new NotFoundException("Your account is not available!");
-        }
-
         if (user == null) {
             user = new User();
             user.setEmail(req.getEmail());
@@ -457,6 +482,25 @@ public class UserService {
             userEvent.setGender(savedUser.getGender());
 
             userEventProducer.emitUserCreated(userEvent);
+
+            user = savedUser;
+        } else {
+            if (user.getStatus() == StatusType.BANNED) {
+                if (user.getBannedUntil() != null && user.getBannedUntil().isBefore(LocalDate.now())) {
+                    user.setStatus(StatusType.ACTIVE);
+                    user.setBannedUntil(null);
+                    userRepository.save(user);
+                } else {
+                    String msg = user.getBannedUntil() != null
+                            ? "Your account is banned until " + user.getBannedUntil()
+                            : "Your account is permanently banned!";
+                    throw new NotFoundException(msg);
+                }
+            }
+
+            if (user.getStatus() != StatusType.ACTIVE) {
+                throw new NotFoundException("Your account is not available!");
+            }
         }
 
         String refreshToken = jwtService.generateRefreshToken();
