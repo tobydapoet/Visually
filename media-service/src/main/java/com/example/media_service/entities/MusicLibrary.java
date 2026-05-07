@@ -16,10 +16,10 @@ public class MusicLibrary {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = true)
+    @Column(nullable = false)
     private String artist;
 
-    @Column(nullable = true)
+    @Column(nullable = false)
     private String title;
 
     @Column(nullable = false)
