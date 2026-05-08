@@ -34,7 +34,7 @@ public class PaymentWebhookController {
     public ResponseEntity<?> handleSepayWebhook(@RequestBody SepayWebhookDto body) {
         CurrentUser currentUser = AuthContext.get();
 
-        if (currentUser.getRole().equals("CLIENT")) {
+        if (!currentUser.getRole().equals("CLIENT")) {
             throw new UnauthorizedException("Only clients can perform this action");
         }
 
