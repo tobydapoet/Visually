@@ -9,6 +9,7 @@ import com.example.media_service.requests.MusicCreateRequest;
 import com.example.media_service.requests.MusicUpdateRequest;
 import com.example.media_service.services.MusicLibraryService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.MediaType;
@@ -25,7 +26,7 @@ public class MusicLibraryController {
     MusicLibraryService musicLibraryService;
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<Map<String, String>> create(@ModelAttribute MusicCreateRequest req) {
+    public ResponseEntity<Map<String, String>> create(@Valid @ModelAttribute MusicCreateRequest req) {
         CurrentUser currentUser = AuthContext.get();
 
         if (!currentUser.getRole().equals("ADMIN")) {

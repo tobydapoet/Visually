@@ -7,9 +7,11 @@ import org.springframework.web.multipart.MultipartFile;
 
 @Data
 public class MusicCreateRequest {
+    @NotNull(message = "Title is required")
     @NotBlank(message = "Title is required")
     private String title;
 
+    @NotNull(message = "Artist is required")
     @NotBlank(message = "Artist is required")
     private String artist;
 
