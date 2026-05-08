@@ -41,7 +41,7 @@ public class AdController {
     public ResponseEntity<ApiResponse<Ad>> createAd(
             @RequestBody CreateAdDto createAdDto) {
         CurrentUser currentUser = AuthContext.get();
-        if (currentUser.getRole().equals("CLIENT")) {
+        if (!currentUser.getRole().equals("CLIENT")) {
             throw new UnauthorizedException("Only clients can perform this action");
         }
         PendingAdData data = new PendingAdData();
@@ -57,7 +57,7 @@ public class AdController {
     @PostMapping("/pending")
     public ResponseEntity<?> savePendingAd(@RequestBody CreateAdDto dto) {
         CurrentUser currentUser = AuthContext.get();
-        if (currentUser.getRole().equals("CLIENT")) {
+        if (!currentUser.getRole().equals("CLIENT")) {
             throw new UnauthorizedException("Only clients can perform this action");
         }
         pendingAdService.save(currentUser.getUserId(), currentUser.getUsername(), dto);

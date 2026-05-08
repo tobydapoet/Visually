@@ -84,7 +84,7 @@ export class ConversationService {
       existingConversation.members.map((member) => member.userId !== userId)
     ) {
       throw new NotFoundException(
-        "Yout don't have permission to do this action",
+        "You don't have permission to do this action",
       );
     }
 
