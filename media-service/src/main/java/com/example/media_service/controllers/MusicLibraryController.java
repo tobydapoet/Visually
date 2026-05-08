@@ -28,8 +28,8 @@ public class MusicLibraryController {
     public ResponseEntity<Map<String, String>> create(@ModelAttribute MusicCreateRequest req) {
         CurrentUser currentUser = AuthContext.get();
 
-        if (currentUser.getRole().equals("CLIENT")) {
-            throw new UnauthorizedException("Only clients can perform this action");
+        if (!currentUser.getRole().equals("ADMIN")) {
+            throw new UnauthorizedException("Only admin can perform this action");
         }
 
         MusicLibrary savedMusic = musicLibraryService.create(req);
@@ -49,8 +49,8 @@ public class MusicLibraryController {
 
         CurrentUser currentUser = AuthContext.get();
 
-        if (currentUser.getRole().equals("CLIENT")) {
-            throw new UnauthorizedException("Only clients can perform this action");
+        if (!currentUser.getRole().equals("ADMIN")) {
+            throw new UnauthorizedException("Only admin can perform this action");
         }
 
         MusicLibrary updatedMusic = musicLibraryService.updateStatus(id, status);
@@ -69,8 +69,8 @@ public class MusicLibraryController {
             @ModelAttribute MusicUpdateRequest req) {
         CurrentUser currentUser = AuthContext.get();
 
-        if (currentUser.getRole().equals("CLIENT")) {
-            throw new UnauthorizedException("Only clients can perform this action");
+        if (!currentUser.getRole().equals("ADMIN")) {
+            throw new UnauthorizedException("Only admin can perform this action");
         }
 
         MusicLibrary updatedMusic = musicLibraryService.update(id, req);
@@ -88,8 +88,8 @@ public class MusicLibraryController {
 
         CurrentUser currentUser = AuthContext.get();
 
-        if (currentUser.getRole().equals("CLIENT")) {
-            throw new UnauthorizedException("Only clients can perform this action");
+        if (!currentUser.getRole().equals("ADMIN")) {
+            throw new UnauthorizedException("Only admin can perform this action");
         }
 
         musicLibraryService.delete(id);
