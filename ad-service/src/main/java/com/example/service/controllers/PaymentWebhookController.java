@@ -32,12 +32,6 @@ public class PaymentWebhookController {
 
     @PostMapping("/webhook/sepay")
     public ResponseEntity<?> handleSepayWebhook(@RequestBody SepayWebhookDto body) {
-        CurrentUser currentUser = AuthContext.get();
-
-        if (!currentUser.getRole().equals("CLIENT")) {
-            throw new UnauthorizedException("Only clients can perform this action");
-        }
-
         if (!"in".equals(body.getTransferType())) {
             return ResponseEntity.ok(Map.of("success", true));
         }
