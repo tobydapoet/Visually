@@ -12,7 +12,7 @@ import java.util.UUID;
 
 @Data
 @Entity
-@Table(name = "Blocks", uniqueConstraints = {
+@Table(name = "blocks", uniqueConstraints = {
         @UniqueConstraint(columnNames = {"userId", "blockerId"})
 }
 )

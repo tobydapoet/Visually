@@ -11,7 +11,7 @@ import java.util.UUID;
 
 @Data
 @Entity
-@Table(name = "Follows", uniqueConstraints = {
+@Table(name = "follows", uniqueConstraints = {
         @UniqueConstraint(columnNames = {"userId", "followerId"})
 })
 public class Follow {
