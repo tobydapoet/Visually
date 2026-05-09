@@ -11,20 +11,23 @@ import java.util.UUID;
 
 @Data
 @Entity
-@Table(name = "Follows")
+@Table(name = "Follows", uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"userId", "followerId"})
+})
 public class Follow {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false,columnDefinition = "CHAR(36)")
+    @Column(name = "userId", nullable = false, columnDefinition = "CHAR(36)")
     @JdbcTypeCode(SqlTypes.CHAR)
     private UUID userId;
 
-    @Column(nullable = false,columnDefinition = "CHAR(36)")
+    @Column(name = "followerId", nullable = false, columnDefinition = "CHAR(36)")
     @JdbcTypeCode(SqlTypes.CHAR)
     private UUID followerId;
 
     @CreationTimestamp
+    @Column(name = "createdAt")
     private LocalDateTime createdAt;
 }
