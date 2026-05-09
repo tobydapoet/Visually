@@ -136,7 +136,7 @@ public class FollowController {
         try {
             CurrentUser currentUser = AuthContext.get();
 
-            if (currentUser.getRole().equals("CLIENT")) {
+            if (!currentUser.getRole().equals("CLIENT")) {
                 throw new UnauthorizedException("Only clients can perform this action");
             }
 
@@ -170,7 +170,7 @@ public class FollowController {
         try {
             CurrentUser currentUser = AuthContext.get();
             boolean follow = followService.delete(id, currentUser.getUserId());
-            if (currentUser.getRole().equals("CLIENT")) {
+            if (!currentUser.getRole().equals("CLIENT")) {
                 throw new UnauthorizedException("Only clients can perform this action");
             }
             Map<String, String> response = new HashMap<>();

@@ -70,7 +70,7 @@ public class BlockController {
             CurrentUser currentUser = AuthContext.get();
             Block block = followService.blockUser(currentUser.getUserId(), id);
 
-            if (currentUser.getRole().equals("CLIENT")) {
+            if (!currentUser.getRole().equals("CLIENT")) {
                 throw new UnauthorizedException("Only clients can perform this action");
             }
 
@@ -95,7 +95,7 @@ public class BlockController {
             @PathVariable UUID id) {
         try {
             CurrentUser currentUser = AuthContext.get();
-            if (currentUser.getRole().equals("CLIENT")) {
+            if (!currentUser.getRole().equals("CLIENT")) {
                 throw new UnauthorizedException("Only clients can perform this action");
             }
             boolean block = blockService.delete(currentUser.getUserId(), id);
