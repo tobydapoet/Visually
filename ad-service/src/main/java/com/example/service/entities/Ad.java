@@ -28,39 +28,39 @@ public class Ad {
     @Column(nullable = false)
     private String username;
 
-    @Column(nullable = false)
     @Enumerated(EnumType.STRING)
+    @Column(name = "contentType", nullable = false)
     private AdType contentType;
 
-    @Column(nullable = false)
+    @Column(name = "contentId", nullable = false)
     private Long contentId;
 
-    @Column(nullable = false)
+    @Column(name = "ageMin", nullable = false)
     private Integer ageMin;
 
-    @Column
+    @Column(name = "ageMax")
     private Integer ageMax;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private GenderOption gender;
 
-    @Column(nullable = false)
+    @Column(name = "dailyBudget", nullable = false)
     private BigDecimal dailyBudget;
 
-    @Column(columnDefinition = "DECIMAL(19,2) DEFAULT 0")
+    @Column(name = "dailySpend", columnDefinition = "DECIMAL(19,2) DEFAULT 0")
     private BigDecimal dailySpend = BigDecimal.ZERO;
 
-    @Column(columnDefinition = "DECIMAL(19,2) DEFAULT 0")
+    @Column(name = "spentAmount", columnDefinition = "DECIMAL(19,2) DEFAULT 0")
     private BigDecimal spentAmount = BigDecimal.ZERO;
 
-    @Column(nullable = false)
+    @Column(name = "startDate", nullable = false)
     private LocalDateTime startDate;
 
-    @Column(nullable = false)
+    @Column(name = "endDate", nullable = false)
     private LocalDateTime endDate;
 
-    @Column
+    @Column(name = "pausedAt")
     private LocalDateTime pausedAt;
 
     @Column(nullable = false)
@@ -71,8 +71,9 @@ public class Ad {
     private AdStatus status = AdStatus.ACTIVE;
 
     @CreationTimestamp
+    @Column(name = "createdAt")
     private LocalDateTime createdAt;
 
-    @Column
+    @Column(name = "deletedAt")
     private LocalDateTime deletedAt;
 }

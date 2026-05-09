@@ -15,14 +15,16 @@ public class Session {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "userId")
     private User user;
 
     @Column(nullable = false, unique = true)
     private String token;
 
-    @Column(nullable = false)
+    @Column(name = "expiredAt", nullable = false)
     private LocalDateTime expiredAt;
 
     @CreationTimestamp
+    @Column(name = "createdAt")
     private LocalDateTime createdAt;
 }

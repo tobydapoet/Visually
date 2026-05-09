@@ -28,16 +28,18 @@ public class MusicLibrary {
     @Column(nullable = false)
     private Double duration;
 
-    @Column(nullable = true)
+    @Column()
     private String img;
 
     @CreationTimestamp
+    @Column(name = "createdAt")
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
+    @Column(name = "updatedAt")
     private LocalDateTime updatedAt;
 
-    @Column(nullable = false)
     @Enumerated(EnumType.STRING)
-    private MusicStatus status =  MusicStatus.PENDING;
+    @Column(nullable = false)
+    private MusicStatus status = MusicStatus.PENDING;
 }

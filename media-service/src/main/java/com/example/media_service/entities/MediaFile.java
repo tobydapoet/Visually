@@ -18,11 +18,11 @@ public class MediaFile {
     @Column(nullable = false)
     private String url;
 
-    @Column(nullable = false)
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private FileType type;
 
     @CreationTimestamp
-    @Column(nullable = false)
+    @Column(name = "createdAt", nullable = false)
     private LocalDateTime createdAt;
 }

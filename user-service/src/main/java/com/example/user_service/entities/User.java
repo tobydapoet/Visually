@@ -37,19 +37,19 @@ public class User {
     @Column(nullable = false,  unique = true)
     private String username;
 
-    @Column(nullable = false)
+    @Column(name= "fullName",nullable = false)
     private String fullName;
 
-    @Column(nullable = true)
+    @Column(name= "avatarUrl")
     private String avatarUrl;
 
-    @Column(nullable = true)
+    @Column(name="avatarId")
     private Long avatarId;
 
     @Column()
     private LocalDate dob;
 
-    @Column(nullable = true)
+    @Column(name="lastSeen")
     private LocalDateTime lastSeen = null;
 
     @Column(unique = true)
@@ -59,7 +59,7 @@ public class User {
     @Enumerated(EnumType.STRING)
     private StatusType status = StatusType.ACTIVE;
 
-    @Column(unique = true, nullable = true)
+    @Column(name="providerId",unique = true, nullable = true)
     private String providerId;
 
     @Column(nullable = true)
@@ -71,16 +71,18 @@ public class User {
     @Column(nullable = false)
     private Long following = 0L;
 
-    @Column(nullable = true)
+    @Column(name="bannedUntil")
     private LocalDate bannedUntil = null;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Gender gender;
 
+    @Column(name="createdAt")
     @CreationTimestamp
     private LocalDateTime createdAt;
 
+    @Column(name="updatedAt")
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
