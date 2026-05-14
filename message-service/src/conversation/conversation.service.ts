@@ -6,7 +6,7 @@ import {
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Conversation } from './entities/conversation.entity';
-import { DataSource, Repository } from 'typeorm';
+import { Brackets, DataSource, Repository } from 'typeorm';
 import { ConversationMemberService } from '../conversation_member/conversation_member.service';
 import { ContextService } from '../context/context.service';
 import { ConversationType } from '../enums/conversation.type';
@@ -116,6 +116,28 @@ export class ConversationService {
       { id: converstationId },
       updateData,
     );
+  }
+
+  async searchConversation(keyword: string) {
+    const userId = this.context.getUserId();
+
+    return this.conversationRepo
+      .createQueryBuilder('c')
+      .leftJoin('c.members', 'member')
+      .leftJoin('member.user', 'user')
+      .where('member.userId = :userId', { userId })
+      .andWhere(
+        new Brackets((qb) => {
+          qb.where('LOWER(c.name) LIKE LOWER(:keyword)', {
+            keyword: `%${keyword}%`,
+          }).orWhere(
+            'LOWER(user.username) LIKE LOWER(:keyword) AND user.id != :userId',
+            { keyword: `%${keyword}%`, userId },
+          );
+        }),
+      )
+      .take(10)
+      .getMany();
   }
 
   async findPrivateConversation(userBId: string) {

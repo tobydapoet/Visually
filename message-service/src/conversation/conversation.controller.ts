@@ -94,4 +94,10 @@ export class ConversationController {
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.conversationService.findOne(id);
   }
+
+  @Get('search')
+  @ApiBearerAuth()
+  search(@Query('keyword') keyword: string) {
+    return this.conversationService.searchConversation(keyword);
+  }
 }
