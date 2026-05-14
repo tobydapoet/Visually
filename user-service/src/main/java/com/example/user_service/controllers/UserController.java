@@ -62,7 +62,6 @@ public class UserController {
             @RequestParam(defaultValue = "false") boolean isExclude
     ){
         CurrentUser currentUser = AuthContext.get();
-        System.out.println("Current User: " + currentUser);
         UUID userId = (isExclude && currentUser.getUserId() != null)
                 ? currentUser.getUserId()
                 : null;

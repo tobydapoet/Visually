@@ -23,6 +23,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
             :currentUserId IS NULL OR u.id <> :currentUserId
         )
         AND u.status <> 'DELETED'
+        AND u.role = CLIENT
       """)
     Page<User> searchUser(
             String keyword,
