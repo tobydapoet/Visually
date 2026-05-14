@@ -94,4 +94,30 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
   emitAdPayment(userId: string, event: any) {
     this.server.to(`user:${userId}`).emit('ad_register', event);
   }
+
+  @SubscribeMessage('typing')
+  handleTyping(
+    @MessageBody() data: { conversationId: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const userId = client.handshake.query.userId as string;
+
+    client.to(`conversation:${data.conversationId}`).emit('typing', {
+      userId,
+      conversationId: data.conversationId,
+    });
+  }
+
+  @SubscribeMessage('stop_typing')
+  handleStopTyping(
+    @MessageBody() data: { conversationId: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const userId = client.handshake.query.userId as string;
+
+    client.to(`conversation:${data.conversationId}`).emit('stop_typing', {
+      userId,
+      conversationId: data.conversationId,
+    });
+  }
 }

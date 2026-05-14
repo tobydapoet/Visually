@@ -6,7 +6,10 @@ import { MediaResponse } from 'src/client/dto/MediaResponse.dto';
 
 @Injectable()
 export class PostMediaService {
-  @InjectRepository(PostMedia) private postMediaRepo: Repository<PostMedia>;
+  constructor(
+    @InjectRepository(PostMedia)
+    private readonly postMediaRepo: Repository<PostMedia>,
+  ) {}
   async createMany(
     mediaRes: MediaResponse[],
     postId: number,
