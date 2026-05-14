@@ -120,4 +120,16 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
       conversationId: data.conversationId,
     });
   }
+
+  @SubscribeMessage('seen')
+  handleSeen(
+    @MessageBody() data: { conversationId: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const userId = client.handshake.query.userId as string;
+    client.to(`conversation:${data.conversationId}`).emit('seen', {
+      userId,
+      conversationId: data.conversationId,
+    });
+  }
 }
