@@ -121,8 +121,9 @@ export class ConversationService {
   async searchConversation(keyword: string) {
     const userId = this.context.getUserId();
 
-    return this.conversationRepo
+    const conversations = await this.conversationRepo
       .createQueryBuilder('c')
+      .leftJoinAndSelect('c.members', 'members')
       .leftJoin('c.members', 'me')
       .leftJoin('c.members', 'other')
       .where('me.userId = :userId', { userId })
@@ -139,8 +140,34 @@ export class ConversationService {
       )
       .take(10)
       .getMany();
-  }
 
+    return conversations.map((conversation) => {
+      const otherMembers =
+        conversation.type === ConversationType.BOT
+          ? conversation.members.filter((m) => m.userId !== userId)
+          : conversation.members.filter((m) => m.userId !== userId && !m.isBot);
+
+      const otherUsers =
+        conversation.type === ConversationType.PRIVATE
+          ? otherMembers.map(({ userId, avatarUrl, username, lastSeen }) => ({
+              userId,
+              avatarUrl,
+              username,
+              lastSeen,
+            }))
+          : otherMembers
+              .slice(0, 3)
+              .map(({ userId, avatarUrl, username, lastSeen }) => ({
+                userId,
+                avatarUrl,
+                username,
+                lastSeen,
+              }));
+
+      const { members, ...rest } = conversation;
+      return { ...rest, otherUsers };
+    });
+  }
   async findPrivateConversation(userBId: string) {
     const userAId = this.context.getUserId();
 
