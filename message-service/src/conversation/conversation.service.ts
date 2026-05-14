@@ -123,14 +123,16 @@ export class ConversationService {
 
     return this.conversationRepo
       .createQueryBuilder('c')
-      .leftJoin('c.members', 'member')
-      .where('member.userId = :userId', { userId })
+      .leftJoin('c.members', 'me')
+      .leftJoin('c.members', 'other')
+      .where('me.userId = :userId', { userId })
+      .andWhere('me.deletedAt IS NULL')
       .andWhere(
         new Brackets((qb) => {
           qb.where('LOWER(c.name) LIKE LOWER(:keyword)', {
             keyword: `%${keyword}%`,
           }).orWhere(
-            'LOWER(member.username) LIKE LOWER(:keyword) AND member.userId != :userId',
+            'LOWER(other.username) LIKE LOWER(:keyword) AND other.userId != :userId',
             { keyword: `%${keyword}%`, userId },
           );
         }),
