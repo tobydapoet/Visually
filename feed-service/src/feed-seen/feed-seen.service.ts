@@ -16,26 +16,18 @@ export class FeedSeenService {
     userId: string,
     contentId: number,
     contentType: ContentType,
-    watchTime: number,
   ): Promise<void> {
     const TTL = 60 * 60 * 24;
     const key = `${contentType}:${contentId}`;
+    const seenKey = `feed:seen:${userId}`;
 
-    if (watchTime >= 3) {
-      await Promise.all([
-        this.feedRepo.update(
-          { userId, contentId, contentType },
-          { isSeen: true, seenAt: new Date() },
-        ),
-        this.redis
-          .sadd(`feed:seen:${userId}`, key)
-          .then(() => this.redis.expire(`feed:seen:${userId}`, TTL)),
-      ]);
-    } else {
-      const skippedKey = `feed:skipped:${userId}`;
-      await this.redis.sadd(skippedKey, key);
-      await this.redis.expire(skippedKey, TTL);
-    }
+    await Promise.all([
+      this.feedRepo.update(
+        { userId, contentId, contentType },
+        { isSeen: true, seenAt: new Date() },
+      ),
+      this.redis.sadd(seenKey, key).then(() => this.redis.expire(seenKey, TTL)),
+    ]);
   }
 
   async markReelsSeen(

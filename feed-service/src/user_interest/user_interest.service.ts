@@ -33,7 +33,6 @@ export class UserInterestService {
         event.tags.map((t) => t.name),
       );
       extractedFromTags.forEach((t) => tagSet.add(t));
-      console.log('BOT_TAG_TAGS: ', extractedFromTags);
     }
 
     if (event.caption) {
@@ -70,7 +69,6 @@ export class UserInterestService {
         data.senderId,
         data.contentId,
         data.contentType,
-        data.watchTime,
       ),
       this.feedSeenModule.markReelsSeen(
         data.senderId,
@@ -83,7 +81,6 @@ export class UserInterestService {
 
   async getTopInterests(userId: string): Promise<string[]> {
     const cacheKey = `user:interests:${userId}`;
-    console.log('🔑 cacheKey:', cacheKey);
 
     const cached = await this.redis.get(cacheKey);
 
@@ -91,14 +88,9 @@ export class UserInterestService {
       const parsed = JSON.parse(cached);
 
       if (parsed.length > 0) {
-        console.log('⚡ Cache hit:', parsed);
         return parsed;
       }
-
-      console.log('🫙 Cache exists but empty, querying DB...');
     }
-
-    console.log('❌ Cache miss');
 
     const interests = await this.interestRepo.find({
       where: { userId },
@@ -106,11 +98,11 @@ export class UserInterestService {
       take: 40,
     });
 
-    console.log('📦 DB interests:', interests);
+    console.log('DB interests:', interests);
 
     let tagNames = interests.map((i) => i.tagName);
 
-    console.log('🏷️ Top tagNames:', tagNames);
+    console.log('Top tagNames:', tagNames);
 
     if (tagNames.length < 30) {
       const trending = await this.contentClient.getTrendingTags();
@@ -125,8 +117,6 @@ export class UserInterestService {
       'EX',
       60 * 60,
     );
-
-    console.log('✅ Saved interests to Redis (TTL: 1h)');
 
     return uniqueTagNames;
   }
