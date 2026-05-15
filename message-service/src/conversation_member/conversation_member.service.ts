@@ -236,6 +236,22 @@ export class ConversationMemberService {
     return this.memberRepo.findOne({ where: { id } });
   }
 
+  async getSeenStatus(conversationId: number) {
+    const members = await this.memberRepo.find({
+      where: {
+        conversation: { id: conversationId },
+        deletedAt: IsNull(),
+      },
+    });
+
+    return members.map((m) => ({
+      userId: m.userId,
+      username: m.username,
+      avatarUrl: m.avatarUrl,
+      lastSeenMessageId: m.lastSeenMessageId,
+    }));
+  }
+
   async updateUserDetail(
     userId: string,
     avatarUrl?: string,

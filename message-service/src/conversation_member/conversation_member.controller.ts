@@ -54,6 +54,12 @@ export class ConversationMemberController {
     );
   }
 
+  @Get(':id/seen-status')
+  @ApiBearerAuth()
+  getSeenStatus(@Param('id', ParseIntPipe) id: number) {
+    return this.conversationMemberService.getSeenStatus(id);
+  }
+
   @Get(':id')
   @ApiBearerAuth()
   findOne(@Param('id', ParseIntPipe) id: number) {
