@@ -70,8 +70,8 @@ public class MusicLibraryController {
             @ModelAttribute MusicUpdateRequest req) {
         CurrentUser currentUser = AuthContext.get();
 
-        if (!currentUser.getRole().equals("ADMIN")) {
-            throw new UnauthorizedException("Only admin can perform this action");
+        if (currentUser.getRole().equals("CLIENT")) {
+            throw new UnauthorizedException("Client can't perform this action");
         }
 
         MusicLibrary updatedMusic = musicLibraryService.update(id, req);
