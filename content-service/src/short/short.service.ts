@@ -32,6 +32,7 @@ import {
 } from 'src/repost/dto/respose-default.dto';
 import { Repost } from 'src/repost/entities/repost.entity';
 import { ShortResponseDto } from './dto/response-short.dto';
+import { GeminiClient } from 'src/client/gemini.client';
 
 @Injectable()
 export class ShortService {
@@ -49,6 +50,7 @@ export class ShortService {
     private outboxEventService: OutboxEventsService,
     private mentionService: MentionsService,
     private interactionClient: InteractionClient,
+    private geminiClient: GeminiClient,
   ) {}
 
   async create(
@@ -84,6 +86,18 @@ export class ShortService {
       throw new BadRequestException(
         'Invalid file type! Video must be a valid video file (mp4, mpeg, mov, avi, webm).',
       );
+    }
+
+    const moderation = await this.geminiClient.validateFiles([
+      fileVideo,
+      fileThumbnail,
+    ]);
+
+    if (!moderation.safe) {
+      throw new BadRequestException({
+        message: 'Unsafe content detected',
+        unsafeFiles: moderation.unsafeFiles,
+      });
     }
 
     const allowedImageMimeTypes = [

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Inject,
   Injectable,
@@ -32,6 +33,7 @@ import { InteractionClient } from 'src/client/interaction.client';
 import { ContentServiceType } from 'src/enums/content.type';
 import { FollowClient } from 'src/client/follow.client';
 import { UserRole } from 'src/enums/user_role.type';
+import { GeminiClient } from 'src/client/gemini.client';
 
 @Injectable()
 export class StoryService {
@@ -45,6 +47,7 @@ export class StoryService {
     private storageService: StoryStorageService,
     private interactionClient: InteractionClient,
     private followClient: FollowClient,
+    private geminiClient: GeminiClient,
   ) {}
 
   private readonly logger = new Logger(StoryService.name);
@@ -60,6 +63,15 @@ export class StoryService {
 
     if (role !== UserRole.CLIENT) {
       throw new ForbiddenException('Only clients can perform this action');
+    }
+
+    const moderation = await this.geminiClient.validateFiles([file]);
+
+    if (!moderation.safe) {
+      throw new BadRequestException({
+        message: 'Unsafe content detected',
+        unsafeFiles: moderation.unsafeFiles,
+      });
     }
 
     const files: Express.Multer.File[] = [file];

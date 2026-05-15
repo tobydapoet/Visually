@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Inject,
   Injectable,
@@ -31,6 +32,7 @@ import {
   DefaultReponseDto,
 } from 'src/repost/dto/respose-default.dto';
 import { Repost } from 'src/repost/entities/repost.entity';
+import { GeminiClient } from 'src/client/gemini.client';
 
 @Injectable()
 export class PostService {
@@ -49,6 +51,7 @@ export class PostService {
     private outboxEventService: OutboxEventsService,
     private mentionService: MentionsService,
     private interactionClient: InteractionClient,
+    private geminiClient: GeminiClient,
   ) {}
 
   async create(
@@ -66,6 +69,15 @@ export class PostService {
 
     if (!files) {
       throw new NotFoundException('file cannot be empty!');
+    }
+
+    const moderation = await this.geminiClient.validateFiles(files);
+
+    if (!moderation.safe) {
+      throw new BadRequestException({
+        message: 'Unsafe content detected',
+        unsafeFiles: moderation.unsafeFiles,
+      });
     }
 
     const mediaResponses = await this.mediaClient.upload(files, 'post', userId);

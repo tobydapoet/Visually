@@ -6,6 +6,7 @@ import { UserClient } from './user.client';
 import { InteractionClient } from './interaction.client';
 import { FeedClient } from './feed.client';
 import { FollowClient } from './follow.client';
+import { GeminiClient } from './gemini.client';
 
 @Module({
   imports: [HttpModule],
@@ -16,6 +17,7 @@ import { FollowClient } from './follow.client';
     InteractionClient,
     FeedClient,
     FollowClient,
+    GeminiClient,
   ],
   exports: [
     MediaClient,
@@ -24,6 +26,7 @@ import { FollowClient } from './follow.client';
     InteractionClient,
     FeedClient,
     FollowClient,
+    GeminiClient,
   ],
 })
 export class ClientModule {}
