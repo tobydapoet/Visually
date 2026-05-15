@@ -60,10 +60,8 @@ export class ContentController {
     @Query('size', new DefaultValuePipe(20), ParseIntPipe) size = 20,
     @Query('tags') tags: string[] = [],
   ): Promise<FeedReponseDto[]> {
-    console.log('TAGS : ', tags);
     try {
       const res = await this.contentService.searchFeedContent(size, page, tags);
-      console.log('RES: ', res);
       return res;
     } catch (err) {
       console.error('ERROR: ', err);
@@ -121,8 +119,6 @@ export class ContentController {
       contentType: ContentServiceType;
     },
   ) {
-    console.log('📨 Content liked:', data);
-
     try {
       switch (data.contentType) {
         case ContentServiceType.POST:
@@ -158,8 +154,6 @@ export class ContentController {
       contentType: ContentServiceType;
     },
   ) {
-    console.log('📨 Content disliked:', data);
-
     try {
       switch (data.contentType) {
         case ContentServiceType.POST:
@@ -198,8 +192,6 @@ export class ContentController {
       contentType: ContentType;
     },
   ) {
-    console.log('📨 Content commented:', data);
-
     try {
       switch (data.contentType) {
         case ContentType.POST:
@@ -233,8 +225,6 @@ export class ContentController {
       contentType: ContentType;
     },
   ) {
-    console.log('📨 Content comment deleted:', data);
-
     try {
       switch (data.contentType) {
         case ContentType.POST:
@@ -270,8 +260,6 @@ export class ContentController {
       contentType: ContentType;
     },
   ) {
-    console.log('📨 Content saved:', data);
-
     try {
       switch (data.contentType) {
         case ContentType.POST:
@@ -305,8 +293,6 @@ export class ContentController {
       contentType: ContentType;
     },
   ) {
-    console.log('📨 Content unsaved:', data);
-
     try {
       switch (data.contentType) {
         case ContentType.POST:

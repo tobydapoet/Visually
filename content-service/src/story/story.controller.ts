@@ -144,7 +144,6 @@ export class StoryController {
 
   @EventPattern('story.liked')
   async handlestoryLiked(@Payload() data: { storyId: number }) {
-    console.log('📨 story liked:', data);
     await this.storyService.updateInteraction(
       data.storyId,
       StoryInteractionType.LIKE,
@@ -153,7 +152,6 @@ export class StoryController {
 
   @EventPattern('story.disliked')
   async handlestoryUnliked(@Payload() data: { storyId: number }) {
-    console.log('📨 story disliked:', data);
     await this.storyService.updateInteraction(
       data.storyId,
       StoryInteractionType.DISLIKE,
