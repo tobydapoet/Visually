@@ -22,20 +22,32 @@ export class GeminiClient {
     if (!parts.length) return [];
 
     const prompt = `
-      Extract 7 short topic tags from the following information:
-      ${parts.join('\n')}
-      Rules:
-      - Return ONLY a JSON array of strings
-      - Tags must be lowercase, no spaces (use hyphen if needed)
-      - No explanation, no markdown, just the array
-      Example: ["coffee", "morning-routine", "hanoi", "cafe", "food"]
-    `;
+  Extract exactly 7 short topic tags from the following:
+  ${parts.join('\n')}
+  
+  Rules:
+  - Return ONLY a valid JSON array of strings, nothing else
+  - Tags must be lowercase, use hyphen instead of spaces
+  - No markdown, no explanation, no backticks
+  - If not enough topics, repeat or generalize
+  
+  Output format: ["tag1", "tag2", "tag3", "tag4", "tag5", "tag6", "tag7"]
+`;
 
     try {
       const result = await this.model.generateContent(prompt);
       const text = result.response.text().trim();
-      const cleaned = text.replace(/```json|```/g, '').trim();
-      return JSON.parse(cleaned);
+      const cleaned = text.replace(/```json|```|\n/g, '').trim();
+      const parsed = JSON.parse(cleaned);
+
+      if (
+        !Array.isArray(parsed) ||
+        !parsed.every((t) => typeof t === 'string')
+      ) {
+        return [];
+      }
+
+      return parsed.slice(0, 7);
     } catch {
       return [];
     }

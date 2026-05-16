@@ -13,12 +13,9 @@ import { ContextService } from 'src/context/context.service';
 import { UserInterestService } from 'src/user_interest/user_interest.service';
 import { ContentClient } from 'src/client/content.client';
 import { DeleteContentJobData } from './dto/job-feed.dto';
-import { UserRole } from 'src/enums/user_role.type';
 
 @Injectable()
 export class FeedService {
-  private readonly logger = new Logger(FeedService.name);
-
   constructor(
     @InjectRepository(Feed) private feedRepo: Repository<Feed>,
     private adClient: AdClient,
@@ -189,14 +186,6 @@ export class FeedService {
         this.userClient.getProfile(userId),
       ]);
 
-    // 👇 Log để debug
-    this.logger.log(
-      `🔍 seenIds (${seenIds.length}): ${JSON.stringify(seenIds)}`,
-    );
-    this.logger.log(
-      `🔍 skippedIds (${skippedIds.length}): ${JSON.stringify(skippedIds)}`,
-    );
-
     const age = user.dob
       ? new Date().getFullYear() - new Date(user.dob).getFullYear()
       : 3;
@@ -215,10 +204,6 @@ export class FeedService {
         userId,
       );
 
-      this.logger.log(
-        `📦 page ${currentCursor}: ${contents.map((c) => `${c.contentType}:${c.contentId}`).join(', ')}`,
-      );
-
       if (contents.length === 0) break;
 
       const newFiltered = contents.filter((c) => {
@@ -226,10 +211,6 @@ export class FeedService {
         if (key === currentId) return true;
         return !seenIds.includes(key) && !skippedIds.includes(key);
       });
-
-      this.logger.log(
-        `✅ after filter: ${newFiltered.map((c) => `${c.contentType}:${c.contentId}`).join(', ')}`,
-      );
 
       filtered.push(...newFiltered);
       currentCursor++;
