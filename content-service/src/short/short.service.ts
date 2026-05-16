@@ -188,8 +188,6 @@ export class ShortService {
         }
       }
 
-      this.logger.error('Failed to create short:', error);
-
       throw error;
     } finally {
       await queryRunner.release();
@@ -362,7 +360,6 @@ export class ShortService {
       return savedShort;
     } catch (error) {
       await queryRunner.rollbackTransaction();
-      this.logger.error('Failed to update short status', error);
       throw error;
     } finally {
       await queryRunner.release();

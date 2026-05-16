@@ -169,8 +169,6 @@ export class PostService {
 
       return savedPost;
     } catch (error) {
-      this.logger.error('Create post failed', error);
-
       if (queryRunner.isTransactionActive) {
         await queryRunner.rollbackTransaction();
       }

@@ -149,7 +149,6 @@ export class StoryService {
         }
       }
 
-      this.logger.error('Failed to create story:', error);
       throw error;
     } finally {
       await queryRunner.release();
