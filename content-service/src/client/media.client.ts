@@ -74,7 +74,7 @@ export class MediaClient {
     try {
       await lastValueFrom(
         this.http.delete(url, {
-          data: { urlIds },
+          data: urlIds,
           headers: { 'X-User-Id': userId },
         }),
       );
