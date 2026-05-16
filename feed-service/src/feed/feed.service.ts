@@ -172,6 +172,7 @@ export class FeedService {
 
   async getReelsFeed(cursor?: number, take?: number) {
     const userId = this.context.getUserId();
+    const targetTake = take ?? 20;
 
     const seenKey = `reels:seen:${userId}`;
     const skippedKey = `reels:skipped:${userId}`;
@@ -190,48 +191,54 @@ export class FeedService {
       ? new Date().getFullYear() - new Date(user.dob).getFullYear()
       : 3;
 
-    const [contents, ads] = await Promise.all([
-      this.contentClient.getContent(
-        take ?? 20,
-        cursor ?? 1,
+    const ads = await this.adClient.getAdFeeds(age, user.gender);
+
+    let filtered: any[] = [];
+    let currentCursor = cursor ?? 1;
+    let attempts = 0;
+
+    while (filtered.length < targetTake && attempts < 5) {
+      const contents = await this.contentClient.getContent(
+        targetTake,
+        currentCursor,
         topInterests,
         userId,
-      ),
-      this.adClient.getAdFeeds(age, user.gender),
-    ]);
+      );
 
-    const filtered = contents
-      .filter((c) => {
+      if (contents.length === 0) break;
+
+      const newFiltered = contents.filter((c) => {
         const key = `${c.contentType}:${c.contentId}`;
         if (key === currentId) return true;
-        const isSeen = seenIds.includes(key);
-        const isSkipped = skippedIds.includes(key);
-
-        return !isSeen && !isSkipped;
-      })
-      .sort((a, b) => {
-        const aKey = `${a.contentType}:${a.contentId}`;
-        const bKey = `${b.contentType}:${b.contentId}`;
-        if (aKey === currentId) return -1;
-        if (bKey === currentId) return 1;
-        return 0;
+        return !seenIds.includes(key) && !skippedIds.includes(key);
       });
+
+      filtered.push(...newFiltered);
+      currentCursor++;
+      attempts++;
+    }
 
     if (filtered.length === 0) {
       await this.redisInterest.del(skippedKey);
       const freshContents = await this.contentClient.getContent(
-        take ?? 20,
+        targetTake,
         cursor ?? 1,
         topInterests,
         userId,
       );
-      filtered.push(
-        ...freshContents.filter((c) => {
-          const key = `${c.contentType}:${c.contentId}`;
-          return !seenIds.includes(key);
-        }),
-      );
+      filtered = freshContents.filter((c) => {
+        const key = `${c.contentType}:${c.contentId}`;
+        return !seenIds.includes(key);
+      });
     }
+
+    filtered.sort((a, b) => {
+      const aKey = `${a.contentType}:${a.contentId}`;
+      const bKey = `${b.contentType}:${b.contentId}`;
+      if (aKey === currentId) return -1;
+      if (bKey === currentId) return 1;
+      return 0;
+    });
 
     const adItems = ads.map((ad) => ({
       contentId: ad.contentId,
