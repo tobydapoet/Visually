@@ -1,4 +1,4 @@
-import { ForbiddenException, Inject, Injectable } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable, Logger } from '@nestjs/common';
 import { CreateFeedDto } from './dto/create-feed.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Feed } from './entities/feed.entity';
@@ -17,6 +17,8 @@ import { UserRole } from 'src/enums/user_role.type';
 
 @Injectable()
 export class FeedService {
+  private readonly logger = new Logger(FeedService.name);
+
   constructor(
     @InjectRepository(Feed) private feedRepo: Repository<Feed>,
     private adClient: AdClient,
@@ -187,6 +189,14 @@ export class FeedService {
         this.userClient.getProfile(userId),
       ]);
 
+    // 👇 Log để debug
+    this.logger.log(
+      `🔍 seenIds (${seenIds.length}): ${JSON.stringify(seenIds)}`,
+    );
+    this.logger.log(
+      `🔍 skippedIds (${skippedIds.length}): ${JSON.stringify(skippedIds)}`,
+    );
+
     const age = user.dob
       ? new Date().getFullYear() - new Date(user.dob).getFullYear()
       : 3;
@@ -205,6 +215,10 @@ export class FeedService {
         userId,
       );
 
+      this.logger.log(
+        `📦 page ${currentCursor}: ${contents.map((c) => `${c.contentType}:${c.contentId}`).join(', ')}`,
+      );
+
       if (contents.length === 0) break;
 
       const newFiltered = contents.filter((c) => {
@@ -213,32 +227,14 @@ export class FeedService {
         return !seenIds.includes(key) && !skippedIds.includes(key);
       });
 
+      this.logger.log(
+        `✅ after filter: ${newFiltered.map((c) => `${c.contentType}:${c.contentId}`).join(', ')}`,
+      );
+
       filtered.push(...newFiltered);
       currentCursor++;
       attempts++;
     }
-
-    if (filtered.length === 0) {
-      await this.redisInterest.del(skippedKey);
-      const freshContents = await this.contentClient.getContent(
-        targetTake,
-        cursor ?? 1,
-        topInterests,
-        userId,
-      );
-      filtered = freshContents.filter((c) => {
-        const key = `${c.contentType}:${c.contentId}`;
-        return !seenIds.includes(key);
-      });
-    }
-
-    filtered.sort((a, b) => {
-      const aKey = `${a.contentType}:${a.contentId}`;
-      const bKey = `${b.contentType}:${b.contentId}`;
-      if (aKey === currentId) return -1;
-      if (bKey === currentId) return 1;
-      return 0;
-    });
 
     const adItems = ads.map((ad) => ({
       contentId: ad.contentId,
