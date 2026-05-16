@@ -71,13 +71,40 @@ export class PostService {
       throw new NotFoundException('file cannot be empty!');
     }
 
+    const SUPPORTED_TYPES = [
+      'image/jpeg',
+      'image/png',
+      'image/webp',
+      'image/gif',
+      'image/heic',
+      'image/heif',
+      'video/mp4',
+      'video/mpeg',
+      'video/mov',
+      'video/avi',
+      'video/webm',
+      'video/wmv',
+      'video/3gpp',
+    ];
+
+    const unsupportedFile = files.find(
+      (f) => !SUPPORTED_TYPES.includes(f.mimetype),
+    );
+
+    if (unsupportedFile) {
+      throw new BadRequestException(
+        `Unsupported file type: "${unsupportedFile.mimetype}". Only images and videos are allowed.`,
+      );
+    }
+
     const moderation = await this.geminiClient.validateFiles(files);
 
     if (!moderation.safe) {
-      throw new BadRequestException({
-        message: 'Unsafe content detected',
-        unsafeFiles: moderation.unsafeFiles,
-      });
+      const reasons = moderation.unsafeFiles
+        .map((f) => `${f.fileName}: ${f.reason}`)
+        .join('; ');
+
+      throw new BadRequestException(`Unsafe content detected — ${reasons}`);
     }
 
     const mediaResponses = await this.mediaClient.upload(files, 'post', userId);
