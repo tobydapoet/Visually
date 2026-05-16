@@ -83,9 +83,7 @@ export class ShortService {
       'video/webm',
     ];
     if (!allowedVideoMimeTypes.includes(fileVideo.mimetype)) {
-      throw new BadRequestException(
-        'Invalid file type! Video must be a valid video file (mp4, mpeg, mov, avi, webm).',
-      );
+      throw new BadRequestException(`Unsupported file type`);
     }
 
     const moderation = await this.geminiClient.validateFiles([

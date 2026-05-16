@@ -92,9 +92,7 @@ export class PostService {
     );
 
     if (unsupportedFile) {
-      throw new BadRequestException(
-        `Unsupported file type: "${unsupportedFile.mimetype}". Only images and videos are allowed.`,
-      );
+      throw new BadRequestException(`Unsupported file type`);
     }
 
     const moderation = await this.geminiClient.validateFiles(files);
