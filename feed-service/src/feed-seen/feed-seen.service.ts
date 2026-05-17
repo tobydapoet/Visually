@@ -39,21 +39,25 @@ export class FeedSeenService {
     const TTL = 60 * 60 * 24;
     const key = `${contentType}:${contentId}`;
 
+    console.log(
+      '[markReelsSeen] userId:',
+      userId,
+      'key:',
+      key,
+      'watchTime:',
+      watchTime,
+    );
+
     if (watchTime >= 3) {
       const seenKey = `reels:seen:${userId}`;
       await this.redis.sadd(seenKey, key);
       await this.redis.expire(seenKey, TTL);
+      console.log('[markReelsSeen] added to seen:', seenKey);
     } else {
       const skippedKey = `reels:skipped:${userId}`;
       await this.redis.sadd(skippedKey, key);
       await this.redis.expire(skippedKey, TTL);
-
-      // const count = await this.redis.scard(skippedKey);
-
-      // if (count > 15) {
-      //   const members = await this.redis.smembers(skippedKey);
-      //   await this.redis.srem(skippedKey, members[0]);
-      // }
+      console.log('[markReelsSeen] added to skipped:', skippedKey);
     }
   }
 }
