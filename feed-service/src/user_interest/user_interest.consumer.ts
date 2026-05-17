@@ -20,9 +20,10 @@ export class UserInterestConsumer {
     await this.userInterestService.trackInterest(data, 2);
   }
 
-  @EventPattern('content.viewed')
   async handleContentView(@Payload() data: ContentViewEvent) {
-    console.log(data.contentId, data.contentType, data.senderId);
+    const start = Date.now();
+    console.log('[handleContentView] start', data.contentId);
     await this.userInterestService.handleView(data);
+    console.log('[handleContentView] done in', Date.now() - start, 'ms');
   }
 }
