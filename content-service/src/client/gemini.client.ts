@@ -50,19 +50,17 @@ export class GeminiClient {
 
     const results = await Promise.all(
       files.map(async (file) => {
+        console.log(
+          '[validateFiles] processing:',
+          file.originalname,
+          file.mimetype,
+        );
         try {
           const base64Image = file.buffer.toString('base64');
 
           const result = await this.model.generateContent([
-            {
-              text: prompt,
-            },
-            {
-              inlineData: {
-                mimeType: file.mimetype,
-                data: base64Image,
-              },
-            },
+            { text: prompt },
+            { inlineData: { mimeType: file.mimetype, data: base64Image } },
           ]);
 
           const text = result.response
@@ -70,11 +68,22 @@ export class GeminiClient {
             .replace(/```json|```/g, '')
             .trim();
 
-          return {
-            fileName: file.originalname,
-            ...JSON.parse(text),
-          };
-        } catch {
+          console.log('[validateFiles] raw response:', text);
+
+          const parsed = JSON.parse(text);
+          console.log(
+            '[validateFiles] result:',
+            file.originalname,
+            parsed.safe,
+          );
+
+          return { fileName: file.originalname, ...parsed };
+        } catch (error: any) {
+          console.error(
+            '[validateFiles] error:',
+            file.originalname,
+            error.message,
+          );
           return {
             fileName: file.originalname,
             safe: false,
@@ -87,6 +96,7 @@ export class GeminiClient {
     );
 
     const unsafeFiles = results.filter((r) => !r.safe);
+    console.log('[validateFiles] safe:', unsafeFiles.length === 0);
 
     return {
       safe: unsafeFiles.length === 0,
