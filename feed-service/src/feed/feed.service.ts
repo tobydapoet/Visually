@@ -2,7 +2,7 @@ import { ForbiddenException, Inject, Injectable, Logger } from '@nestjs/common';
 import { CreateFeedDto } from './dto/create-feed.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Feed } from './entities/feed.entity';
-import { In, LessThan, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { ContentType } from 'src/enums/ContentType';
 import { AdClient } from 'src/client/ad.client';
 import { Userclient } from 'src/client/user.client';
