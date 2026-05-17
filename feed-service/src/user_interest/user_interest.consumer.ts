@@ -22,9 +22,6 @@ export class UserInterestConsumer {
 
   @EventPattern('content.viewed')
   async handleContentView(@Payload() data: ContentViewEvent) {
-    const start = Date.now();
-    console.log('[handleContentView] start', data.contentId);
-    await this.userInterestService.handleView(data);
-    console.log('[handleContentView] done in', Date.now() - start, 'ms');
+    this.userInterestService.handleView(data);
   }
 }
