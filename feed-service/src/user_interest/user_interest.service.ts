@@ -62,26 +62,20 @@ export class UserInterestService {
   }
 
   async handleView(data: ContentViewEvent) {
-    console.log('[handleView] data:', JSON.stringify(data));
-
     await Promise.all([
-      this.trackInterest(data, 0.1).then(() =>
-        console.log('[handleView] trackInterest done'),
+      this.trackInterest(data, 0.1),
+      this.feedSeenModule.markSeen(
+        data.senderId,
+        data.contentId,
+        data.contentType,
       ),
-      this.feedSeenModule
-        .markSeen(data.senderId, data.contentId, data.contentType)
-        .then(() => console.log('[handleView] markSeen done')),
-      this.feedSeenModule
-        .markReelsSeen(
-          data.senderId,
-          data.contentId,
-          data.contentType,
-          data.watchTime,
-        )
-        .then(() => console.log('[handleView] markReelsSeen done')),
+      this.feedSeenModule.markReelsSeen(
+        data.senderId,
+        data.contentId,
+        data.contentType,
+        data.watchTime,
+      ),
     ]);
-
-    console.log('[handleView] all done');
   }
 
   async getTopInterests(userId: string): Promise<string[]> {
