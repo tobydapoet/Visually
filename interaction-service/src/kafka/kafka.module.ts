@@ -11,11 +11,11 @@ import { KafkaService } from './kafka.service';
         transport: Transport.KAFKA,
         options: {
           client: {
-            clientId: `${process.env.MESSAGE_SERVICE_NAME}`,
+            clientId: `${process.env.SERVICE_NAME}`,
             brokers: [`${process.env.KAFKA_URL}`],
           },
           consumer: {
-            groupId: `${process.env.MESSAGE_SERVICE_NAME}`,
+            groupId: `${process.env.SERVICE_NAME}`,
           },
           producer: {
             createPartitioner: Partitioners.LegacyPartitioner,
