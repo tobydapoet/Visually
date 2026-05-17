@@ -15,6 +15,9 @@ async function bootstrap() {
       },
       consumer: {
         groupId: process.env.SERVICE_NAME,
+        autoCommit: true,
+        sessionTimeout: 30000,
+        heartbeatInterval: 3000,
       },
     },
   });

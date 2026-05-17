@@ -22,12 +22,7 @@ export class UserInterestConsumer {
 
   @EventPattern('content.viewed')
   async handleContentView(@Payload() data: ContentViewEvent) {
-    console.log(
-      '[handleContentView] received:',
-      data.contentId,
-      data.contentType,
-      data.senderId,
-    );
+    console.log(data.contentId, data.contentType, data.senderId);
     await this.userInterestService.handleView(data);
   }
 }
