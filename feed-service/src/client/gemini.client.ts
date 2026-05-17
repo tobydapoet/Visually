@@ -10,7 +10,7 @@ export class GeminiClient {
     if (!apiKey) throw new Error('GEMINI_API_KEY is not defined');
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    this.model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+    this.model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
   }
 
   async extractTopics(caption?: string, tags?: string[]): Promise<string[]> {
