@@ -91,13 +91,16 @@ export class OutboxEventsService {
     manager: EntityManager,
     dto: ViewOutboxEventDto,
   ): Promise<void> {
-    await manager.save(OutboxEvent, {
+    console.log('[emitView] saving outbox event:', JSON.stringify(dto));
+
+    const saved = await manager.save(OutboxEvent, {
       eventType: dto.eventType,
       payload: dto.payload,
       status: EventStatus.PENDING,
     });
-  }
 
+    console.log('[emitView] saved outbox event id:', saved.id);
+  }
   async processBatch(): Promise<OutboxEvent[]> {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
