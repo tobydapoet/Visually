@@ -149,8 +149,6 @@ export class FanoutProcessor extends WorkerHost {
     const { followerId, userId } = data;
     const contents = await this.contentClient.getRecentByUserId(userId);
 
-    console.log('contents : ', contents);
-
     if (!contents.length) return;
 
     await this.feedService.create(

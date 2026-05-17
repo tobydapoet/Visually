@@ -41,7 +41,6 @@ export class UserInterestService {
         event.tags?.map((t) => t.name),
       );
       extractedFromCaption.forEach((t) => tagSet.add(t));
-      console.log('BOT_TAG_CAPTION: ', extractedFromCaption);
     }
 
     if (!tagSet.size) return;
@@ -98,11 +97,7 @@ export class UserInterestService {
       take: 40,
     });
 
-    console.log('DB interests:', interests);
-
     let tagNames = interests.map((i) => i.tagName);
-
-    console.log('Top tagNames:', tagNames);
 
     if (tagNames.length < 30) {
       const trending = await this.contentClient.getTrendingTags();
