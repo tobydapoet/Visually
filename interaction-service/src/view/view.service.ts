@@ -8,6 +8,7 @@ import { OutboxEventsService } from 'src/outbox_events/outbox_events.service';
 import { ContentServiceType } from 'src/enums/ContentType';
 import { ContentClient } from 'src/client/content.client';
 import { UserRole } from 'src/enums/user_role.type';
+import { KafkaService } from 'src/kafka/kafka.service';
 
 @Injectable()
 export class ViewService {
@@ -18,6 +19,7 @@ export class ViewService {
     private outboxEventService: OutboxEventsService,
     private contentClient: ContentClient,
     private dataSource: DataSource,
+    private kafkaService: KafkaService,
   ) {}
 
   private async resolveContentId(dto: CreateViewDto): Promise<
@@ -86,9 +88,8 @@ export class ViewService {
           throw new Error('Content not found');
         }
 
-        await this.outboxEventService.emitView(queryRunner.manager, {
-          eventType: 'content.viewed',
-          payload: {
+        await this.kafkaService
+          .emit('content.viewed', {
             watchTime: createViewDto.watchTime,
             contentId: createViewDto.targetId,
             senderId: userId,
@@ -96,9 +97,10 @@ export class ViewService {
             timestamp: new Date().toISOString(),
             tags: content.tags,
             caption: content.caption,
-          },
-        });
+          })
+          .toPromise();
       }
+
       await queryRunner.commitTransaction();
     } catch (err) {
       await queryRunner.rollbackTransaction();
