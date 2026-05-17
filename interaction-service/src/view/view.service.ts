@@ -88,17 +88,15 @@ export class ViewService {
           throw new Error('Content not found');
         }
 
-        await this.kafkaService
-          .emit('content.viewed', {
-            watchTime: createViewDto.watchTime,
-            contentId: createViewDto.targetId,
-            senderId: userId,
-            contentType: createViewDto.targetType,
-            timestamp: new Date().toISOString(),
-            tags: content.tags,
-            caption: content.caption,
-          })
-          .toPromise();
+        this.kafkaService.emit('content.viewed', {
+          watchTime: createViewDto.watchTime,
+          contentId: createViewDto.targetId,
+          senderId: userId,
+          contentType: createViewDto.targetType,
+          timestamp: new Date().toISOString(),
+          tags: content.tags,
+          caption: content.caption,
+        });
       }
 
       await queryRunner.commitTransaction();
